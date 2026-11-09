@@ -6,9 +6,9 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 ## الحالة — Status
 
-**نسخة تجريبية مبكرة (pilot).** الكود يُبنى وتنجح اختباراته (وحدة + لقطات شاشة معروضة عبر layoutlib)، لكنه **لم يُختبر بعد على جهاز حقيقي**. التوافق الفعلي يتأكد بالتجربة على الأجهزة.
+**نسخة تجريبية مبكرة (pilot).** الكود يُبنى وتنجح اختباراته: ٥٦ اختبار وحدة وتدفق (JUnit + Robolectric يشمل مسارات بوابة PIN والقفل والاتصال والطلب عبر أنشطة حقيقية على JVM) + ١٩ لقطة شاشة معروضة عبر layoutlib، لكنه **لم يُختبر بعد على جهاز حقيقي**. التوافق الفعلي يتأكد بالتجربة على الأجهزة.
 
-Early pilot. Builds cleanly, unit tests and layout-rendered snapshot tests pass (see `ui/src/test/snapshots/images/`), **but it has not been tested on a real device yet**.
+Early pilot. Builds cleanly, 56 unit and flow tests pass (JUnit + Robolectric: real Activities covering the PIN gate, relock, dial/save intents and call-permission discipline on the JVM) plus 19 layout-rendered snapshot tests (see `ui/src/test/snapshots/images/`), **but it has not been tested on a real device yet**.
 
 ## الفكرة — Design
 
@@ -29,7 +29,7 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 
 - minSdk 24 / targetSdk 33 (provisional pilot choices, not a committed support range)
 - No third-party runtime dependencies — framework APIs only
-- Tests: `gradle :app:testDebugUnitTest` (unit) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
+- Tests: `gradle :app:testDebugUnitTest` (32 unit + 24 Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
 
 ## الخصوصية والنطاق — Privacy & Scope
 
