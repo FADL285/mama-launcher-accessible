@@ -37,3 +37,23 @@ No real calls, contact writes, external TTS uploads, private handset media or
 real contact identifiers are used. Version 0.10/code12 is an update candidate
 signed with the same pilot certificate. Merge and supervised handset approval
 remain with the owner. Local tests do not guarantee handset touch/audio quality.
+
+## Reviewer follow-up
+
+Greptile's short-window finding is valid. Normal windows use the unchanged
+bottom-anchored layout via layout-h600dp. Short windows keep Call/Save fixed,
+a fixed-height results viewport, and a separately scrollable keypad. Results
+cannot change the keypad viewport or move keys under an in-flight tap. A
+480dp/largest-text regression also scrolls down and dispatches a real coordinate
+tap to 0, proving the lower keys and actions stay reachable. Three short-window
+renders show empty/results at the same coordinates and the bottom keys after
+scrolling. On short windows the user must scroll keys/results separately.
+
+Greptile's chooser-test finding is valid. The production dialog now uses an
+adapter whose item view is shared with renderer tests, not a substitute Button.
+The exact TextView is rendered at a narrow 288dp dialog-item width with largest
+font, including grouped Latin/Arabic digits. No full-screen-width assumption.
+CodeRabbit's initial pass had no functional inline findings; it warned about
+0% docstrings in touched complex functions. Its README-count note is corrected
+by the verified test totals in this revision. Sourcery is budget-skipped, not
+approved. Final review state is recorded separately after the last push.

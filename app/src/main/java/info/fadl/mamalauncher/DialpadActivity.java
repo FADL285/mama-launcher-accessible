@@ -108,7 +108,12 @@ public class DialpadActivity extends BaseActivity {
         if(found.size()>1) {
             android.widget.Button more=new android.widget.Button(this);more.setText(getString(R.string.dial_more,found.size()));more.setAllCaps(false);more.setTextSize(18);
             guard(more,()->new android.app.AlertDialog.Builder(this).setTitle(R.string.dial_results)
-                .setItems(found.stream().map(info.fadl.mamalauncher.ui.DialMatchUi::chooserLabel).toArray(String[]::new),(d,i)->startActivity(ConfirmCallActivity.intentFor(this,found.get(i))))
+                .setAdapter(new android.widget.BaseAdapter(){
+                    public int getCount(){return found.size();}
+                    public Object getItem(int i){return found.get(i);}
+                    public long getItemId(int i){return found.get(i).id;}
+                    public android.view.View getView(int i,android.view.View recycled,android.view.ViewGroup parent){return info.fadl.mamalauncher.ui.DialMatchUi.chooserItem(parent.getContext(),found.get(i));}
+                },(d,i)->startActivity(ConfirmCallActivity.intentFor(this,found.get(i))))
                 .setNegativeButton(android.R.string.cancel,null).show());box.addView(more);
         }
     }

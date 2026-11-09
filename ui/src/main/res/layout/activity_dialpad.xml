@@ -9,15 +9,16 @@
     <Space android:layout_width="76dp" android:layout_height="1dp" />
   </LinearLayout>
       <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="6dp">
-        <FrameLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="92dp">
+        <FrameLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="64dp">
           <TextView android:id="@+id/dial_placeholder" android:layout_width="match_parent" android:layout_height="match_parent" android:text="@string/dial_empty_hint" android:textSize="24sp" android:textColor="?attr/surfaceSecondaryText" android:gravity="center" android:textDirection="rtl" />
-          <TextView android:id="@+id/dial_display" android:layout_width="match_parent" android:layout_height="92dp" android:gravity="center" android:textSize="34sp" android:textStyle="bold" android:textColor="?attr/surfaceText" android:padding="10dp" android:maxLines="1" android:scrollHorizontally="true" android:ellipsize="none" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="18sp" android:autoSizeMaxTextSize="30sp" android:autoSizeStepGranularity="2sp" android:visibility="invisible" android:textDirection="ltr" />
+          <TextView android:id="@+id/dial_display" android:layout_width="match_parent" android:layout_height="64dp" android:gravity="center" android:textSize="34sp" android:textStyle="bold" android:textColor="?attr/surfaceText" android:padding="2dp" android:maxLines="1" android:scrollHorizontally="true" android:ellipsize="none" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="18sp" android:autoSizeMaxTextSize="30sp" android:autoSizeStepGranularity="2sp" android:visibility="invisible" android:textDirection="ltr" />
         </FrameLayout>
         <ImageView android:id="@+id/btn_backspace" android:layout_width="48dp" android:layout_height="48dp" android:src="@drawable/ic_backspace" android:tint="?attr/surfaceSecondaryText" android:padding="8dp" android:contentDescription="@string/backspace" />
       </LinearLayout>
-  <ScrollView android:id="@+id/dial_results_scroll" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:fillViewport="false">
+  <ScrollView android:id="@+id/dial_results_scroll" android:layout_width="match_parent" android:layout_height="64dp" android:fillViewport="false">
       <LinearLayout android:id="@+id/dial_matches" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
   </ScrollView>
+  <ScrollView android:id="@+id/dial_keys_scroll" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:fillViewport="false">
       <LinearLayout android:id="@+id/dial_grid" android:layoutDirection="ltr" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="4dp">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
           <TextView android:tag="1" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="62dp" android:layout_margin="4dp" android:background="@drawable/tile_bg" android:gravity="center" android:text="1" android:textSize="27sp" android:includeFontPadding="false" android:textStyle="bold" android:textColor="@color/text_main" />
@@ -43,6 +44,7 @@
           <TextView android:tag="#" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="62dp" android:layout_margin="4dp" android:background="@drawable/tile_bg" android:gravity="center" android:text="#" android:textSize="27sp" android:includeFontPadding="false" android:textStyle="bold" android:textColor="@color/text_main" />
         </LinearLayout>
       </LinearLayout>
+  </ScrollView>
   <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="8dp">
     <LinearLayout android:id="@+id/btn_save_number" android:layout_width="0dp" android:layout_weight="1" android:layout_height="62dp" android:layout_margin="4dp" android:orientation="horizontal" android:gravity="center" android:background="@drawable/tile_bg">
       <ImageView android:layout_width="26dp" android:layout_height="26dp" android:src="@drawable/ic_person_add" />

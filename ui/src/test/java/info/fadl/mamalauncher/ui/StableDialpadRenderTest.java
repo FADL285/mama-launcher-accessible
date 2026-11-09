@@ -29,7 +29,7 @@ public class StableDialpadRenderTest {
  private void numberRuns(String[] values,String snapshot){
   LinearLayout box=new LinearLayout(paparazzi.getContext());box.setOrientation(LinearLayout.VERTICAL);box.setPadding(12,12,12,12);
   for(String raw:values) {
-   ContactEntry c=new ContactEntry(1,"اسم تجريبي",raw,null,false);Button preview=DialMatchUi.preview(paparazzi.getContext(),c,true);box.addView(preview,new LinearLayout.LayoutParams(-1,-2));Button chooser=new Button(paparazzi.getContext());chooser.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG_RTL);chooser.setAllCaps(false);chooser.setTextSize(18);chooser.setText(DialMatchUi.chooserLabel(c));box.addView(chooser,new LinearLayout.LayoutParams(-1,-2));
+   ContactEntry c=new ContactEntry(1,"اسم تجريبي",raw,null,false);Button preview=DialMatchUi.preview(paparazzi.getContext(),c,true);box.addView(preview,new LinearLayout.LayoutParams(-1,-2));TextView chooser=DialMatchUi.chooserItem(paparazzi.getContext(),c);box.addView(chooser,new LinearLayout.LayoutParams((int)(288*box.getResources().getDisplayMetrics().density),-2));
   }
   int width=(int)(411*box.getResources().getDisplayMetrics().density);box.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(1800,View.MeasureSpec.AT_MOST));box.layout(0,0,width,box.getMeasuredHeight());
   for(int i=0;i<box.getChildCount();i++) {

@@ -13,6 +13,13 @@ public final class DialMatchUi {
  private DialMatchUi() {}
  public static String isolatedNumber(String number) {return "\u2066\u202D"+number+"\u202C\u2069";}
  public static String chooserLabel(ContactEntry contact) {return contact.name+"\n"+isolatedNumber(contact.firstNumber());}
+ public static android.widget.TextView chooserItem(Context context,ContactEntry contact) {
+  android.widget.TextView row=new android.widget.TextView(context);
+  row.setText(chooserLabel(contact));row.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG_RTL);row.setTextSize(18);
+  row.setTextColor(context.getResources().getColor(R.color.text_main,context.getTheme()));
+  int padding=(int)(16*context.getResources().getDisplayMetrics().density);row.setPadding(padding,padding,padding,padding);row.setMinHeight(padding*4);
+  return row;
+ }
  public static Button preview(Context context,ContactEntry contact,boolean saved) {
   Button row=new Button(context);
   row.setText((saved?context.getString(R.string.dial_saved):context.getString(R.string.dial_suggestion))+" · "+contact.name+"\n"+isolatedNumber(contact.firstNumber()));
