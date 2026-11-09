@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FAF8F4</color>
+    <color name="tile_bg">#FFFFFF</color>
+    <color name="tile_border">#D8D2C6</color>
+    <color name="text_main">#1A1A1A</color>
+    <color name="call_green">#1E7B34</color>
+    <color name="call_green_pressed">#155E27</color>
+    <color name="back_blue">#2F5D8A</color>
+    <color name="star_gold">#F5B301</color>
+    <color name="danger_text">#8A1F1F</color>
+    <color name="wa_green">#1FA855</color>
+    <color name="msg_blue">#0068E0</color>
+    <color name="yt_red">#C4302B</color>
+</resources>
