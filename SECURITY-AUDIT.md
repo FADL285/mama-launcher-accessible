@@ -12,10 +12,39 @@ supply chain, data lifecycle), candidate validation, and structured verdicts
 checklist for this app (see mapping below).
 
 Distinguishing references from execution: the Cloudflare skill phases and the
-OWASP MASVS groups were **reviewed as checklists**; what was **actually run**
-is: the Gradle test suites, Android Lint, secrets/PII pattern scans, dependency
-review, and a manual read of every source file. No external scanner or skill
-was installed or executed.
+OWASP MASVS groups were **reviewed as checklists**. What was **actually run**
+is listed under "Executed tools and results" below.
+
+## Tooling assessment (requested by the project owner)
+
+- **Semgrep Community Edition** — assessed as suitable and **run** (results
+  below): maintained open-source SAST, runs fully locally, no code egress.
+- **Cloudflare security-audit-skill** — reviewed as methodology reference
+  only; not installed or executed (it orchestrates a multi-agent harness
+  disproportionate to this codebase).
+- **`llm-sast-scanner`** — **not run.** The name is ambiguous: several
+  unrelated projects share it (e.g. `SunWeb3Sec/llm-sast-scanner`,
+  Web3-focused; `cujanovic/llm-sast-scanner`; a skill inside
+  `XavierEr/appsec-agent-skills`), and the pattern requires sending the code
+  to an external LLM API — data egress this pilot's privacy posture and the
+  owner's instructions do not authorize. If a specific one was meant, it can
+  be re-assessed by exact repository.
+- **MobSF (Mobile Security Framework)** — **not run.** It requires a
+  dedicated server/Docker deployment and uploading the APK to it; its static
+  checks (manifest, permissions, exported components, hardcoded secrets)
+  overlap with the Android Lint run and the manual review already executed on
+  this dependency-free, 6-class app. Proportionate to revisit if the app
+  gains networking, storage, or third-party SDKs.
+
+## Executed tools and results
+
+| Tool | What ran | Result |
+|------|----------|--------|
+| Gradle suites | `:app:testDebugUnitTest` + `:ui:testDebugUnitTest` | 18/18 pass (12 unit + 6 rendered snapshots) |
+| Android Lint (AGP 7.4.2, offline) | `:app:lintDebug` | 0 errors, 4 warnings in 3 categories (all documented below) |
+| Semgrep CE 1.184.0 | `p/java` + `p/security-audit` registries, 88 rules on 44 files, 100% parsed, metrics off | 0 findings (note: a `p/android` registry pack does not exist; request returned 404, so Java + security-audit packs were used) |
+| Secrets/PII scans | pattern scans for keys, tokens, real phone numbers | clean (fixtures fictional) |
+| Manual review | every source file read | findings F-01 and photo-decode item below |
 
 ## Trust boundaries
 
@@ -85,6 +114,7 @@ was installed or executed.
 
 - Unit + snapshot tests: **18/18 passing** (12 unit, 6 rendered layout
   snapshots) after the F-01 fix.
+- Semgrep CE (88 Java/security rules): **0 findings**.
 - Android Lint: **0 errors, 4 warnings in 3 categories** — 1×
   `UnusedAttribute` (`dataExtractionRules` correctly ignored below API 31),
   2× `LockedOrientationActivity` (intentional, see above), 1× `SetTextI18n`
