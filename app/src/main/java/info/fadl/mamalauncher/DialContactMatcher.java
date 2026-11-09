@@ -38,15 +38,21 @@ final class DialContactMatcher {
   if("EG".equals(country) && e164.startsWith("+20") && ("0"+e164.substring(3)).startsWith(query))return true;
   return false;
  }
+ /** A contact is exact when any saved number is exact, independent of provider order. */
+ static boolean hasExact(ContactEntry contact,String typed,String country) {
+  for(ContactEntry.PhoneNumber n:contact.numbers)if(exact(typed,n.number,country))return true;
+  return false;
+ }
  static List<ContactEntry> matches(List<ContactEntry> contacts,String typed,String country,boolean exactOnly) {
   List<ContactEntry> result=new ArrayList<>();String query=digits(typed);
   if(query.length()<3)return result;
   for(ContactEntry c:contacts) {
    List<ContactEntry.PhoneNumber> nums=new ArrayList<>();
    for(ContactEntry.PhoneNumber n:c.numbers)if(exact(typed,n.number,country) || (!exactOnly && prefix(n.number,typed,country)))nums.add(n);
+   nums.sort((a,b)->Boolean.compare(!exact(typed,a.number,country),!exact(typed,b.number,country)));
    if(!nums.isEmpty())result.add(new ContactEntry(c.id,c.name,nums,c.photoUri,c.starred));
   }
-  result.sort((a,b)->Boolean.compare(!exact(typed,a.firstNumber(),country),!exact(typed,b.firstNumber(),country)));
+  result.sort((a,b)->Boolean.compare(!hasExact(a,typed,country),!hasExact(b,typed,country)));
   return result;
  }
 }

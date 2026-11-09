@@ -7,8 +7,8 @@ android {
         applicationId "info.fadl.mamalauncher"
         minSdk 24
         targetSdk 33
-        versionCode 10
-        versionName "0.8-pilot-candidate"
+        versionCode 11
+        versionName "0.9-pilot-candidate"
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8

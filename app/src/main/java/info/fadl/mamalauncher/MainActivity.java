@@ -47,7 +47,7 @@ public class MainActivity extends BaseActivity {
             host.removeView(scroll);
             LinearLayout fixed=new LinearLayout(this);fixed.setOrientation(LinearLayout.VERTICAL);int edge=(int)(12*getResources().getDisplayMetrics().density);fixed.setPadding(edge,edge,edge,0);
             fixed.addView(back,new LinearLayout.LayoutParams(-1,-2));
-            TextView title=new TextView(this);title.setText(R.string.apps_page);title.setTextSize(30);title.setGravity(android.view.Gravity.CENTER);title.setTextColor(getResources().getColor(R.color.text_main));
+            TextView title=new TextView(this);title.setText(R.string.apps_page);title.setTextSize(30);title.setGravity(android.view.Gravity.CENTER);title.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));
             fixed.addView(title,new LinearLayout.LayoutParams(-1,-2));
             fixed.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
             host.addView(fixed,new android.view.ViewGroup.LayoutParams(-1,-1));
@@ -141,7 +141,7 @@ public class MainActivity extends BaseActivity {
         }
 
         if(isSecondary() && built.isEmpty()) {
-            TextView empty=new TextView(this);empty.setText(R.string.apps_empty);empty.setTextSize(24);empty.setTextColor(getResources().getColor(R.color.text_main));tiles.addView(empty);
+            TextView empty=new TextView(this);empty.setText(R.string.apps_empty);empty.setTextSize(24);empty.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));tiles.addView(empty);
         }
         float d = getResources().getDisplayMetrics().density;
         int m = (int) (6 * d);

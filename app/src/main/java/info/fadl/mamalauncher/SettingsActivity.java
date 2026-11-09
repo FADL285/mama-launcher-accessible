@@ -275,7 +275,7 @@ public class SettingsActivity extends ProtectedModeActivity {
         findViewById(R.id.apps_loading).setVisibility(View.GONE);
         LinearLayout box = findViewById(R.id.settings_apps_list);
         box.removeAllViews();
-        TextView hint=new TextView(this);hint.setText(R.string.apps_drag_hint);hint.setTextSize(18);hint.setTextColor(getResources().getColor(R.color.text_main));hint.setPadding((int)(8*getResources().getDisplayMetrics().density),8,(int)(8*getResources().getDisplayMetrics().density),16);box.addView(hint);
+        TextView hint=new TextView(this);hint.setText(R.string.apps_drag_hint);hint.setTextSize(18);hint.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));hint.setPadding((int)(8*getResources().getDisplayMetrics().density),8,(int)(8*getResources().getDisplayMetrics().density),16);box.addView(hint);
         addGroup(box,selected,getString(R.string.apps_home));
         addGroup(box,secondary,getString(R.string.apps_folder));
         for(String[] app:installed)if(!selected.contains(app[0]) && !secondary.contains(app[0]))box.addView(pickerRow(app,null,-1));

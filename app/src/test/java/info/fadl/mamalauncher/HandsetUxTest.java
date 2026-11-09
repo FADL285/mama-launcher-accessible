@@ -177,4 +177,50 @@ public class HandsetUxTest {
   NameSpeaker speaker=new NameSpeaker();speaker.init(app);java.lang.reflect.Field field=NameSpeaker.class.getDeclaredField("engines");field.setAccessible(true);List<?> choices=(List<?>)field.get(speaker);assertEquals(2,choices.size());assertFalse(choices.contains(null));speaker.shutdown();
  }
 
+ @Test public void exactNumberMovesAheadOfLongerPrefixAndExactContactRanksFirst(){
+  ContactEntry multi=new ContactEntry(2,"متعدد",Arrays.asList(new ContactEntry.PhoneNumber("030123456","الأول"),new ContactEntry.PhoneNumber("03012345","الثاني")),null,false);
+  List<ContactEntry> matches=DialContactMatcher.matches(Arrays.asList(contact(1,"اقتراح","030123459"),multi),"03012345","EG",false);
+  assertEquals(2,matches.get(0).id);assertEquals("03012345",matches.get(0).firstNumber());assertEquals("030123456",matches.get(0).numbers.get(1).number);
+  assertEquals("030123456",multi.firstNumber());
+ }
+ @Test public void savedPreviewDisplaysTheExactNumberNotOtherNumber()throws Exception {
+  Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.READ_CONTACTS);
+  org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){@Override public Cursor query(Uri uri,String[] p,String selection,String[] args,String sort){MatrixCursor c=new MatrixCursor(p);c.addRow(new Object[]{8,"اقتراح","030123459",2,null,null,0});c.addRow(new Object[]{7,"متعدد","030123456",2,null,null,0});c.addRow(new Object[]{7,"متعدد","03012345",2,null,null,0});return c;}});
+  DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();type(a,"03012345");settle(a);
+  String preview=((TextView)((LinearLayout)a.findViewById(R.id.dial_matches)).getChildAt(0)).getText().toString();
+  assertEquals(a.getString(R.string.dial_saved)+" · متعدد\n03012345",preview);
+ }
+ void saveCannotNavigateAfterPause(String... names)throws Exception {
+  Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.READ_CONTACTS);provider(null);
+  org.robolectric.android.controller.ActivityController<DialpadActivity> controller=Robolectric.buildActivity(DialpadActivity.class).setup();DialpadActivity a=controller.get();type(a,"01000000001");settle(a);
+  java.util.concurrent.CountDownLatch entered=new java.util.concurrent.CountDownLatch(1),release=new java.util.concurrent.CountDownLatch(1);
+  org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){@Override public Cursor query(Uri uri,String[] p,String selection,String[] args,String sort){entered.countDown();try{if(!release.await(4,java.util.concurrent.TimeUnit.SECONDS))throw new IllegalStateException();}catch(InterruptedException e){throw new RuntimeException(e);}MatrixCursor c=new MatrixCursor(p);for(int i=0;i<names.length;i++)c.addRow(new Object[]{i+1,names[i],"01000000001",2,null,null,0});return c;}});
+  android.app.AlertDialog previous=org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();a.findViewById(R.id.btn_save_number).performClick();assertTrue(entered.await(2,java.util.concurrent.TimeUnit.SECONDS));controller.pause();release.countDown();settle(a);
+  assertNull(Shadows.shadowOf(a).getNextStartedActivity());assertSame(previous,org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog());
+  controller.resume();settle(a);assertNull(Shadows.shadowOf(a).getNextStartedActivity());
+  a.findViewById(R.id.btn_save_number).performClick();settle(a);
+  if(names.length>1){android.app.AlertDialog chooser=org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();assertNotSame(previous,chooser);assertTrue(chooser.isShowing());controller.pause();assertFalse(chooser.isShowing());chooser.getListView().performItemClick(null,0,0);assertNull(Shadows.shadowOf(a).getNextStartedActivity());}
+  else assertNotNull(Shadows.shadowOf(a).getNextStartedActivity());
+ }
+ @Test public void pausedSaveCannotOpenInsertAndFreshRetryWorks()throws Exception {saveCannotNavigateAfterPause();}
+ @Test public void pausedSaveCannotOpenConfirmationAndFreshRetryWorks()throws Exception {saveCannotNavigateAfterPause("اختبار");}
+ @Test public void pausedSaveCannotOpenChooserAndChooserDismissesOnPause()throws Exception {saveCannotNavigateAfterPause("الأول","الثاني");}
+ @Test public void newSurfaceTextUsesYellowOnHighContrastBlack()throws Exception {
+  Prefs.get(app).edit().putBoolean(Prefs.HIGH_CONTRAST,true).apply();DialpadActivity dial=Robolectric.buildActivity(DialpadActivity.class).setup().get();type(dial,"010");
+  TextView hint=(TextView)((LinearLayout)dial.findViewById(R.id.dial_matches)).getChildAt(0);assertEquals(0xFFFFD600,hint.getCurrentTextColor());
+  AppsPageActivity apps=Robolectric.buildActivity(AppsPageActivity.class).setup().get();ViewGroup host=apps.findViewById(android.R.id.content);ViewGroup fixed=(ViewGroup)host.getChildAt(0);
+  assertEquals(0xFFFFD600,((TextView)fixed.getChildAt(1)).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)((LinearLayout)apps.findViewById(R.id.tiles_container)).getChildAt(0)).getCurrentTextColor());
+ }
+ @Test public void highContrastPickerUsesThemeForActualHintHeadingAndRow(){
+  Prefs.get(app).edit().putBoolean(Prefs.HIGH_CONTRAST,true).putString(AppSelection.PREF_KEY,"example.a").apply();
+  SettingsFixture a=Robolectric.buildActivity(SettingsFixture.class).setup().get();a.applyDiscoveredApps(Collections.singletonList(new String[]{"example.a","تطبيق تجريبي"}));
+  LinearLayout box=a.findViewById(R.id.settings_apps_list);assertEquals(0xFFFFD600,((TextView)box.getChildAt(0)).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)box.getChildAt(1)).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)key(box,"app_handle")).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)a.findViewById(R.id.settings_page_title)).getCurrentTextColor());
+ }
+ @Test public void roamingUsesSimCountryForExactAndPrefixRecognition()throws Exception {
+  provider("اختبار");Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.READ_CONTACTS);
+  android.telephony.TelephonyManager tm=(android.telephony.TelephonyManager)app.getSystemService(Context.TELEPHONY_SERVICE);Shadows.shadowOf(tm).setSimCountryIso("eg");Shadows.shadowOf(tm).setNetworkCountryIso("us");
+  DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();java.lang.reflect.Method method=DialpadActivity.class.getDeclaredMethod("country");method.setAccessible(true);String region=(String)method.invoke(a);assertEquals("EG",region);assertTrue(DialContactMatcher.exact("01000000001","+201000000001",region));assertTrue(DialContactMatcher.prefix("+201000000001","0100",region));
+  Shadows.shadowOf(tm).setSimCountryIso("");assertEquals("US",method.invoke(a));Shadows.shadowOf(tm).setNetworkCountryIso("");assertEquals(Locale.getDefault().getCountry().toUpperCase(Locale.US),method.invoke(a));
+ }
+
 }
