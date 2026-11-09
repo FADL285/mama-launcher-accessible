@@ -27,6 +27,7 @@ public class DialpadActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dialpad);
         display = findViewById(R.id.dial_display);
+        if (savedInstanceState != null) number.append(savedInstanceState.getString("number", ""));
         callBtn = findViewById(R.id.btn_call);
         saveBtn = findViewById(R.id.btn_save_number);
 
@@ -39,15 +40,26 @@ public class DialpadActivity extends BaseActivity {
 
         guard(callBtn, () -> {
             if (number.length() == 0) return;
-            startActivity(DialIntents.dial(number.toString()));
+            try { startActivity(DialIntents.dial(number.toString())); }
+            catch (android.content.ActivityNotFoundException e) { handoffUnavailable(); }
         });
         guard(saveBtn, () -> {
             if (number.length() == 0) return;
             try {
                 startActivity(DialIntents.saveAsContact(number.toString()));
-            } catch (android.content.ActivityNotFoundException ignored) { }
+            } catch (android.content.ActivityNotFoundException e) { handoffUnavailable(); }
         });
         sync();
+    }
+
+    @Override protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out);
+        out.putString("number", number.toString());
+    }
+
+    private void handoffUnavailable() {
+        android.widget.Toast.makeText(this, R.string.handoff_unavailable,
+                android.widget.Toast.LENGTH_LONG).show();
     }
 
     private void wireDigits(ViewGroup group) {

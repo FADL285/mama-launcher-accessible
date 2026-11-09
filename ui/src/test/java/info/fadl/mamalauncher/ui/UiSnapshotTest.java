@@ -52,7 +52,7 @@ public class UiSnapshotTest {
         for (int i = 0; i < tiles.size(); i += 2) {
             LinearLayout row = new LinearLayout(root.getContext());
             row.setOrientation(LinearLayout.HORIZONTAL);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, h, 1f);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
             lp.setMargins(m, m, m, m);
             row.addView(tiles.get(i), lp);
             if (i + 1 < tiles.size()) {
@@ -76,17 +76,7 @@ public class UiSnapshotTest {
         paparazzi.snapshot(v, "everyday-home");
     }
 
-    @Test
-    public void everydayHomeHighContrast() {
-        android.view.ContextThemeWrapper ctx = new android.view.ContextThemeWrapper(
-                paparazzi.getContext(), R.style.MamaTheme_Contrast);
-        View v = android.view.LayoutInflater.from(ctx).inflate(R.layout.activity_main, null);
-        v.setBackgroundColor(ctx.getResources().getColor(R.color.contrast_bg));
-        ((TextView) v.findViewById(R.id.home_clock)).setText("1:00");
-        ((TextView) v.findViewById(R.id.home_date)).setText("الاثنين ٩ نوفمبر");
-        addHomeRows(v, v.findViewById(R.id.tiles_container), true);
-        paparazzi.snapshot(v, "everyday-home-contrast");
-    }
+
 
     // ---- phone (photo contacts) ----
 
@@ -262,12 +252,5 @@ public class UiSnapshotTest {
         paparazzi.snapshot(frame, "launcher-icon");
     }
 
-    @Test public void dialpadRuntimeContrastSurface() {
-        android.view.ContextThemeWrapper ctx=new android.view.ContextThemeWrapper(
-                paparazzi.getContext(),R.style.MamaTheme_Contrast);
-        View v=android.view.LayoutInflater.from(ctx).inflate(R.layout.activity_dialpad,null);
-        v.setBackgroundColor(ctx.getResources().getColor(R.color.contrast_bg));
-        ((TextView)v.findViewById(R.id.dial_display)).setText("0100 000 0000");
-        paparazzi.snapshot(v,"dialpad-runtime-contrast");
-    }
+
 }

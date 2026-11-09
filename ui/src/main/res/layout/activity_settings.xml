@@ -31,14 +31,14 @@
             <Switch android:id="@+id/switch_auto_speak" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
         </LinearLayout>
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
-            android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
-            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+            android:orientation="vertical" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="حالة محرك الصوت" android:textSize="20sp" android:textColor="@color/text_main"/>
                 <TextView android:id="@+id/tts_status" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="@string/tts_checking" android:textSize="15sp" android:textColor="#5A5348"/>
             </LinearLayout>
-            <Button android:id="@+id/btn_tts_test" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            <Button android:id="@+id/btn_tts_test" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:background="@drawable/btn_back" android:textColor="#FFFFFF" android:textStyle="bold"
                 android:text="@string/tts_test" android:textSize="17sp" android:enabled="false"/>
         </LinearLayout>

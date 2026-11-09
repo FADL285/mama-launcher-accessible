@@ -107,7 +107,22 @@ public class ConfirmCallActivity extends BaseActivity {
         }
         // Multi-number: nothing is callable until a number row is tapped.
         callButton.setEnabled(selectedNumber != null);
-        callButton.setOnClickListener(v -> onCallTapped());
+        guard(callButton, this::onCallTapped);
+        // bindNumbers keeps a click action for visible selection. Add the
+        // same physical-touch guard without changing that accessibility path.
+        android.widget.LinearLayout numberRows = findViewById(R.id.numbers_container);
+        for (int r = 0; r < numberRows.getChildCount(); r++) {
+            android.view.ViewGroup row = (android.view.ViewGroup) numberRows.getChildAt(r);
+            for (int k = 0; k < row.getChildCount(); k++) {
+                View button = row.getChildAt(k);
+                final String value = (String) button.getTag();
+                guard(button, () -> {
+                    UiBinder.selectNumber(findViewById(android.R.id.content), value);
+                    selectedNumber = value;
+                    callButton.setEnabled(true);
+                });
+            }
+        }
 
         speaker = new NameSpeaker();
         speaker.setAvailabilityListener(() ->
@@ -126,7 +141,7 @@ public class ConfirmCallActivity extends BaseActivity {
     private void onCallTapped() {
         // Debounce: a shaky double tap must not start two call attempts.
         long now = android.os.SystemClock.elapsedRealtime();
-        if (now - lastCallTapMs < 1500) return;
+        if (lastCallTapMs > 0 && now - lastCallTapMs < 1500) return;
         lastCallTapMs = now;
         if (selectedNumber == null || selectedNumber.isEmpty()) return;
 
@@ -144,7 +159,10 @@ public class ConfirmCallActivity extends BaseActivity {
             case PLACE_CALL:
                 Intent call = new Intent(Intent.ACTION_CALL,
                         Uri.parse("tel:" + Uri.encode(selectedNumber)));
-                startActivity(call);
+                try { startActivity(call); }
+                catch (android.content.ActivityNotFoundException e) {
+                    findViewById(R.id.call_blocked).setVisibility(View.VISIBLE);
+                }
                 break;
             case REQUEST_PERMISSION:
                 requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, REQ_CALL);

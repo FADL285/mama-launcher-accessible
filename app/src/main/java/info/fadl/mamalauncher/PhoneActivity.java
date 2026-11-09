@@ -57,11 +57,7 @@ public class PhoneActivity extends BaseActivity {
             }
         });
 
-        grid.setOnItemClickListener((AdapterView<?> parent, View view, int position, long id) -> {
-            haptic(view);
-            ContactEntry c = (ContactEntry) parent.getItemAtPosition(position);
-            startActivity(ConfirmCallActivity.intentFor(this, c));
-        });
+
     }
 
     @Override
@@ -86,7 +82,16 @@ public class PhoneActivity extends BaseActivity {
                     ContactsLoader.load(getContentResolver(), getResources()));
             runOnUiThread(() -> {
                 if (generation != refreshGeneration) return; // stale results
-                grid.setAdapter(new ContactGridAdapter(this, sorted, photos));
+                if (isDestroyed() || isFinishing()) return;
+                grid.setAdapter(new ContactGridAdapter(this, sorted, photos) {
+                    @Override public View getView(int position, View recycled, android.view.ViewGroup parent) {
+                        View tile = super.getView(position, recycled, parent);
+                        ContactEntry contact = sorted.get(position);
+                        guard(tile, () -> startActivity(ConfirmCallActivity.intentFor(
+                                PhoneActivity.this, contact)));
+                        return tile;
+                    }
+                });
                 emptyView.setVisibility(sorted.isEmpty() ? View.VISIBLE : View.GONE);
             });
         }).start();

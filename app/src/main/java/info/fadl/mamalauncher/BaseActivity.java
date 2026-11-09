@@ -41,36 +41,33 @@ public abstract class BaseActivity extends Activity {
     /** Wires the action with haptic feedback; when the touch guard is on the
      *  press must be held a little longer before it counts. */
     protected void guard(View v, Runnable action) {
+        // Accessibility/keyboard activation always has a click action. Only
+        // physical pointer input is subject to the hold-duration requirement.
+        v.setOnClickListener(view -> { haptic(view); action.run(); });
+        v.setOnTouchListener(null);
         if (Prefs.touchGuard(this)) {
+            final long[] down = {-1};
             v.setOnTouchListener((view, ev) -> {
+                boolean inside = ev.getX() >= 0 && ev.getX() < view.getWidth()
+                        && ev.getY() >= 0 && ev.getY() < view.getHeight();
                 switch (ev.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
-                        view.setTag(ev.getEventTime());
+                        down[0] = ev.getEventTime();
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        if (!inside) down[0] = -1;
                         return true;
                     case MotionEvent.ACTION_UP:
-                        Long t0 = (Long) view.getTag();
-                        // A press that slid off the control before release
-                        // must NOT fire: shaky hands drift, and an accidental
-                        // digit or toggle is worse than a swallowed tap.
-                        boolean inside = ev.getX() >= 0 && ev.getX() <= view.getWidth()
-                                && ev.getY() >= 0 && ev.getY() <= view.getHeight();
-                        if (inside && t0 != null && ev.getEventTime() - t0 >= GUARD_PRESS_MS) {
-                            haptic(view);
-                            action.run();
-                        }
-                        view.setTag(null);
+                        boolean accepted = inside && down[0] >= 0
+                                && ev.getEventTime() - down[0] >= GUARD_PRESS_MS;
+                        down[0] = -1;
+                        if (accepted) view.performClick();
                         return true;
                     case MotionEvent.ACTION_CANCEL:
-                        view.setTag(null);
+                        down[0] = -1;
                         return true;
-                    default:
-                        return true;
+                    default: return true;
                 }
-            });
-        } else {
-            v.setOnClickListener(view -> {
-                haptic(view);
-                action.run();
             });
         }
     }

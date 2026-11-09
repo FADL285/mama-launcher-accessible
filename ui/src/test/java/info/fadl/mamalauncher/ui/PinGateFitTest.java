@@ -64,6 +64,18 @@ public class PinGateFitTest {
         View v = paparazzi.inflate(R.layout.activity_main);
         ((android.widget.TextView) v.findViewById(R.id.home_clock)).setText("1:00");
         ((android.widget.TextView) v.findViewById(R.id.home_date)).setText("الاثنين ٩ نوفمبر");
+        android.widget.LinearLayout box=v.findViewById(R.id.tiles_container);
+        android.widget.LinearLayout row=new android.widget.LinearLayout(v.getContext());
+        row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        for(String label:new String[]{"الهاتف","تطبيق العائلة للرسائل"}) {
+            View tile=UiBinder.buildHomeTile(v.getContext(),label,
+                v.getResources().getDrawable(R.drawable.ic_call),R.drawable.chip_green,false,null);
+            android.widget.LinearLayout.LayoutParams lp=new android.widget.LinearLayout.LayoutParams(
+                0,android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,1f);
+            int m=(int)(6*v.getResources().getDisplayMetrics().density);
+            lp.setMargins(m,m,m,m);row.addView(tile,lp);
+        }
+        box.addView(row);
         paparazzi.snapshot(v, "home-a10s-largest");
     }
 

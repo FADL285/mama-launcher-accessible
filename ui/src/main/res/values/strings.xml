@@ -73,4 +73,5 @@
     <string name="pingate_saved">اتحفظ الرمز</string>
     <string name="or_use_device_lock">أو استخدم قفل الجهاز</string>
     <string name="device_lock_prompt">أكد قفل الجهاز عشان تدخل الإعدادات</string>
+    <string name="handoff_unavailable">التطبيق المطلوب مش متاح على الجهاز ده</string>
 </resources>

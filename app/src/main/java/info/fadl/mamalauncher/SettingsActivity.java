@@ -82,6 +82,7 @@ public class SettingsActivity extends BaseActivity {
         }
         SessionGate.clearExternal(); // the sanctioned leave was consumed; next leave locks
         updatePermissionRows();
+        if (tts != null) refreshTtsHealth();
     }
 
     @Override
@@ -207,10 +208,15 @@ public class SettingsActivity extends BaseActivity {
                     .addCategory(Intent.CATEGORY_LAUNCHER);
             List<ResolveInfo> found = pm.queryIntentActivities(main, 0);
             List<String[]> apps = new ArrayList<>();
+            java.util.Set<String> seen = new java.util.HashSet<>();
             for (ResolveInfo ri : found) {
                 String pkg = ri.activityInfo.packageName;
-                if (pkg.equals(getPackageName())) continue;
-                apps.add(new String[]{pkg, ri.loadLabel(pm).toString()});
+                // Picker chooses apps, not arbitrary entry activities. Show
+                // one package-labelled default shortcut per app, so there is
+                // no misleading choice of an activity we cannot persist.
+                if (pkg.equals(getPackageName()) || !seen.add(pkg)
+                        || pm.getLaunchIntentForPackage(pkg) == null) continue;
+                apps.add(new String[]{pkg, ri.activityInfo.applicationInfo.loadLabel(pm).toString()});
             }
             Collections.sort(apps, Comparator.comparing(a -> a[1]));
             runOnUiThread(() -> applyDiscoveredApps(apps));
@@ -312,20 +318,14 @@ public class SettingsActivity extends BaseActivity {
 
     private void initTts() {
         tts = new TextToSpeech(getApplicationContext(), status -> {
+            if (isDestroyed() || isFinishing()) return;
             ttsReady = status == TextToSpeech.SUCCESS;
             if (!ttsReady) {
                 ttsStatus.setText(R.string.tts_missing);
                 ttsData.setVisibility(View.VISIBLE);
                 return;
             }
-            int ar = tts.isLanguageAvailable(new Locale("ar"));
-            if (ar == TextToSpeech.LANG_MISSING_DATA
-                    || ar == TextToSpeech.LANG_NOT_SUPPORTED) {
-                ttsStatus.setText(R.string.tts_arabic_missing);
-                ttsData.setVisibility(View.VISIBLE);
-            } else {
-                ttsStatus.setText(R.string.tts_ready);
-            }
+            refreshTtsHealth();
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String id) { }
                 @Override public void onDone(String id) {
@@ -335,8 +335,16 @@ public class SettingsActivity extends BaseActivity {
                     runOnUiThread(() -> ttsStatus.setText(R.string.tts_test_failed));
                 }
             });
-            ttsTest.setEnabled(true);
+            refreshTtsHealth();
         });
+    }
+
+    private void refreshTtsHealth() {
+        if (!ttsReady || tts == null) return;
+        boolean arabic = NameSpeaker.shouldAutoSpeak(tts.isLanguageAvailable(new Locale("ar")));
+        ttsStatus.setText(arabic ? R.string.tts_ready : R.string.tts_arabic_missing);
+        ttsData.setVisibility(arabic ? View.GONE : View.VISIBLE);
+        ttsTest.setEnabled(arabic);
     }
 
     private void testSpeak() {
@@ -344,7 +352,10 @@ public class SettingsActivity extends BaseActivity {
         Locale ar = new Locale("ar");
         if (tts.isLanguageAvailable(ar) >= TextToSpeech.LANG_AVAILABLE) {
             tts.setLanguage(ar);
-            tts.speak(getString(R.string.app_name), TextToSpeech.QUEUE_FLUSH, null, "settings-test");
+            if (tts.speak(getString(R.string.app_name), TextToSpeech.QUEUE_FLUSH, null,
+                    "settings-test") == TextToSpeech.ERROR) {
+                ttsStatus.setText(R.string.tts_test_failed);
+            }
         }
         // Arabic missing: do NOT test in the default voice. A "success" status
         // would be misleading - automatic name speech requires Arabic - so the
