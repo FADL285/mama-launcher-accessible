@@ -34,6 +34,7 @@ public class ConfirmCallActivity extends Activity {
     private static final String EXTRA_NUMBERS = "numbers";
     private static final String EXTRA_LABELS = "labels";
     private static final String EXTRA_PHOTO = "photo";
+    private static final String STATE_NUMBER = "state_number";
 
     private String selectedNumber; // null until visibly chosen (multi-number)
     private NameSpeaker speaker;
@@ -96,14 +97,25 @@ public class ConfirmCallActivity extends Activity {
             selectedNumber = number;
             callButton.setEnabled(true);
         });
+        // Restore a previously chosen number (rotation/font change recreation):
+        // selection and its visible highlight survive, and the name is NOT
+        // spoken again just because the activity was recreated.
+        String restored = savedInstanceState == null
+                ? null : savedInstanceState.getString(STATE_NUMBER);
+        if (restored != null) {
+            selectedNumber = restored;
+            UiBinder.selectNumber(findViewById(android.R.id.content), restored);
+        }
         // Multi-number: nothing is callable until a number row is tapped.
         callButton.setEnabled(selectedNumber != null);
         callButton.setOnClickListener(v -> onCallTapped());
 
         speaker = new NameSpeaker();
+        speaker.setAvailabilityListener(() ->
+                findViewById(R.id.speak_unavailable).setVisibility(View.VISIBLE));
         speaker.init(this);
         final String spoken = NameSpeaker.speakText(name, getString(R.string.no_name));
-        speaker.speak(spoken);
+        if (savedInstanceState == null) speaker.speak(spoken);
 
         android.widget.ImageButton repeat = findViewById(R.id.btn_repeat_name);
         repeat.setOnClickListener(v -> speaker.speak(spoken)); // hearing the name NEVER calls
@@ -165,6 +177,12 @@ public class ConfirmCallActivity extends Activity {
                     .edit().putBoolean("call_denied_once", true).apply();
             findViewById(R.id.call_blocked).setVisibility(View.VISIBLE);
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (selectedNumber != null) outState.putString(STATE_NUMBER, selectedNumber);
     }
 
     @Override

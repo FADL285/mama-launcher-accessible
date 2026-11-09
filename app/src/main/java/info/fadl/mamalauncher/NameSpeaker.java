@@ -12,9 +12,18 @@ import java.util.Locale;
  */
 public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListener {
 
+    /** Called when speech is unavailable (engine init failed or speak failed),
+     *  so the screen can say so instead of failing silently. */
+    public interface AvailabilityListener { void onUnavailable(); }
+
     private android.speech.tts.TextToSpeech tts;
     private boolean ready;
     private String pending;
+    private AvailabilityListener availabilityListener;
+
+    public void setAvailabilityListener(AvailabilityListener l) {
+        this.availabilityListener = l;
+    }
 
     /** What actually gets spoken; pure so tests can pin it. */
     public static String speakText(String name, String fallback) {
@@ -29,7 +38,10 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
     @Override
     public void onInit(int status) {
         ready = status == android.speech.tts.TextToSpeech.SUCCESS;
-        if (!ready) return;
+        if (!ready) {
+            if (availabilityListener != null) availabilityListener.onUnavailable();
+            return;
+        }
         Locale ar = new Locale("ar");
         int avail = tts.isLanguageAvailable(ar);
         if (avail >= android.speech.tts.TextToSpeech.LANG_AVAILABLE) {
@@ -43,7 +55,10 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
 
     public void speak(String name) {
         if (!ready) { pending = name; return; }
-        tts.speak(name, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "mama-name");
+        int r = tts.speak(name, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "mama-name");
+        if (r == android.speech.tts.TextToSpeech.ERROR && availabilityListener != null) {
+            availabilityListener.onUnavailable();
+        }
     }
 
     public void shutdown() {

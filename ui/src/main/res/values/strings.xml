@@ -7,6 +7,7 @@
     <string name="allow_contacts">السماح بجهات الاتصال</string>
     <string name="contacts_setup_hint">عشان تظهر صور العيلة هنا، اللي بيجهز التليفون يضغط الزرار ده ويوافق على إذن جهات الاتصال.</string>
     <string name="call_blocked_title">الاتصال مش متاح دلوقتي</string>
+    <string name="speak_unavailable">نطق الاسم مش متاح على الجهاز ده، لكن الاسم ظاهر كبير على الشاشة.</string>
     <string name="call_blocked_hint">إذن الاتصال محتاج يتظبط من اللي جهز التليفون: الإعدادات > التطبيقات > موبايل ماما > الأذونات > الهاتف.</string>
     <string name="no_name">بدون اسم</string>
     <string name="app_not_installed">مش مثبت</string>

@@ -77,6 +77,19 @@ public final class UiBinder {
         }
     }
 
+    /** Re-applies the visible selection highlight (e.g. after activity recreation). */
+    public static void selectNumber(View root, String number) {
+        LinearLayout box = root.findViewById(R.id.numbers_container);
+        for (int r = 0; r < box.getChildCount(); r++) {
+            LinearLayout rr = (LinearLayout) box.getChildAt(r);
+            for (int k = 0; k < rr.getChildCount(); k++) {
+                View b = rr.getChildAt(k);
+                b.setBackgroundResource(number != null && number.equals(b.getTag())
+                        ? R.drawable.btn_number_selected : R.drawable.btn_number);
+            }
+        }
+    }
+
     private static int dp(View root, int v) {
         return (int) (v * root.getResources().getDisplayMetrics().density);
     }

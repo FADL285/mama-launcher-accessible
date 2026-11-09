@@ -6,6 +6,18 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
 
+    <!-- Android 11+ package visibility: without these declarations the app cannot
+         see the TTS engine (names would never be spoken) nor tell whether
+         WhatsApp/Messenger/YouTube are installed (buttons would look "not installed"). -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.tts.engine.INTENT_ACTION_TTS_SERVICE" />
+        </intent>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.facebook.orca" />
+        <package android:name="com.google.android.youtube" />
+    </queries>
+
     <application
         android:label="@string/app_name"
         android:icon="@drawable/ic_launcher"

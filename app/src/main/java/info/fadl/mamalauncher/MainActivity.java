@@ -28,6 +28,7 @@ public class MainActivity extends Activity {
     private View homeView;
     private GridView grid;
     private TextView emptyView;
+    private int refreshGeneration;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,10 +97,13 @@ public class MainActivity extends Activity {
         }
         setupView.setVisibility(View.GONE);
         homeView.setVisibility(View.VISIBLE);
+        final int generation = ++refreshGeneration;
         new Thread(() -> {
             List<ContactEntry> sorted = ContactSorter.sort(
                     ContactsLoader.load(getContentResolver(), getResources()));
             runOnUiThread(() -> {
+                // A newer refresh already started; drop these stale results.
+                if (generation != refreshGeneration) return;
                 grid.setAdapter(new ContactGridAdapter(this, sorted, photos));
                 emptyView.setVisibility(sorted.isEmpty() ? View.VISIBLE : View.GONE);
             });

@@ -97,6 +97,17 @@
         android:layout_marginTop="12dp"/>
 
     <TextView
+        android:id="@+id/speak_unavailable"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/speak_unavailable"
+        android:textSize="20sp"
+        android:textColor="@color/text_main"
+        android:gravity="center"
+        android:visibility="gone"
+        android:padding="8dp"/>
+
+    <TextView
         android:id="@+id/call_blocked"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

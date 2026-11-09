@@ -31,17 +31,33 @@ public final class ContactsLoader {
         }
     }
 
-    /** Groups rows into one entry per contact, keeping every number in order. */
+    /** Comparison key: digits and one leading '+', so "0100 000-0001" and
+     *  "01000000001" count as the same number. Display keeps the original. */
+    static String normalizeNumber(String n) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < n.length(); i++) {
+            char ch = n.charAt(i);
+            if (Character.isDigit(ch) || (ch == '+' && sb.length() == 0)) sb.append(ch);
+        }
+        return sb.toString();
+    }
+
+    /** Groups rows into one entry per contact, keeping every distinct number in
+     *  order. Linked raw contacts often repeat the same number; identical
+     *  duplicates collapse so mama never has to choose between twins. */
     public static List<ContactEntry> group(List<RawRow> rows) {
         Map<Long, ContactEntry> byId = new LinkedHashMap<>();
         Map<Long, List<ContactEntry.PhoneNumber>> numbers = new LinkedHashMap<>();
+        Map<Long, java.util.Set<String>> seen = new LinkedHashMap<>();
         for (RawRow r : rows) {
             if (r.number == null || r.number.trim().isEmpty()) continue;
             if (!byId.containsKey(r.id)) {
                 byId.put(r.id, new ContactEntry(r.id, r.name,
                         new ArrayList<>(), r.photoUri, r.starred));
                 numbers.put(r.id, new ArrayList<>());
+                seen.put(r.id, new java.util.LinkedHashSet<>());
             }
+            if (!seen.get(r.id).add(normalizeNumber(r.number))) continue;
             numbers.get(r.id).add(new ContactEntry.PhoneNumber(r.number, r.typeLabel));
         }
         List<ContactEntry> out = new ArrayList<>();
