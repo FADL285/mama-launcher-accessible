@@ -97,7 +97,7 @@ older statement that Apps/speech behavior was unchanged.
 - Confirmation body and unboxed sound/setup text use active theme colors;
   white-backed number-choice buttons keep dark labels for their own surface.
 
-Validation: 160 app tests and 73 UI test cases (72 snapshot images plus
+Validation: 169 app tests and 78 UI test cases (77 snapshot images plus
 one header-completeness assertion-only case). Full fresh verification is
 required before reporting ready. New visual fixtures use the shared header
 and speech-state renderer rather than substitute UI. They are layoutlib
@@ -109,3 +109,20 @@ added. Public fixtures contain no handset contacts, photos, numbers or PIN.
 ### Speech recovery discoverability
 
 At 150% text the initial confirmation screen cannot show the full photo, body and recovery buttons at once. A fixed, labeled 48dp-minimum Sound options button now reveals Retry/Setup without requiring discovery of scrolling. It appears only for retry/preparing/setup states and never calls, speaks or bypasses the PIN. Call/Back remain fixed. Initial/revealed contrast renders and visibility assertions pass. Physical swipes and hardware navigation remain unverified.
+
+### 0.12/code14 official-guideline risk review
+
+Android guidance calls for context-triggered permissions, graceful denial, labeled 48dp touch targets, manual accessibility testing, lifecycle-aware resource cleanup and explicit backup policy. Reviewed these against the source and existing regression suites, not as certification. The review found an unhandled contacts-provider failure; the failing reproduction and fix now cover failed/null reads, retry and late permission revocation. New failure UI is rendered at150% in contrast with fixed Back/Dialpad. Handset permission dialogs, TalkBack/Switch Access traversal, real audio/calls, OEM backup behavior, memory/jank and physical touches remain unverified. Landscape is intentionally restricted and the tested app font range stops at150%; broader device/accessibility certification is not claimed.
+
+Official sources:
+- https://developer.android.com/training/permissions/requesting
+- https://developer.android.com/guide/topics/ui/accessibility/apps
+- https://developer.android.com/guide/topics/ui/accessibility/principles
+- https://developer.android.com/guide/topics/ui/accessibility/testing
+- https://developer.android.com/guide/components/activities/activity-lifecycle
+- https://developer.android.com/reference/android/speech/tts/TextToSpeech
+- https://developer.android.com/identity/data/autobackup
+
+### Clock period and lifecycle
+
+The prior h:mm clock had no period marker. HomeClock now owns an explicit12-hour Arabic ص/م display and date formatting from a single instant/timezone. MainActivity owns only lifecycle/timer/broadcast refresh. Six new app tests cover noon/midnight boundaries, locale independence, timezone conversion, time/timezone broadcasts and background return across midnight. Four150%renders show11:59ص,12:00م,11:59م,12:00ص; boundary renders omit the fixed renderer status bar to avoid contradictory time fixtures. Existing1PM fixtures now read1:00م, matching13:00status. No claim of200%font/landscape/all-OEM/accessibility certification.

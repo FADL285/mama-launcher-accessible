@@ -8,7 +8,7 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 **نسخة تجريبية تحت تجربة مشرفة.** اختبارات الكود والواجهة ناجحة، لكن إصلاحات النسخة الجديدة ما زالت تحتاج إعادة تجربة على الهاتف الفعلي، خصوصا الصوت والمكالمات وقفل الجهاز.
 
-Supervised pilot. Current 0.11 candidate source, based on merged PR6, passes 160 app unit/flow tests (JUnit + Robolectric) and 73 UI test cases (72 rendered snapshots and one assertion-only header-fit case). Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
+Supervised pilot. Current 0.12 candidate source, based on merged PR6, passes 169 app unit/flow tests (JUnit + Robolectric) and 78 UI test cases (77 rendered snapshots and one assertion-only header-fit case). Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
 
 ## الفكرة — Design
 
@@ -29,7 +29,7 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 
 - minSdk 24 / targetSdk 33 (provisional pilot choices, not a committed support range)
 - No third-party runtime dependencies — framework APIs only
-- Tests: `gradle :app:testDebugUnitTest` (160 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
+- Tests: `gradle :app:testDebugUnitTest` (169 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
 
 ## الخصوصية والنطاق — Privacy & Scope
 
@@ -100,3 +100,9 @@ See [expanded regression notes](docs/pr7-handset-dialpad-triage.md).
 
 Local validation does not prove a carrier call, physical touch/drag behavior,
 actual speaker output, or daily-use readiness. Upgrade trial remains supervised.
+
+## 0.12 provider-failure follow-up
+
+Phone contacts reads now distinguish provider failure/null cursor from a successful empty result, expose Retry, and reject delayed results after permission loss. Three failure/retry/revocation regressions and a 150% contrast render cover this path. The actual emulator boot attempt failed with insufficient RAM; no APK install or emulator UI run was achieved. Device permissions, TalkBack/Switch Access, actual speech, call behavior and photo-memory performance still need supervised handset validation.
+
+The Home clock explicitly shows12-hour time plus Arabic ص/م. A single instant/timezone supplies time/date; resume, system time and timezone changes refresh it. Pure boundary/locale/timezone and activity-lifecycle tests cover noon/midnight; four150%renders show morning/noon/evening/midnight. This does not prove OEM time-broadcast or screen-reader behavior.

@@ -104,6 +104,7 @@ public class LauncherFlowTest {
 
     @Test
     public void phoneWithPermissionShowsGridAndEmptyHint() {
+        org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){@Override public android.database.Cursor query(android.net.Uri uri,String[] projection,String selection,String[] args,String order){return new android.database.MatrixCursor(projection);}});
         ShadowApplication.getInstance().grantPermissions(android.Manifest.permission.READ_CONTACTS);
         PhoneActivity a = Robolectric.buildActivity(PhoneActivity.class).setup().get();
         // contacts loader runs on a background thread; let it finish

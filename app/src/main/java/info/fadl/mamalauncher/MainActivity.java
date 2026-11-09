@@ -9,11 +9,9 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 import info.fadl.mamalauncher.ui.UiBinder;
 
@@ -62,6 +60,9 @@ public class MainActivity extends BaseActivity {
         });
     }
 
+    private boolean clockReceiverRegistered;
+    private final android.content.BroadcastReceiver timeChanges=new android.content.BroadcastReceiver(){@Override public void onReceive(android.content.Context c,Intent i){updateClock();}};
+    protected Date clockNow(){return new Date();}
     private final Handler clock = new Handler();
     private final Runnable clockTick = new Runnable() {
         @Override public void run() {
@@ -72,10 +73,9 @@ public class MainActivity extends BaseActivity {
 
     private void updateClock() {
         if(isSecondary())return;
-        ((TextView) findViewById(R.id.home_clock)).setText(
-                new SimpleDateFormat("h:mm", Locale.US).format(new Date()));
-        ((TextView) findViewById(R.id.home_date)).setText(
-                new SimpleDateFormat("EEEE d MMMM", new Locale("ar")).format(new Date()));
+        Date now=clockNow();java.util.TimeZone zone=java.util.TimeZone.getDefault();
+        ((TextView)findViewById(R.id.home_clock)).setText(info.fadl.mamalauncher.ui.HomeClock.time(now,zone));
+        ((TextView)findViewById(R.id.home_date)).setText(info.fadl.mamalauncher.ui.HomeClock.date(now,zone));
     }
 
     @Override
@@ -85,6 +85,7 @@ public class MainActivity extends BaseActivity {
             recreate();
             return;
         }
+        if(!clockReceiverRegistered && !isSecondary()){android.content.IntentFilter filter=new android.content.IntentFilter();filter.addAction(Intent.ACTION_TIME_CHANGED);filter.addAction(Intent.ACTION_TIMEZONE_CHANGED);filter.addAction(Intent.ACTION_DATE_CHANGED);registerReceiver(timeChanges,filter);clockReceiverRegistered=true;}
         updateClock();
         clock.removeCallbacks(clockTick);
         clock.postDelayed(clockTick, 30_000);
@@ -93,6 +94,7 @@ public class MainActivity extends BaseActivity {
 
     @Override
     protected void onPause() {
+        if(clockReceiverRegistered){unregisterReceiver(timeChanges);clockReceiverRegistered=false;}
         clock.removeCallbacks(clockTick);
         super.onPause();
     }
@@ -174,6 +176,7 @@ public class MainActivity extends BaseActivity {
     }
 
     @Override protected void onDestroy() {
+        if(clockReceiverRegistered){unregisterReceiver(timeChanges);clockReceiverRegistered=false;}
         unregisterReceiver(packageChanges);
         clock.removeCallbacks(clockTick);
         super.onDestroy();

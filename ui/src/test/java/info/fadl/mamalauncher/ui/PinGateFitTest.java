@@ -76,7 +76,7 @@ public class PinGateFitTest {
     @Test
     public void everydayHomeA10sLargestText() {
         View v = paparazzi.inflate(R.layout.activity_main);
-        ((android.widget.TextView) v.findViewById(R.id.home_clock)).setText("13:00");
+        ((android.widget.TextView) v.findViewById(R.id.home_clock)).setText("1:00 م");
         ((android.widget.TextView) v.findViewById(R.id.home_date)).setText("الاثنين ٩ نوفمبر");
         android.widget.LinearLayout box=v.findViewById(R.id.tiles_container);
         android.widget.LinearLayout row=new android.widget.LinearLayout(v.getContext());
@@ -95,7 +95,7 @@ public class PinGateFitTest {
 
     private View internetHome(boolean bottom) {
         View v=paparazzi.inflate(R.layout.activity_main);
-        ((android.widget.TextView)v.findViewById(R.id.home_clock)).setText("13:00");
+        ((android.widget.TextView)v.findViewById(R.id.home_clock)).setText("1:00 م");
         ((android.widget.TextView)v.findViewById(R.id.home_date)).setText("الاثنين ٩ نوفمبر");
         android.widget.LinearLayout box=v.findViewById(R.id.tiles_container);
         String[] labels={"الهاتف","الاستوديو","YouTube","Chrome","واتساب","Galaxy Store","Gmail","Meet","تطبيق الإنترنت من سامسونج","فجر اب"};
@@ -149,7 +149,7 @@ public class PinGateFitTest {
     }
     @Test public void homeWithAppsPageLargestText() {
         View v=paparazzi.inflate(R.layout.activity_main);
-        ((android.widget.TextView)v.findViewById(R.id.home_clock)).setText("13:00");((android.widget.TextView)v.findViewById(R.id.home_date)).setText("الاثنين ٩ نوفمبر");
+        ((android.widget.TextView)v.findViewById(R.id.home_clock)).setText("1:00 م");((android.widget.TextView)v.findViewById(R.id.home_date)).setText("الاثنين ٩ نوفمبر");
         android.widget.LinearLayout box=v.findViewById(R.id.tiles_container);
         addAppRow(v,box,new String[]{"الهاتف","تطبيقات"},new int[]{R.drawable.ic_call,R.drawable.ic_apps});
         addAppRow(v,box,new String[]{"واتساب","الاستوديو"},new int[]{R.drawable.ic_chat,R.drawable.ic_play});
