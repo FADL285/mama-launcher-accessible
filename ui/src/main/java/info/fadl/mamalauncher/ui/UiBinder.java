@@ -148,14 +148,16 @@ public final class UiBinder {
 
         TextView tv = new TextView(ctx);
         tv.setText(label);
-        // Long OEM labels remain verbatim. A modest smaller starting size
-        // avoids four oversized lines at the largest accessibility scale.
-        tv.setTextSize(label!=null && label.length()>18?20f:24f);
+        // Equal two-line label areas. Keep full names for accessibility and long press.
+        tv.setTextSize(24f);
+        tv.setMaxLines(2);tv.setMinLines(2);tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        tile.setContentDescription(label);if(android.os.Build.VERSION.SDK_INT>=26)tile.setTooltipText(label);
+        tile.setOnLongClickListener(v->{new android.app.AlertDialog.Builder(ctx).setMessage(label).setPositiveButton(android.R.string.ok,null).show();return true;});
         tv.setTypeface(tv.getTypeface(), android.graphics.Typeface.BOLD);
         tv.setTextColor(ctx.getResources().getColor(
                 contrast ? R.color.contrast_text : R.color.text_main));
         tv.setGravity(android.view.Gravity.CENTER);
-        // Natural height: long app names remain readable at enlarged text.
+        // Two equal text lines keep peer app cards equal; long-press and accessibility expose the full label.
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         tv.setPadding(dp(tile,4),0,dp(tile,4),dp(tile,2));

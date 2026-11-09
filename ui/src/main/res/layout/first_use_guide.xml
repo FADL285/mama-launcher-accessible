@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/first_use_guide" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp" android:background="?attr/surfaceCardBackground" android:visibility="gone">
+ <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/guide_title" android:textSize="24sp" android:textStyle="bold" android:textColor="?attr/surfaceText" />
+ <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/guide_text" android:textSize="20sp" android:paddingTop="8dp" android:textColor="?attr/surfaceText" />
+ <Button android:id="@+id/btn_guide_sound" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/speech_setup" android:textSize="20sp" />
+ <Button android:id="@+id/btn_guide_done" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/guide_done" android:textSize="20sp" />
+</LinearLayout>

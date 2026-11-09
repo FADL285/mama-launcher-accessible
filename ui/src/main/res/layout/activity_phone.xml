@@ -3,18 +3,7 @@
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:padding="12dp">
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:gravity="center_vertical">
-        <LinearLayout android:id="@+id/btn_back" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:gravity="center_vertical" android:padding="8dp">
-            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_back_dark"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="@string/back" android:textSize="20sp" android:textColor="@color/back_blue"/>
-        </LinearLayout>
-        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
-            android:gravity="center" android:text="@string/tile_phone" android:textSize="28sp" android:textStyle="bold" android:textColor="@color/text_main"/>
-        <Space android:layout_width="76dp" android:layout_height="1dp"/>
-    </LinearLayout>
+    <include layout="@layout/page_header" />
 
     <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
         <GridView
@@ -32,7 +21,7 @@
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="@string/contacts_setup_hint" android:textSize="20sp"
-                android:textColor="@color/text_main" android:gravity="center"
+                android:textColor="?attr/surfaceText" android:gravity="center"
                 android:layout_marginBottom="36dp"/>
             <Button
                 android:id="@+id/btn_allow_contacts"
@@ -40,11 +29,17 @@
                 android:text="@string/allow_contacts" android:textSize="30sp"
                 android:textColor="#FFFFFF" android:background="@drawable/btn_back"/>
         </LinearLayout>
+        <ScrollView android:id="@+id/contacts_read_error" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:visibility="gone">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center" android:padding="16dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/contacts_read_failed" android:textColor="?attr/surfaceText" android:textSize="22sp" android:gravity="center" android:padding="16dp" android:accessibilityLiveRegion="polite" />
+                <Button android:id="@+id/btn_retry_contacts" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="64dp" android:text="@string/contacts_retry" android:textSize="24sp" />
+            </LinearLayout>
+        </ScrollView>
         <TextView
             android:id="@+id/empty_contacts"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="@string/no_contacts_yet" android:textSize="22sp"
+            android:textColor="?attr/surfaceText" android:text="@string/no_contacts_yet" android:textSize="22sp"
             android:gravity="center" android:visibility="gone" android:padding="24dp"/>
     </FrameLayout>
 

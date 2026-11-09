@@ -14,7 +14,20 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
 
     /** Called when speech is unavailable (engine init failed or speak failed),
      *  so the screen can say so instead of failing silently. */
-    public interface AvailabilityListener { void onUnavailable(); default void onAvailable(){} }
+    public enum State { INITIALIZING, READY, RETRYABLE, PREPARING, NEEDS_SETUP }
+    public interface AvailabilityListener {
+        void onUnavailable(); default void onAvailable(){}
+        default void onStateChanged(State state){}
+    }
+    private State state=State.INITIALIZING;
+    public State state(){return state;}
+    private void state(State next){
+        state=next;
+        if(availabilityListener==null)return;
+        availabilityListener.onStateChanged(next);
+        if(next==State.READY)availabilityListener.onAvailable();
+        else if(next!=State.INITIALIZING)availabilityListener.onUnavailable();
+    }
 
     private android.speech.tts.TextToSpeech tts;
     private boolean ready;
@@ -49,14 +62,14 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
 
     public void init(android.content.Context context) {
         this.context=context.getApplicationContext();
-        closed=false;ready=false;initializationFinished=false;generation++;
+        closed=false;ready=false;initializationFinished=false;generation++;state(State.INITIALIZING);
         engines=new java.util.ArrayList<>();engineIndex=0;
         String requested=SpeechEngineChoice.requested(context);
         java.util.Map<String,String> installed=SpeechEngineChoice.installed(context);
         boolean explicit=Prefs.get(context).contains(SpeechEngineChoice.KEY);
         if(explicit && !installed.containsKey(requested)) {
             initializationFinished=true;
-            if(availabilityListener!=null)availabilityListener.onUnavailable();return;
+            state(State.NEEDS_SETUP);return;
         }
         if(requested!=null || installed.isEmpty())engines.add(requested);
         // A manual selection is binding. Only an unset choice may try another
@@ -85,23 +98,24 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
         ready = status == android.speech.tts.TextToSpeech.SUCCESS;
         if (!ready) {
             if(nextEngine())return;
-            if (availabilityListener != null) availabilityListener.onUnavailable();
+            state(State.RETRYABLE);
             return;
         }
-        if (ArabicVoicePolicy.prepare(tts)!=ArabicSpeechState.State.READY) {
+        ArabicSpeechState.State arabic=ArabicVoicePolicy.prepare(tts);
+        if (arabic!=ArabicSpeechState.State.READY) {
             // Arabic missing on this engine: say so instead of pronouncing
             // the name wrongly in a default locale. The settings screen
             // already offers the official Arabic data installer. NOT ready:
             // a later repeat-name tap must not reach the default voice either.
             ready = false;
             if(nextEngine())return;
-            if (availabilityListener != null) availabilityListener.onUnavailable();
+            state(arabic==ArabicSpeechState.State.PREPARING?State.PREPARING:State.NEEDS_SETUP);
             pending = null;
             return;
         }
         if(currentEngine!=null && !Prefs.get(context).contains(SpeechEngineChoice.KEY))
             Prefs.get(context).edit().putString(SpeechEngineChoice.AUTO_KEY,currentEngine).apply();
-        if(availabilityListener!=null)availabilityListener.onAvailable();
+        state(State.READY);
         // Queued success is not proof of sound: synthesis can still fail
         // after speak() returns. Surface that so the screen can say so.
         final int speechGeneration=generation;
@@ -109,11 +123,13 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
                 new android.speech.tts.UtteranceProgressListener() {
                     @Override public void onStart(String utteranceId) { }
                     @Override public void onDone(String utteranceId) { }
-                    @Override public void onError(String utteranceId) {
+                    @Override public void onError(String utteranceId) { failed(State.RETRYABLE); }
+                    @Override public void onError(String utteranceId,int code){failed(code==android.speech.tts.TextToSpeech.ERROR_NOT_INSTALLED_YET?State.PREPARING:State.RETRYABLE);}
+                    private void failed(State failure) {
                         main.post(() -> {
-                            if (!closed && generation==speechGeneration && availabilityListener != null) {
+                            if (!closed && generation==speechGeneration) {
                                 ready=false;
-                                availabilityListener.onUnavailable();
+                                state(failure);
                             }
                         });
                     }
@@ -136,9 +152,9 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
             return;
         }
         int r = tts.speak(name, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "mama-name");
-        if (r == android.speech.tts.TextToSpeech.ERROR && availabilityListener != null) {
+        if (r == android.speech.tts.TextToSpeech.ERROR) {
             ready=false;
-            availabilityListener.onUnavailable();
+            state(State.RETRYABLE);
         }
     }
 

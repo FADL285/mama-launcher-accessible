@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp">
-  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-    <Button android:id="@+id/btn_settings_back" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minHeight="48dp" android:minWidth="120dp" android:padding="8dp" android:background="@drawable/tile_bg" android:text="@string/settings_back_home" android:textSize="20sp" android:textColor="@color/back_blue" android:textAllCaps="false" />
-    <TextView android:id="@+id/settings_page_title" android:layout_width="match_parent" android:layout_weight="0" android:layout_height="wrap_content" android:gravity="start" android:text="@string/settings_title" android:textSize="24sp" android:textStyle="bold" android:textColor="?attr/surfaceText" android:padding="8dp" />
-  </LinearLayout>
+  <include layout="@layout/page_header" android:theme="@style/SettingsHeaderTheme" />
   <ScrollView android:id="@+id/settings_scroll" android:paddingLeft="8dp" android:paddingRight="8dp" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingLeft="10dp" android:paddingRight="10dp">
       <LinearLayout android:id="@+id/settings_menu" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
@@ -28,9 +25,15 @@
           <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_nav_protection_title" android:textSize="20sp" android:textColor="@color/text_main" android:textStyle="bold" />
           <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_nav_protection_hint" android:textSize="15sp" android:textColor="@color/text_main" />
         </LinearLayout>
+        <include layout="@layout/developer_footer" />
       </LinearLayout>
       <LinearLayout android:id="@+id/settings_section_sound" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/tts_offline_only" android:textSize="16sp" android:padding="6dp" android:textColor="@color/text_main" />
+        <Button android:id="@+id/btn_sound_guide" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/sound_guide" android:textSize="20sp" />
+        <LinearLayout android:id="@+id/sound_guide_details" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/guide_short" android:textSize="18sp" android:padding="8dp" android:textColor="?attr/surfaceText" />
+         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/sound_steps" android:textSize="18sp" android:padding="8dp" android:textColor="?attr/surfaceText" />
+        </LinearLayout>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/tts_offline_only" android:textSize="16sp" android:padding="6dp" android:textColor="?attr/surfaceText" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:orientation="vertical" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
           <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/auto_speak_label" android:textSize="20sp" android:textColor="@color/text_main" />
@@ -45,7 +48,12 @@
           </LinearLayout>
           <Button android:id="@+id/btn_tts_test" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/btn_back" android:textColor="#FFFFFF" android:textStyle="bold" android:text="@string/tts_test" android:textSize="17sp" android:enabled="false" />
         </LinearLayout>
-        <TextView android:id="@+id/tts_engine_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/tts_engine_default" android:textSize="15sp" android:textColor="@color/text_main" android:padding="8dp" />
+        <Button android:id="@+id/btn_tts_retry" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/speech_retry" android:textSize="20sp" />
+        <LinearLayout android:id="@+id/tts_human_check" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+         <Button android:id="@+id/btn_tts_heard" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/tts_heard" android:textSize="20sp" />
+         <Button android:id="@+id/btn_tts_not_heard" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/tts_not_heard" android:textSize="20sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/tts_engine_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/tts_engine_default" android:textSize="15sp" android:textColor="?attr/surfaceText" android:padding="8dp" />
         <Button android:id="@+id/btn_tts_engine" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/btn_back" android:textColor="#FFFFFF" android:textStyle="bold" android:text="@string/tts_choose_engine" android:textSize="17sp" />
         <Button android:id="@+id/btn_tts_data" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:visibility="gone" android:background="@drawable/btn_back" android:textColor="#FFFFFF" android:textStyle="bold" android:text="@string/tts_data" android:textSize="17sp" />
         <TextView android:id="@+id/volume_hint" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:visibility="gone" android:text="@string/volume_zero_hint" android:textSize="15sp" android:textColor="@color/danger_text" android:padding="8dp" />

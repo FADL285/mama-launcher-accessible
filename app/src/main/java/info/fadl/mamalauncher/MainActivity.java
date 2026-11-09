@@ -9,11 +9,9 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 import info.fadl.mamalauncher.ui.UiBinder;
 
@@ -25,6 +23,7 @@ import info.fadl.mamalauncher.ui.UiBinder;
  */
 public class MainActivity extends BaseActivity {
 
+    static final String GUIDE_SEEN="first_use_guide_v1";
     private LinearLayout tiles;
     protected boolean isSecondary(){return false;}
     private boolean appliedContrast;
@@ -39,19 +38,13 @@ public class MainActivity extends BaseActivity {
         setContentView(R.layout.activity_main);
         tiles = findViewById(R.id.tiles_container);
         if(isSecondary()) {
-            findViewById(R.id.home_header).setVisibility(View.GONE);
-            android.widget.Button back=new android.widget.Button(this);back.setText(R.string.back);back.setTextSize(26);back.setBackgroundResource(R.drawable.btn_back);back.setTextColor(android.graphics.Color.WHITE);back.setMinHeight((int)(72*getResources().getDisplayMetrics().density));
-            guard(back,this::finish);
-            android.widget.ScrollView scroll=(android.widget.ScrollView)tiles.getParent().getParent();
-            android.view.ViewGroup host=(android.view.ViewGroup)scroll.getParent();
-            host.removeView(scroll);
-            LinearLayout fixed=new LinearLayout(this);fixed.setOrientation(LinearLayout.VERTICAL);int edge=(int)(12*getResources().getDisplayMetrics().density);fixed.setPadding(edge,edge,edge,0);
-            fixed.addView(back,new LinearLayout.LayoutParams(-1,-2));
-            TextView title=new TextView(this);title.setText(R.string.apps_page);title.setTextSize(30);title.setGravity(android.view.Gravity.CENTER);title.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));
-            fixed.addView(title,new LinearLayout.LayoutParams(-1,-2));
-            fixed.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-            host.addView(fixed,new android.view.ViewGroup.LayoutParams(-1,-1));
+            View header=info.fadl.mamalauncher.ui.PageHeader.apps((android.widget.ScrollView)findViewById(R.id.home_header).getParent().getParent());
+            guard(header.findViewById(R.id.btn_back),this::finish);
         }
+        View guide=findViewById(R.id.first_use_guide);
+        guide.setVisibility(!isSecondary() && !Prefs.get(this).getBoolean(GUIDE_SEEN,false)?View.VISIBLE:View.GONE);
+        guard(findViewById(R.id.btn_guide_done),()->{Prefs.get(this).edit().putBoolean(GUIDE_SEEN,true).apply();guide.setVisibility(View.GONE);});
+        guard(findViewById(R.id.btn_guide_sound),()->startActivity(PinGateActivity.intentForEntry(this).putExtra(SettingsActivity.EXTRA_SOUND,true)));
         appliedContrast = Prefs.highContrast(this);
         appliedFont = Prefs.fontScale(this);
         android.content.IntentFilter changes = new android.content.IntentFilter();
@@ -67,6 +60,9 @@ public class MainActivity extends BaseActivity {
         });
     }
 
+    private boolean clockReceiverRegistered;
+    private final android.content.BroadcastReceiver timeChanges=new android.content.BroadcastReceiver(){@Override public void onReceive(android.content.Context c,Intent i){updateClock();}};
+    protected Date clockNow(){return new Date();}
     private final Handler clock = new Handler();
     private final Runnable clockTick = new Runnable() {
         @Override public void run() {
@@ -77,10 +73,9 @@ public class MainActivity extends BaseActivity {
 
     private void updateClock() {
         if(isSecondary())return;
-        ((TextView) findViewById(R.id.home_clock)).setText(
-                new SimpleDateFormat("h:mm", Locale.US).format(new Date()));
-        ((TextView) findViewById(R.id.home_date)).setText(
-                new SimpleDateFormat("EEEE d MMMM", new Locale("ar")).format(new Date()));
+        Date now=clockNow();java.util.TimeZone zone=java.util.TimeZone.getDefault();
+        ((TextView)findViewById(R.id.home_clock)).setText(info.fadl.mamalauncher.ui.HomeClock.time(now,zone));
+        ((TextView)findViewById(R.id.home_date)).setText(info.fadl.mamalauncher.ui.HomeClock.date(now,zone));
     }
 
     @Override
@@ -90,6 +85,7 @@ public class MainActivity extends BaseActivity {
             recreate();
             return;
         }
+        if(!clockReceiverRegistered && !isSecondary()){android.content.IntentFilter filter=new android.content.IntentFilter();filter.addAction(Intent.ACTION_TIME_CHANGED);filter.addAction(Intent.ACTION_TIMEZONE_CHANGED);filter.addAction(Intent.ACTION_DATE_CHANGED);registerReceiver(timeChanges,filter);clockReceiverRegistered=true;}
         updateClock();
         clock.removeCallbacks(clockTick);
         clock.postDelayed(clockTick, 30_000);
@@ -98,6 +94,7 @@ public class MainActivity extends BaseActivity {
 
     @Override
     protected void onPause() {
+        if(clockReceiverRegistered){unregisterReceiver(timeChanges);clockReceiverRegistered=false;}
         clock.removeCallbacks(clockTick);
         super.onPause();
     }
@@ -112,18 +109,13 @@ public class MainActivity extends BaseActivity {
         tiles.removeAllViews();
         List<View> built = new ArrayList<>();
 
-        if(!isSecondary()) {
-            View phone = UiBinder.buildHomeTile(this, getString(R.string.tile_phone),
-                getResources().getDrawable(R.drawable.ic_call), R.drawable.chip_green, contrast(), null);
-            guard(phone, () -> startActivity(new Intent(this, PhoneActivity.class)));built.add(phone);
-            if(hasLaunchableSecondary()) {
-                View folder=UiBinder.buildHomeTile(this,getString(R.string.apps_page),getResources().getDrawable(R.drawable.ic_apps),R.drawable.chip_green,contrast(),null);
-                guard(folder,()->startActivity(new Intent(this,AppsPageActivity.class)));built.add(folder);
-            }
-        }
-
         PackageManager pm = getPackageManager();
-        for (String pkg : AppSelection.parse(Prefs.get(this).getString(isSecondary()?AppSelection.SECONDARY_KEY:AppSelection.PREF_KEY, null))) {
+        List<String> chosen=AppSelection.parse(Prefs.get(this).getString(isSecondary()?AppSelection.SECONDARY_KEY:AppSelection.PREF_KEY,null));
+        List<String> order=isSecondary()?chosen:AppSelection.homeOrder(Prefs.get(this).getString(AppSelection.HOME_ORDER_KEY,null),chosen);
+        for (String pkg : order) {
+            if(AppSelection.PHONE.equals(pkg)){View phone=UiBinder.buildHomeTile(this,getString(R.string.tile_phone),getResources().getDrawable(R.drawable.ic_call),R.drawable.chip_green,contrast(),null);phone.setTag(AppSelection.PHONE);guardTile(phone,()->startActivity(new Intent(this,PhoneActivity.class)));built.add(phone);continue;}
+            if(AppSelection.FOLDER.equals(pkg)){if(hasLaunchableSecondary()){View folder=UiBinder.buildHomeTile(this,getString(R.string.apps_page),getResources().getDrawable(R.drawable.ic_apps),R.drawable.chip_green,contrast(),null);folder.setTag(AppSelection.FOLDER);guardTile(folder,()->startActivity(new Intent(this,AppsPageActivity.class)));built.add(folder);}continue;}
+
             Intent launch = pm.getLaunchIntentForPackage(pkg);
             if (launch == null) continue; // uninstalled: silently gone, no placeholder
             String name = pkg;
@@ -133,7 +125,7 @@ public class MainActivity extends BaseActivity {
                 icon = pm.getApplicationIcon(pkg);
             } catch (PackageManager.NameNotFoundException ignored) { }
             View tile = UiBinder.buildHomeTile(this, name, icon, 0, contrast(), null);
-            guard(tile, () -> {
+            guardTile(tile, () -> {
                 try { startActivity(launch); }
                 catch (android.content.ActivityNotFoundException e) { buildTiles(); }
             });
@@ -165,7 +157,26 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+    private void guardTile(View tile,Runnable action){
+        guard(tile,action);
+        if(!Prefs.touchGuard(this))return;
+        final long[] down={-1};
+        tile.setOnTouchListener((v,e)->{
+            boolean inside=e.getX()>=0 && e.getX()<v.getWidth() && e.getY()>=0 && e.getY()<v.getHeight();
+            switch(e.getActionMasked()){
+                case android.view.MotionEvent.ACTION_DOWN:down[0]=e.getEventTime();return true;
+                case android.view.MotionEvent.ACTION_MOVE:if(!inside)down[0]=-1;return true;
+                case android.view.MotionEvent.ACTION_UP:
+                    long held=down[0]<0?-1:e.getEventTime()-down[0];down[0]=-1;
+                    if(inside && held>=1000)v.performLongClick();else if(inside && held>=GUARD_PRESS_MS)v.performClick();return true;
+                case android.view.MotionEvent.ACTION_CANCEL:down[0]=-1;return true;
+                default:return true;
+            }
+        });
+    }
+
     @Override protected void onDestroy() {
+        if(clockReceiverRegistered){unregisterReceiver(timeChanges);clockReceiverRegistered=false;}
         unregisterReceiver(packageChanges);
         clock.removeCallbacks(clockTick);
         super.onDestroy();

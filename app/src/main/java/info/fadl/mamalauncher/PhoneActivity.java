@@ -31,6 +31,8 @@ public class PhoneActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_phone);
+        info.fadl.mamalauncher.ui.PageHeader.title(findViewById(android.R.id.content),R.string.tile_phone);
+        guard(findViewById(R.id.btn_retry_contacts),this::refresh);
         photos = new ContactPhotoLoader(getContentResolver());
         grid = findViewById(R.id.contacts_grid);
         setupView = findViewById(R.id.setup_view);
@@ -67,6 +69,8 @@ public class PhoneActivity extends BaseActivity {
     }
 
     private void refresh() {
+        final int generation = ++refreshGeneration;
+        findViewById(R.id.contacts_read_error).setVisibility(View.GONE);
         if (checkSelfPermission(Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
             setupView.setVisibility(View.VISIBLE);
@@ -76,15 +80,24 @@ public class PhoneActivity extends BaseActivity {
         }
         setupView.setVisibility(View.GONE);
         grid.setVisibility(View.VISIBLE);
-        final int generation = ++refreshGeneration;
         new Thread(() -> {
-            List<ContactEntry> original=ContactsLoader.load(getContentResolver(),getResources());
+            List<ContactEntry> original;
+            try { original=ContactsLoader.loadVerified(getContentResolver(),getResources()); }
+            catch(RuntimeException readFailure) {
+                runOnUiThread(() -> {
+                    if(generation!=refreshGeneration || isDestroyed() || isFinishing())return;
+                    if(checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED){refresh();return;}
+                    grid.setVisibility(View.GONE);emptyView.setVisibility(View.GONE);
+                    findViewById(R.id.contacts_read_error).setVisibility(View.VISIBLE);
+                });return;
+            }
             final java.util.Set<Long> systemStars=new java.util.HashSet<>();
             for(ContactEntry c:original)if(c.starred)systemStars.add(c.id);
             List<ContactEntry> sorted=ContactSorter.sort(LocalFavorites.apply(this,original));
             runOnUiThread(() -> {
                 if (generation != refreshGeneration) return; // stale results
                 if (isDestroyed() || isFinishing()) return;
+                if(checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED){refresh();return;}
                 grid.setAdapter(new ContactGridAdapter(this, sorted, photos) {
                     @Override public View getView(int position, View recycled, android.view.ViewGroup parent) {
                         View tile = super.getView(position, recycled, parent);

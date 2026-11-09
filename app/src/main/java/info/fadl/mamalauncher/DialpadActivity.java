@@ -101,16 +101,19 @@ public class DialpadActivity extends BaseActivity {
         int shown=0;
         for(info.fadl.mamalauncher.ui.ContactEntry c:found) {
             if(shown++==1)break;
-            android.widget.Button row=new android.widget.Button(this);
             boolean saved=exact.stream().anyMatch(e->e.id==c.id);
-            row.setText((saved?getString(R.string.dial_saved):getString(R.string.dial_suggestion))+" · "+c.name+"\n"+c.firstNumber());
-            row.setTextSize(18);row.setAllCaps(false);row.setMinHeight((int)(64*getResources().getDisplayMetrics().density));
+            android.widget.Button row=info.fadl.mamalauncher.ui.DialMatchUi.preview(this,c,saved);
             guard(row,()->startActivity(ConfirmCallActivity.intentFor(this,c)));box.addView(row);
         }
         if(found.size()>1) {
             android.widget.Button more=new android.widget.Button(this);more.setText(getString(R.string.dial_more,found.size()));more.setAllCaps(false);more.setTextSize(18);
             guard(more,()->new android.app.AlertDialog.Builder(this).setTitle(R.string.dial_results)
-                .setItems(found.stream().map(c->c.name+" · "+c.firstNumber()).toArray(String[]::new),(d,i)->startActivity(ConfirmCallActivity.intentFor(this,found.get(i))))
+                .setAdapter(new android.widget.BaseAdapter(){
+                    public int getCount(){return found.size();}
+                    public Object getItem(int i){return found.get(i);}
+                    public long getItemId(int i){return found.get(i).id;}
+                    public android.view.View getView(int i,android.view.View recycled,android.view.ViewGroup parent){return info.fadl.mamalauncher.ui.DialMatchUi.chooserItem(parent.getContext(),found.get(i));}
+                },(d,i)->startActivity(ConfirmCallActivity.intentFor(this,found.get(i))))
                 .setNegativeButton(android.R.string.cancel,null).show());box.addView(more);
         }
     }
@@ -123,6 +126,7 @@ public class DialpadActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dialpad);
+        info.fadl.mamalauncher.ui.PageHeader.title(findViewById(android.R.id.content),R.string.dialpad_title);
         display = findViewById(R.id.dial_display);
         if (savedInstanceState != null) number.append(savedInstanceState.getString("number", ""));
         callBtn = findViewById(R.id.btn_call);

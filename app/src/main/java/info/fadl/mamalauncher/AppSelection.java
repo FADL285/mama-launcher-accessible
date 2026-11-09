@@ -12,6 +12,15 @@ import java.util.List;
 public final class AppSelection {
 
     public static final String PREF_KEY = "apps_selected";
+    public static final String HOME_ORDER_KEY="home_item_order";
+    public static final String PHONE="@phone", FOLDER="@apps";
+    /** Keep stored relative positions, migrate old app-only settings, never drop unavailable packages. */
+    public static List<String> homeOrder(String stored,List<String> selected) {
+        List<String> allowed=new ArrayList<>();allowed.add(PHONE);allowed.add(FOLDER);allowed.addAll(selected);
+        List<String> out=parse(stored);out.retainAll(allowed);
+        for(String item:allowed)if(!out.contains(item))out.add(item);
+        return out;
+    }
     public static final String SECONDARY_KEY = "apps_secondary";
 
     private AppSelection() {}

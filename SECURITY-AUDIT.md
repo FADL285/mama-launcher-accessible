@@ -165,3 +165,30 @@ treated as untrusted content, not instructions.
 - Not covered by this audit (requires the physical device): runtime behavior
   of permissions dialogs, TTS output, and real contact photos — the on-device
   pilot trial (T4/T6) owns those.
+
+
+## 0.11 focused regression audit, 2026-11-09
+
+The original 0.2 findings/tool counts above are historical, not the current
+validation totals. Current scope: Home-order persistence, shared UI, local
+speech state/retry/setup, first-use guide and failed browser-launch relock.
+No new permission, exported component, launcher network client, analytics or model was added. The launcher still makes no direct network request. Tapping the developer website intentionally hands https://fadl.info to an external browser, which can contact that website under its own network/cookie policies. Only READ_CONTACTS and CALL_PHONE remain in the merged manifest.
+
+- Current app suite: 170 JUnit/Robolectric tests, zero failures.
+- Current UI suite: 78 cases (77 snapshot images plus one assertion-only case).
+- Android Lint: zero errors; 11 warnings in five categories: seven deliberate
+  portrait-lock warnings, one UnusedAttribute, one RedundantNamespace, one
+  MonochromeLauncherIcon, one ClickableViewAccessibility for the drag handle.
+  The handle has a performClick path and tap-to-position alternative, both
+  tested; this warning is not treated as an accessibility certification.
+- Semgrep CE: Java and security-audit registries, 88 rules, metrics off,
+  scanned locally. A clean result is not proof the app is secure.
+- Failed developer-site launch is exercised with ActivityNotFoundException;
+  leaving settings afterward invalidates the session. Setup shortcuts still
+  go through PIN creation/unlock. Screen-off lock regressions remain enabled.
+- Public-source PII/secrets pattern scan plus diff review; handset media
+  remains private and absent from this repository. No real calls were tested.
+
+## 0.12 contacts-read failure regression
+
+A controlled provider SecurityException escaped the previous PhoneActivity worker. The regression failed before the fix. Current reads use the verified loader, catch provider RuntimeException, distinguish null cursor from empty success, expose Retry and discard results after permission loss. Tests cover failure, retry success, null cursor and permission revocation during delayed read. No additional permission or data egress. Emulator boot was attempted using the official Android11 image and software rendering; it exited for insufficient RAM at both1024MB and512MB, before APK installation. No guardrail was bypassed.

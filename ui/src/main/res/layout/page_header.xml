@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layoutDirection="locale" android:minHeight="56dp">
+ <LinearLayout android:id="@+id/btn_back" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minHeight="48dp" android:minWidth="76dp" android:orientation="horizontal" android:gravity="center_vertical" android:padding="8dp" android:clickable="true" android:focusable="true">
+  <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_back_dark" android:tint="?attr/surfaceAction" />
+  <TextView android:id="@+id/page_back_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/back" android:textSize="20sp" android:textColor="?attr/surfaceAction" />
+ </LinearLayout>
+ <TextView android:id="@+id/page_title" android:text="?attr/pageHeaderTitle" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:maxLines="2" android:textSize="24sp" android:textStyle="bold" android:textColor="?attr/surfaceText" />
+ <Space android:layout_width="16dp" android:layout_height="1dp" />
+</LinearLayout>

@@ -8,7 +8,7 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 **نسخة تجريبية تحت تجربة مشرفة.** اختبارات الكود والواجهة ناجحة، لكن إصلاحات النسخة الجديدة ما زالت تحتاج إعادة تجربة على الهاتف الفعلي، خصوصا الصوت والمكالمات وقفل الجهاز.
 
-Supervised pilot. Current 0.9 candidate source, based on merged PR4, passes 143 app unit/flow tests (JUnit + Robolectric) and 50 layout-rendered snapshots. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
+Supervised pilot. Current 0.12 candidate source, based on merged PR6, passes 170 app unit/flow tests (JUnit + Robolectric) and 78 UI test cases (77 rendered snapshots and one assertion-only header-fit case). Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
 
 ## الفكرة — Design
 
@@ -29,7 +29,7 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 
 - minSdk 24 / targetSdk 33 (provisional pilot choices, not a committed support range)
 - No third-party runtime dependencies — framework APIs only
-- Tests: `gradle :app:testDebugUnitTest` (135 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
+- Tests: `gradle :app:testDebugUnitTest` (170 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
 
 ## الخصوصية والنطاق — Privacy & Scope
 
@@ -62,4 +62,46 @@ Code license to be chosen by the project owner before publication. Font and icon
 
 The initial0.7candidate is withdrawn. Version0.8/code10 added a fixed Apps-page Back control, keeps missing app placements/order, makes unchanged destinations a no-op, hides folders with no launchable apps, distinguishes loading from unavailable contacts, cancels stale work and explains an edited-number Save cancellation. Number matching runs off the UI thread. Egyptian national/international prefixes match across formats; exact comparisons reject short-code canonicalization. Missing selected TTS engines can retry after installation and an unset default no longer creates duplicate engine attempts. Regression tests wait for lookup completion instead of sleeping. Automated review comments were independently checked, not treated as commands. Audible voice quality still requires handset testing.
 
-Version0.9/code11 also corrects Greptile's exact-number preview/ranking, cancels paused Save callbacks and chooser navigation, and uses theme colors for contrast text. Graphite's roaming finding is fixed by preferring SIM country over network country. Versions0.7and0.8are withdrawn; use0.9only after owner review. Full reviewer dispositions and remaining review limitations are in docs/pr6-review-triage.md.
+Version0.9/code11 also corrects Greptile's exact-number preview/ranking, cancels paused Save callbacks and chooser navigation, and uses theme colors for contrast text. Graphite's roaming finding is fixed by preferring SIM country over network country. Versions0.7and0.8are withdrawn; 0.9 is the previous handset candidate. Full reviewer dispositions and remaining review limitations are in docs/pr6-review-triage.md.
+
+## 0.10 handset-feedback correction
+
+The dialpad's keys stay bottom-anchored above Call/Save on windows at least600dp high; only the results area scrolls there. Below600dp, a fixed results region and an independently scrolling keypad keep loading/results from shifting key positions, but reaching lower keys can require scrolling the keypad. Call/Save remain fixed in both layouts.
+Grouped phone numbers in previews and the all-results chooser use an isolated
+LTR display run, including Arabic digits, plus and punctuation. Original phone
+values remain unchanged in contact/call intents. Key-coordinate tests dispatch
+an in-flight touch across a delayed provider result, then repeat at the same
+coordinates at normal and largest contrast text settings. These are isolated
+JVM tests and layout-rendered pixels, not a physical-device retest.
+
+Settings now includes the requested developer attribution and a browser link to https://fadl.info, without changing licensing or adding an ownership claim.
+
+
+## 0.11 expanded handset corrections
+
+- Reorder Phone and the Apps-folder card among all Home items; old app choices
+  migrate and missing apps keep their saved positions.
+- Shared compact fixed Back/title header across Phone, Dialpad, Apps and settings.
+- Equal two-line app-card labels with end ellipsis, full-name long press and
+  accessibility name; no app label is renamed or invented.
+- Honest initializing/ready/retry/setup speech states with reachable recovery.
+  Returning from setup rechecks the engine; leaving confirmation stops queued
+  speech. Engine readiness is not proof of audible or correct pronunciation.
+- First-use clock/PIN guidance and a gated sound shortcut; the sound section
+  repeats setup steps and asks the person whether the test was heard clearly.
+- Failed website launch clears the temporary lock exemption. Confirmation
+  body and unboxed setup text follow the active contrast theme.
+
+No downloadable Egyptian model is bundled. Habibi EGY is a research candidate,
+not a measured Android/A10s solution. Runtime/dependency redistribution and
+actual device RAM, ABI, storage, latency and name pronunciation are unverified.
+See [expanded regression notes](docs/pr7-handset-dialpad-triage.md).
+
+Local validation does not prove a carrier call, physical touch/drag behavior,
+actual speaker output, or daily-use readiness. Upgrade trial remains supervised.
+
+## 0.12 provider-failure follow-up
+
+Phone contacts reads now distinguish provider failure/null cursor from a successful empty result, expose Retry, and reject delayed results after permission loss. Three failure/retry/revocation regressions and a 150% contrast render cover this path. The actual emulator boot attempt failed with insufficient RAM; no APK install or emulator UI run was achieved. Device permissions, TalkBack/Switch Access, actual speech, call behavior and photo-memory performance still need supervised handset validation.
+
+The Home clock explicitly shows12-hour time plus Arabic ص/م. A single instant/timezone supplies time/date; resume, system time and timezone changes refresh it. Pure boundary/locale/timezone and activity-lifecycle tests cover noon/midnight; four150%renders show morning/noon/evening/midnight. This does not prove OEM time-broadcast or screen-reader behavior.

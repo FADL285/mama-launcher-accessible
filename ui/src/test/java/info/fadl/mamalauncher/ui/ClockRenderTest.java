@@ -1,0 +1,12 @@
+package info.fadl.mamalauncher.ui;
+import android.view.*;import android.widget.*;import app.cash.paparazzi.*;import org.junit.*;import static org.junit.Assert.*;import java.util.*;
+/** Full-content renders omit system chrome so a fixed renderer status time cannot contradict boundary fixtures. */
+public class ClockRenderTest {
+ private static DeviceConfig device(){DeviceConfig d=DeviceConfig.NEXUS_5;return new DeviceConfig(1520,720,271,271,d.getOrientation(),com.android.resources.UiMode.NORMAL,d.getNightMode(),com.android.resources.Density.DPI_280,1.5f,com.android.resources.LayoutDirection.RTL,"ar",d.getRatio(),d.getSize(),d.getKeyboard(),d.getTouchScreen(),d.getKeyboardState(),d.getSoftButtons(),d.getNavigation(),d.getScreenRound(),d.getReleased());}
+ @Rule public final Paparazzi paparazzi=new Paparazzi(EnvironmentKt.detectEnvironment(),device(),"android:Theme.Material.NoActionBar.Fullscreen",com.android.ide.common.rendering.api.SessionParams.RenderingMode.NORMAL,false);
+ void render(int hour,int minute,boolean contrast,String label){android.content.Context c=new ContextThemeWrapper(paparazzi.getContext(),contrast?R.style.MamaTheme_Contrast:R.style.MamaTheme);View v=LayoutInflater.from(c).inflate(R.layout.activity_main,null);v.setBackgroundColor(contrast?0xFF000000:c.getResources().getColor(R.color.bg,c.getTheme()));Calendar now=Calendar.getInstance(TimeZone.getTimeZone("Africa/Cairo"),Locale.US);now.clear();now.set(2026,Calendar.NOVEMBER,9,hour,minute);TextView clock=v.findViewById(R.id.home_clock);clock.setText(HomeClock.time(now.getTime(),now.getTimeZone()));((TextView)v.findViewById(R.id.home_date)).setText(HomeClock.date(now.getTime(),now.getTimeZone()));LinearLayout tiles=v.findViewById(R.id.tiles_container);tiles.addView(UiBinder.buildHomeTile(c,c.getString(R.string.tile_phone),c.getResources().getDrawable(R.drawable.ic_call),R.drawable.chip_green,contrast,null));v.measure(View.MeasureSpec.makeMeasureSpec(720,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(1520,View.MeasureSpec.EXACTLY));v.layout(0,0,720,1520);assertEquals(1,clock.getLayout().getLineCount());assertEquals(clock.getText().length(),clock.getLayout().getLineEnd(0));paparazzi.snapshot(v,label);}
+ @Test public void morning(){render(11,59,false,"morning-1159-am");}
+ @Test public void noon(){render(12,0,false,"noon-1200-pm");}
+ @Test public void eveningContrast(){render(23,59,true,"evening-1159-pm");}
+ @Test public void midnightContrast(){render(0,0,true,"midnight-1200-am");}
+}
