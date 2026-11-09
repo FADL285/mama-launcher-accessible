@@ -19,6 +19,10 @@ public class HomeLabelFitTest {
     assertEquals(label,text.getText().toString());assertNull(text.getEllipsize());assertTrue(text.getLineCount()>0);
     assertTrue(text.getBottom()+tile.getPaddingBottom()<=tile.getHeight());
     assertTrue(text.getHeight()>=text.getLayout().getLineBottom(text.getLineCount()-1));
+    for(int line=0;line<text.getLineCount();line++) {
+     assertTrue(text.getLayout().getLineLeft(line)>=-1);
+     assertTrue(text.getLayout().getLineRight(line)<=text.getWidth()-text.getPaddingLeft()-text.getPaddingRight()+1);
+    }
    }
   }
  }

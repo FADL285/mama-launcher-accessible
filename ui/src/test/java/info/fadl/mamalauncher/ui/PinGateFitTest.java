@@ -168,7 +168,7 @@ public class PinGateFitTest {
         android.widget.LinearLayout row=new android.widget.LinearLayout(v.getContext());row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
         for(int i=0;i<labels.length;i++) {
             View tile=UiBinder.buildHomeTile(v.getContext(),labels[i],v.getResources().getDrawable(icons[i]),R.drawable.chip_green,false,null);
-            android.widget.LinearLayout.LayoutParams lp=new android.widget.LinearLayout.LayoutParams(0,-1,1);int m=(int)(6*v.getResources().getDisplayMetrics().density);lp.setMargins(m,m,m,m);row.addView(tile,lp);
+            android.widget.LinearLayout.LayoutParams lp=new android.widget.LinearLayout.LayoutParams(0,-2,1);int m=(int)(6*v.getResources().getDisplayMetrics().density);lp.setMargins(m,m,m,m);row.addView(tile,lp);
         }box.addView(row,new android.widget.LinearLayout.LayoutParams(-1,-2));
     }
     private void snapshot(View v,String name) {

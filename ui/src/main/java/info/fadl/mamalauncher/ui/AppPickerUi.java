@@ -9,7 +9,7 @@ public final class AppPickerUi {
  private AppPickerUi(){}
  public static LinearLayout row(Context context,String label,int destination) {
   float d=context.getResources().getDisplayMetrics().density;
-  LinearLayout outer=new LinearLayout(context);outer.setOrientation(LinearLayout.VERTICAL);outer.setPadding(0,8,0,8);
+  LinearLayout outer=new LinearLayout(context);outer.setOrientation(LinearLayout.VERTICAL);outer.setPadding((int)(8*d),8,(int)(8*d),8);
   LinearLayout row=new LinearLayout(context);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(android.view.Gravity.CENTER_VERTICAL);outer.addView(row);
   TextView name=new TextView(context);name.setText(label);name.setTextSize(22);name.setTextColor(context.getResources().getColor(R.color.text_main));row.addView(name,new LinearLayout.LayoutParams(0,-2,1));
   Button place=new Button(context);place.setTag("app_place");place.setText(destination==0?R.string.apps_home:destination==1?R.string.apps_folder:R.string.apps_hidden);place.setTextSize(16);place.setContentDescription(label+" - "+context.getString(R.string.app_place));row.addView(place);
@@ -17,6 +17,6 @@ public final class AppPickerUi {
   return outer;
  }
  public static TextView heading(Context context,String text,int size) {
-  TextView view=new TextView(context);view.setText(text);view.setTextSize(size);view.setTextColor(context.getResources().getColor(R.color.text_main));return view;
+  TextView view=new TextView(context);view.setText(text);view.setTextSize(size);view.setTextColor(context.getResources().getColor(R.color.text_main));int pad=(int)(8*context.getResources().getDisplayMetrics().density);view.setPadding(pad,4,pad,4);return view;
  }
 }
