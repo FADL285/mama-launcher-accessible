@@ -78,7 +78,10 @@ public class UiSnapshotTest {
 
     @Test
     public void everydayHomeHighContrast() {
-        View v = paparazzi.inflate(R.layout.activity_main);
+        android.view.ContextThemeWrapper ctx = new android.view.ContextThemeWrapper(
+                paparazzi.getContext(), R.style.MamaTheme_Contrast);
+        View v = android.view.LayoutInflater.from(ctx).inflate(R.layout.activity_main, null);
+        v.setBackgroundColor(ctx.getResources().getColor(R.color.contrast_bg));
         ((TextView) v.findViewById(R.id.home_clock)).setText("1:00");
         ((TextView) v.findViewById(R.id.home_date)).setText("الاثنين ٩ نوفمبر");
         addHomeRows(v, v.findViewById(R.id.tiles_container), true);
@@ -257,5 +260,14 @@ public class UiSnapshotTest {
         lp.gravity = android.view.Gravity.CENTER;
         frame.addView(iv, lp);
         paparazzi.snapshot(frame, "launcher-icon");
+    }
+
+    @Test public void dialpadRuntimeContrastSurface() {
+        android.view.ContextThemeWrapper ctx=new android.view.ContextThemeWrapper(
+                paparazzi.getContext(),R.style.MamaTheme_Contrast);
+        View v=android.view.LayoutInflater.from(ctx).inflate(R.layout.activity_dialpad,null);
+        v.setBackgroundColor(ctx.getResources().getColor(R.color.contrast_bg));
+        ((TextView)v.findViewById(R.id.dial_display)).setText("0100 000 0000");
+        paparazzi.snapshot(v,"dialpad-runtime-contrast");
     }
 }

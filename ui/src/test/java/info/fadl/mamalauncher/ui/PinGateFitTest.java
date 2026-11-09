@@ -66,4 +66,22 @@ public class PinGateFitTest {
         ((android.widget.TextView) v.findViewById(R.id.home_date)).setText("الاثنين ٩ نوفمبر");
         paparazzi.snapshot(v, "home-a10s-largest");
     }
+
+    @Test public void settingsLoadingDoesNotMoveStaticControls() {
+        View v=paparazzi.inflate(R.layout.activity_settings);
+        paparazzi.snapshot(v,"settings-before-discovery");
+        android.widget.LinearLayout box=v.findViewById(R.id.settings_apps_list);
+        v.findViewById(R.id.apps_loading).setVisibility(View.GONE);
+        for(int i=0;i<30;i++) {
+            android.widget.CheckBox cb=new android.widget.CheckBox(v.getContext());
+            cb.setText("تطبيق تجريبي "+i); cb.setTextSize(20);
+            box.addView(cb);
+        }
+        paparazzi.snapshot(v,"settings-after-discovery");
+        // Actual ScrollView at the bottom: picker remains reachable after all
+        // static settings, even with a long installed-app list.
+        android.widget.ScrollView scroll=(android.widget.ScrollView)v;
+        scroll.scrollTo(0,scroll.getChildAt(0).getHeight());
+        paparazzi.snapshot(v,"settings-picker-scrolled-bottom");
+    }
 }

@@ -22,7 +22,8 @@ public class PinLockTest {
     public void storedValueIsNeverThePlainPin() {
         String hash = PinLock.hash("salt", "1234");
         assertNotEquals("1234", hash);
-        assertEquals(64, hash.length()); // SHA-256 hex
+        assertTrue(hash.startsWith("PBKDF2WithHmacSHA256$"));
+        assertEquals(64, hash.substring(hash.indexOf('$')+1).length());
     }
 
     @Test
@@ -45,5 +46,19 @@ public class PinLockTest {
         assertTrue(PinLock.isLocked(10_000, 9_999));
         assertFalse(PinLock.isLocked(10_000, 10_000));
         assertFalse(PinLock.isLocked(0, 5_000));
+    }
+
+    @Test public void legacySha1PinStillVerifiesWhenSha256IsAvailable() {
+        String legacy=PinLock.derive("salt", "2468", "PBKDF2WithHmacSHA1");
+        assertTrue(PinLock.verify("salt", "2468", legacy));
+        assertFalse(PinLock.verify("salt", "2469", legacy));
+    }
+    @Test public void legacySha256AndTaggedAlgorithmsRemainCompatible() {
+        for (String algorithm : new String[]{"PBKDF2WithHmacSHA1", "PBKDF2WithHmacSHA256"}) {
+            String digest=PinLock.derive("salt", "2468", algorithm);
+            assertTrue(PinLock.verify("salt", "2468", digest));
+            assertTrue(PinLock.verify("salt", "2468", algorithm+"$"+digest));
+            assertFalse(PinLock.verify("salt", "2468", "unknown$"+digest));
+        }
     }
 }

@@ -201,7 +201,7 @@ public class GateFlowTest {
         assertEquals(2, prefs.getInt(Prefs.PIN_FAILURES, 0));
 
         a.onActivityResult(51, Activity.RESULT_OK, null);
-        assertFalse(Prefs.hasPin(a)); // cleared, straight into choosing a new PIN
+        assertTrue(Prefs.hasPin(a)); // retained until replacement confirmed
         assertEquals(0, prefs.getInt(Prefs.PIN_FAILURES, 0));
         assertEquals(a.getString(R.string.pingate_set_new),
                 ((TextView) a.findViewById(R.id.pin_subtitle)).getText().toString());

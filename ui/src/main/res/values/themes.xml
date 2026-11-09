@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <attr name="surfaceText" format="color"/>
+    <attr name="surfaceAction" format="color"/>
+    <attr name="surfaceSecondaryText" format="color"/>
     <style name="MamaTheme" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
+        <item name="surfaceText">@color/text_main</item>
+        <item name="surfaceAction">@color/back_blue</item>
+        <item name="surfaceSecondaryText">#5A5348</item>
         <item name="android:colorPrimary">@color/back_blue</item>
         <item name="android:statusBarColor">@color/bg</item>
         <item name="android:windowLightStatusBar">true</item>
@@ -9,6 +15,9 @@
     </style>
     <style name="MamaTheme.Contrast" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/contrast_bg</item>
+        <item name="surfaceText">@color/contrast_text</item>
+        <item name="surfaceAction">@color/contrast_text</item>
+        <item name="surfaceSecondaryText">@color/contrast_text</item>
         <item name="android:colorPrimary">@color/contrast_text</item>
         <item name="android:statusBarColor">@color/contrast_bg</item>
         <item name="android:windowLightStatusBar">false</item>

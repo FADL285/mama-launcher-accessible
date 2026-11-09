@@ -56,6 +56,11 @@ public class PinGateActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pingate);
         mode = getIntent().getIntExtra(EXTRA_MODE, MODE_UNLOCK);
+        if (mode == MODE_SETUP && Prefs.hasPin(this) && !SessionGate.isValid()) {
+            // A stale change-PIN intent must not survive process death or be
+            // reused without the authenticated settings session that created it.
+            mode = MODE_UNLOCK;
+        }
 
         subtitle = findViewById(R.id.pin_subtitle);
         error = findViewById(R.id.pin_error);
@@ -101,6 +106,23 @@ public class PinGateActivity extends BaseActivity {
         } else {
             deviceBtn.setVisibility(View.GONE);
         }
+    }
+
+    @Override
+    protected void onStop() {
+        // A replacement flow is authenticated only while foregrounded.
+        // On any leave, discard partial replacement and return to unlocking.
+        // Initial setup (no credential yet) deliberately remains available.
+        if (!isFinishing() && mode == MODE_SETUP && Prefs.hasPin(this)) {
+            mode = MODE_UNLOCK;
+            firstEntry = null;
+            entered.setLength(0);
+            subtitle.setText(R.string.pingate_enter);
+            error.setText("");
+            syncDots();
+            refreshDeviceButton();
+        }
+        super.onStop();
     }
 
     private void wirePad(ViewGroup group) {
@@ -216,9 +238,9 @@ public class PinGateActivity extends BaseActivity {
                     .putLong(Prefs.PIN_LOCKOUT_UNTIL, 0)
                     .apply();
             if (recovery) {
-                // Forgotten PIN: the device credential proves the setter;
-                // clear the old PIN and let them choose a new one now.
-                Prefs.get(this).edit().remove(Prefs.PIN_SALT).remove(Prefs.PIN_HASH).apply();
+                // Authentication permits replacement, not deletion. Keep the
+                // old credential until the new PIN is confirmed atomically.
+                // Back/cancel/process death must never create a no-PIN entry.
                 recovery = false;
                 mode = MODE_SETUP;
                 firstEntry = null;

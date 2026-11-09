@@ -213,14 +213,20 @@ public class SettingsActivity extends BaseActivity {
                 apps.add(new String[]{pkg, ri.loadLabel(pm).toString()});
             }
             Collections.sort(apps, Comparator.comparing(a -> a[1]));
-            installed = apps;
-            // Drop selections for apps that no longer exist on this phone.
-            List<String> installedPkgs = new ArrayList<>();
-            for (String[] a : apps) installedPkgs.add(a[0]);
-            selected.retainAll(installedPkgs);
-            saveSelection();
-            runOnUiThread(this::rebuildPicker);
+            runOnUiThread(() -> applyDiscoveredApps(apps));
         }).start();
+    }
+
+    void applyDiscoveredApps(List<String[]> apps) {
+        if (isDestroyed() || isFinishing()) return;
+        installed = apps;
+        List<String> installedPkgs = new ArrayList<>();
+        for (String[] a : apps) installedPkgs.add(a[0]);
+        selected.clear();
+        selected.addAll(AppSelection.parse(prefs.getString(AppSelection.PREF_KEY, null)));
+        selected.retainAll(installedPkgs);
+        saveSelection();
+        rebuildPicker();
     }
 
     private void rebuildPicker() {

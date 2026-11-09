@@ -7,12 +7,12 @@
         android:orientation="horizontal" android:gravity="center_vertical">
         <LinearLayout android:id="@+id/btn_back" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:orientation="horizontal" android:gravity="center_vertical" android:padding="8dp">
-            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_back_dark"/>
+            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_back_dark" android:tint="?attr/surfaceAction"/>
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="@string/back" android:textSize="20sp" android:textColor="@color/back_blue"/>
+                android:text="@string/back" android:textSize="20sp" android:textColor="?attr/surfaceAction"/>
         </LinearLayout>
         <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
-            android:gravity="center" android:text="@string/dialpad_title" android:textSize="28sp" android:textStyle="bold" android:textColor="@color/text_main"/>
+            android:gravity="center" android:text="@string/dialpad_title" android:textSize="28sp" android:textStyle="bold" android:textColor="?attr/surfaceText"/>
         <Space android:layout_width="76dp" android:layout_height="1dp"/>
     </LinearLayout>
 
@@ -21,14 +21,14 @@
         <TextView android:id="@+id/dial_display"
             android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
             android:gravity="center" android:textSize="34sp" android:textStyle="bold"
-            android:textColor="@color/text_main" android:padding="10dp"
+            android:textColor="?attr/surfaceText" android:padding="10dp"
             android:maxLines="1" android:scrollHorizontally="true" android:ellipsize="none"
             android:autoSizeTextType="uniform" android:autoSizeMinTextSize="18sp"
             android:autoSizeMaxTextSize="34sp" android:autoSizeStepGranularity="2sp"
             android:hint="@string/dial_empty_hint" android:textDirection="ltr"/>
         <ImageView android:id="@+id/btn_backspace"
             android:layout_width="48dp" android:layout_height="48dp"
-            android:src="@drawable/ic_backspace" android:padding="8dp"
+            android:src="@drawable/ic_backspace" android:tint="?attr/surfaceSecondaryText" android:padding="8dp"
             android:contentDescription="@string/backspace"/>
     </LinearLayout>
 

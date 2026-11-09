@@ -17,18 +17,6 @@
             <Space android:layout_width="76dp" android:layout_height="1dp"/>
         </LinearLayout>
 
-        <!-- ======= Home buttons (picker + order) ======= -->
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp"
-            android:text="@string/apps_section_title" android:textSize="18sp" android:textStyle="bold" android:textColor="#5A5348"/>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/apps_section_hint" android:textSize="15sp" android:textColor="#5A5348"/>
-        <LinearLayout android:id="@+id/settings_apps_list"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:layout_marginTop="4dp"/>
-        <TextView android:id="@+id/apps_loading"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/apps_loading" android:textSize="16sp" android:gravity="center" android:padding="10dp"/>
-
         <!-- ======= Sound ======= -->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
             android:text="@string/sound_section_title" android:textSize="18sp" android:textStyle="bold" android:textColor="#5A5348"/>
@@ -160,5 +148,17 @@
             </LinearLayout>
             <Switch android:id="@+id/switch_device_lock" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
         </LinearLayout>
+        <!-- ======= Home buttons (picker + order) ======= -->
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp"
+            android:text="@string/apps_section_title" android:textSize="18sp" android:textStyle="bold" android:textColor="#5A5348"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/apps_section_hint" android:textSize="15sp" android:textColor="#5A5348"/>
+        <LinearLayout android:id="@+id/settings_apps_list"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:layout_marginTop="4dp"/>
+        <TextView android:id="@+id/apps_loading"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/apps_loading" android:textSize="16sp" android:gravity="center" android:padding="10dp"/>
+
     </LinearLayout>
 </ScrollView>
