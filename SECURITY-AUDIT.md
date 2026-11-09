@@ -29,12 +29,17 @@ is listed under "Executed tools and results" below.
   to an external LLM API — data egress this pilot's privacy posture and the
   owner's instructions do not authorize. If a specific one was meant, it can
   be re-assessed by exact repository.
-- **MobSF (Mobile Security Framework)** — **not run.** It requires a
-  dedicated server/Docker deployment and uploading the APK to it; its static
-  checks (manifest, permissions, exported components, hardcoded secrets)
-  overlap with the Android Lint run and the manual review already executed on
-  this dependency-free, 6-class app. Proportionate to revisit if the app
-  gains networking, storage, or third-party SDKs.
+- **MobSF (Mobile Security Framework)** — **not run; technically
+  unavailable in this build environment, not merely skipped.** MobSF is
+  self-hostable (it is not inherently an external service), but its
+  supported deployment is Docker — and this environment has no Docker, ~2 GB
+  RAM, and no `/dev/kvm` (so no emulator for its dynamic analysis either).
+  Its static APK checks remain genuinely valuable for the **release** APK
+  later (binary-level manifest/cert/tracker inspection) and its dynamic
+  analysis becomes meaningful on a real device; the code-level checks it
+  would do today overlap the Lint + Semgrep + manual review already run.
+  Small codebase does **not** make APK/dynamic testing unnecessary — it is
+  pending, not dismissed (see MASTG mapping).
 
 ## Executed tools and results
 
@@ -97,6 +102,29 @@ is listed under "Executed tools and results" below.
   anti-tamper goal for a family-trial accessibility app).
 - **PRIVACY** — pass: no collection, no tracking, no PII logging, fictional
   fixtures only, nothing leaves the device.
+
+### MASTG test coverage — done statically vs pending device/runtime
+
+Covered statically in this audit (manifest + full source + Lint + Semgrep):
+- STORAGE: no sensitive data written, no PII logging, backups/transfers
+  excluded. (Runtime confirmation of log/backup behavior still pending on
+  device.)
+- PLATFORM: exported components enumerated (one launcher activity, consumes
+  no intent data), no deep links declared, no WebView present, permission set
+  minimal and runtime-gated.
+- NETWORK: no INTERNET permission, no network code — nothing to test.
+- CODE: dependencies (none at runtime), debug vs release signing flagged.
+
+Pending a physical device or emulator (none available here — no `/dev/kvm`);
+the family pilot trial (T4/T6) owns these:
+- Runtime permission dialog behavior on Samsung One UI (grant/deny/permanent
+  deny paths).
+- Tapjacking/overlay resilience of the confirmation screen's call button
+  (FLAG_SECURE is not set; risk is low for a local launcher but untested).
+- TTS output quality/locale fallback; real contact-photo loading incl. the
+  bitmap-decode memory item above.
+- Actual backup/transfer exclusion behavior on Android 12+.
+- General runtime trial: real contacts, real calls, launcher-home behavior.
 
 ## Verified clean
 
