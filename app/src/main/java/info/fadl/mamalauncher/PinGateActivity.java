@@ -30,6 +30,7 @@ public class PinGateActivity extends BaseActivity {
     private static final int PIN_LEN = 4;
 
     private int mode;
+    private boolean recovery;
     private StringBuilder entered = new StringBuilder();
     private String firstEntry; // setup only
     private TextView subtitle;
@@ -69,8 +70,18 @@ public class PinGateActivity extends BaseActivity {
 
         View deviceBtn = findViewById(R.id.btn_device_lock);
         KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
-        if (mode == MODE_UNLOCK && Prefs.useDeviceLock(this)
-                && km != null && km.isDeviceSecure()) {
+        boolean deviceSecure = km != null && km.isDeviceSecure();
+        // Device credential serves two deliberate roles: the family's chosen
+        // unlock alternative, AND the recovery path when the PIN is forgotten
+        // (offered once a wrong attempt proves the setter does not have it).
+        // With no device lock at all there is intentionally no recovery -
+        // the settings stay locked rather than opening to anyone holding the
+        // phone; the last resort is clearing app data (loses configuration
+        // only, never contacts), decided by the family, never advised lightly.
+        recovery = mode == MODE_UNLOCK && !Prefs.useDeviceLock(this)
+                && Prefs.get(this).getInt(Prefs.PIN_FAILURES, 0) > 0;
+        if (mode == MODE_UNLOCK && deviceSecure
+                && (Prefs.useDeviceLock(this) || recovery)) {
             deviceBtn.setVisibility(View.VISIBLE);
             guard(deviceBtn, () -> {
                 Intent confirm = km.createConfirmDeviceCredentialIntent(
@@ -177,6 +188,7 @@ public class PinGateActivity extends BaseActivity {
     }
 
     private void openSettings() {
+        SessionGate.unlock();
         startActivity(new Intent(this, SettingsActivity.class));
         finish();
     }
@@ -189,7 +201,21 @@ public class PinGateActivity extends BaseActivity {
                     .putInt(Prefs.PIN_FAILURES, 0)
                     .putLong(Prefs.PIN_LOCKOUT_UNTIL, 0)
                     .apply();
-            openSettings();
+            if (recovery) {
+                // Forgotten PIN: the device credential proves the setter;
+                // clear the old PIN and let them choose a new one now.
+                Prefs.get(this).edit().remove(Prefs.PIN_SALT).remove(Prefs.PIN_HASH).apply();
+                recovery = false;
+                mode = MODE_SETUP;
+                firstEntry = null;
+                entered.setLength(0);
+                subtitle.setText(R.string.pingate_set_new);
+                error.setText("");
+                findViewById(R.id.btn_device_lock).setVisibility(View.GONE);
+                syncDots();
+            } else {
+                openSettings();
+            }
         }
     }
 }

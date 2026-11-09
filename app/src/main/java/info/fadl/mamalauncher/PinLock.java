@@ -1,27 +1,44 @@
 package info.fadl.mamalauncher;
 
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 
-/** Settings-mode PIN: salted SHA-256 storage (never plaintext) and pure
- *  attempt-limiting logic, pinned by PinLockTest. The PIN protects the
- *  configuration mode from accidental changes; it is not account security. */
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+
+/** Settings-mode PIN: PBKDF2 (slow KDF, 12000 iterations, 256-bit) over a
+ *  random 128-bit salt - never plaintext, and offline brute-force of the
+ *  4-digit space is deliberately expensive. Online guessing is limited by the
+ *  persisted lockout schedule below. The PIN protects the configuration mode
+ *  from accidental or curious changes; it is not account security. */
 public final class PinLock {
 
     public static final int MAX_FAILURES_BEFORE_LOCK = 5;
     public static final long BASE_LOCK_MS = 30_000;
     public static final long MAX_LOCK_MS = 600_000;
+    static final int ITERATIONS = 12_000;
 
     private PinLock() {}
 
     public static String hash(String salt, String pin) {
+        SecretKeyFactory skf;
         try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] d = md.digest((salt + ":" + pin).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256"); // API 26+
+        } catch (NoSuchAlgorithmException e) {
+            try {
+                skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1"); // API 10+
+            } catch (NoSuchAlgorithmException e2) {
+                throw new IllegalStateException(e2);
+            }
+        }
+        PBEKeySpec spec = new PBEKeySpec(pin.toCharArray(),
+                salt.getBytes(java.nio.charset.StandardCharsets.UTF_8), ITERATIONS, 256);
+        try {
+            byte[] d = skf.generateSecret(spec).getEncoded();
             StringBuilder sb = new StringBuilder();
             for (byte b : d) sb.append(String.format("%02x", b));
             return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
+        } catch (InvalidKeySpecException e) {
             throw new IllegalStateException(e);
         }
     }

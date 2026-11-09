@@ -211,4 +211,51 @@ public class UiSnapshotTest {
         v.findViewById(R.id.star).setVisibility(View.VISIBLE);
         paparazzi.snapshot(v, "tile-fallback-star");
     }
+
+    // ---- settings gate states ----
+
+    @Test
+    public void pinGateSetupFirstEntry() {
+        View v = paparazzi.inflate(R.layout.activity_pingate);
+        ((TextView) v.findViewById(R.id.pin_subtitle)).setText("اختار رمز جديد من ٤ أرقام");
+        paparazzi.snapshot(v, "pin-gate-setup");
+    }
+
+    @Test
+    public void pinGateWrongPin() {
+        View v = paparazzi.inflate(R.layout.activity_pingate);
+        ((TextView) v.findViewById(R.id.pin_error)).setText("الرمز غلط");
+        paparazzi.snapshot(v, "pin-gate-wrong");
+    }
+
+    @Test
+    public void pinGateLockedOut() {
+        View v = paparazzi.inflate(R.layout.activity_pingate);
+        ((TextView) v.findViewById(R.id.pin_error))
+                .setText("محاولات كتير غلط - استنى شوية وجرب تاني");
+        paparazzi.snapshot(v, "pin-gate-locked");
+    }
+
+    @Test
+    public void pinGateDeviceUnlockOffered() {
+        View v = paparazzi.inflate(R.layout.activity_pingate);
+        v.findViewById(R.id.btn_device_lock).setVisibility(View.VISIBLE);
+        paparazzi.snapshot(v, "pin-gate-device-unlock");
+    }
+
+    // ---- settings: populated picker + every section ----
+
+    @Test
+    public void launcherIcon() {
+        android.widget.FrameLayout frame = new android.widget.FrameLayout(paparazzi.getContext());
+        frame.setBackgroundColor(0xFF1E7B34); // @color/call_green, the adaptive icon background
+        android.widget.ImageView iv = new android.widget.ImageView(paparazzi.getContext());
+        iv.setImageDrawable(paparazzi.getContext().getResources()
+                .getDrawable(R.drawable.ic_mama_mark));
+        int s = (int) (192 * paparazzi.getContext().getResources().getDisplayMetrics().density);
+        android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(s, s);
+        lp.gravity = android.view.Gravity.CENTER;
+        frame.addView(iv, lp);
+        paparazzi.snapshot(frame, "launcher-icon");
+    }
 }

@@ -73,6 +73,13 @@ public class SettingsActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (!SessionGate.isValid()) {
+            // Relock: returning from home/recents/screen-off after the
+            // session expired sends the user back through the gate.
+            startActivity(PinGateActivity.intentForEntry(this));
+            finish();
+            return;
+        }
         updatePermissionRows();
     }
 
