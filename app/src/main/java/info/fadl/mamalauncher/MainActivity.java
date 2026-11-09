@@ -1,124 +1,120 @@
 package info.fadl.mamalauncher;
 
-import info.fadl.mamalauncher.ui.ContactEntry;
-import info.fadl.mamalauncher.ui.UiBinder;
-import info.fadl.mamalauncher.ui.ContactGridAdapter;
-import info.fadl.mamalauncher.ui.ContactPhotoLoader;
-import android.Manifest;
-import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.Button;
-import android.widget.GridView;
-import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
-public class MainActivity extends Activity {
+import info.fadl.mamalauncher.ui.UiBinder;
 
-    private static final int REQ_CONTACTS = 41;
+/**
+ * Everyday mode: big clock/date and ONLY the buttons the family setter chose.
+ * No settings affordance, no "not installed" placeholders: an app that got
+ * uninstalled simply disappears. Settings mode opens by long-pressing the
+ * always-present clock header, then the PIN / device-lock gate.
+ */
+public class MainActivity extends BaseActivity {
 
-    private ContactPhotoLoader photos;
-    private View setupView;
-    private View homeView;
-    private GridView grid;
-    private TextView emptyView;
-    private int refreshGeneration;
+    private LinearLayout tiles;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        photos = new ContactPhotoLoader(getContentResolver());
-        setupView = findViewById(R.id.setup_view);
-        homeView = findViewById(R.id.home_view);
-        grid = findViewById(R.id.contacts_grid);
-        emptyView = findViewById(R.id.empty_contacts);
-
-        Button allow = findViewById(R.id.btn_allow_contacts);
-        allow.setOnClickListener(v ->
-                requestPermissions(new String[]{Manifest.permission.READ_CONTACTS}, REQ_CONTACTS));
-
-        grid.setOnItemClickListener((AdapterView<?> parent, View view, int position, long id) -> {
-            ContactEntry c = (ContactEntry) parent.getItemAtPosition(position);
-            startActivity(ConfirmCallActivity.intentFor(this, c));
+        tiles = findViewById(R.id.tiles_container);
+        findViewById(R.id.home_header).setOnLongClickListener(v -> {
+            haptic(v);
+            startActivity(PinGateActivity.intentForEntry(this));
+            return true;
         });
-
-        wireAppButton(R.id.app_whatsapp, R.id.icon_whatsapp, R.id.label_whatsapp,
-                "com.whatsapp", R.string.whatsapp);
-        wireAppButton(R.id.app_messenger, R.id.icon_messenger, R.id.label_messenger,
-                "com.facebook.orca", R.string.messenger);
-        wireAppButton(R.id.app_youtube, R.id.icon_youtube, R.id.label_youtube,
-                "com.google.android.youtube", R.string.youtube);
     }
 
-    /** Shows the app's REAL installed icon (the familiar one mama already knows),
-     *  loaded at runtime from the device - nothing trademarked is bundled. */
-    private void wireAppButton(int containerId, int iconId, int labelId, String pkg, int nameRes) {
-        View container = findViewById(containerId);
-        ImageView icon = findViewById(iconId);
-        TextView label = findViewById(labelId);
-        Intent launch = getPackageManager().getLaunchIntentForPackage(pkg);
-        if (launch == null) {
-            container.setBackgroundResource(R.drawable.tile_app_disabled);
-            icon.setVisibility(View.GONE);
-            label.setText(getString(nameRes) + "\n" + getString(R.string.app_not_installed));
-            label.setTextSize(18f);
-            container.setAlpha(0.5f);
-            container.setOnClickListener(v -> { /* not installed: deliberate no-op */ });
-        } else {
-            Drawable real = null;
-            try {
-                real = getPackageManager().getApplicationIcon(pkg);
-            } catch (PackageManager.NameNotFoundException ignored) { }
-            if (real != null) { icon.setImageDrawable(real); icon.setVisibility(View.VISIBLE); }
-            label.setText(nameRes);
-            container.setOnClickListener(v -> startActivity(launch));
+    private final Handler clock = new Handler();
+    private final Runnable clockTick = new Runnable() {
+        @Override public void run() {
+            updateClock();
+            clock.postDelayed(this, 30_000);
         }
+    };
+
+    private void updateClock() {
+        ((TextView) findViewById(R.id.home_clock)).setText(
+                new SimpleDateFormat("h:mm", Locale.US).format(new Date()));
+        ((TextView) findViewById(R.id.home_date)).setText(
+                new SimpleDateFormat("EEEE d MMMM", new Locale("ar")).format(new Date()));
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        refresh();
-    }
-
-    private void refresh() {
-        if (checkSelfPermission(Manifest.permission.READ_CONTACTS)
-                != PackageManager.PERMISSION_GRANTED) {
-            setupView.setVisibility(View.VISIBLE);
-            homeView.setVisibility(View.GONE);
-            return;
-        }
-        setupView.setVisibility(View.GONE);
-        homeView.setVisibility(View.VISIBLE);
-        final int generation = ++refreshGeneration;
-        new Thread(() -> {
-            List<ContactEntry> sorted = ContactSorter.sort(
-                    ContactsLoader.load(getContentResolver(), getResources()));
-            runOnUiThread(() -> {
-                // A newer refresh already started; drop these stale results.
-                if (generation != refreshGeneration) return;
-                grid.setAdapter(new ContactGridAdapter(this, sorted, photos));
-                emptyView.setVisibility(sorted.isEmpty() ? View.VISIBLE : View.GONE);
-            });
-        }).start();
+        updateClock();
+        clock.removeCallbacks(clockTick);
+        clock.postDelayed(clockTick, 30_000);
+        buildTiles();
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        refresh();
+    protected void onPause() {
+        clock.removeCallbacks(clockTick);
+        super.onPause();
+    }
+
+    private void buildTiles() {
+        tiles.removeAllViews();
+        List<View> built = new ArrayList<>();
+
+        View phone = UiBinder.buildHomeTile(this, getString(R.string.tile_phone),
+                getResources().getDrawable(R.drawable.ic_call), R.drawable.chip_green,
+                contrast(), null);
+        guard(phone, () -> startActivity(new Intent(this, PhoneActivity.class)));
+        built.add(phone);
+
+        PackageManager pm = getPackageManager();
+        for (String pkg : AppSelection.parse(Prefs.get(this).getString(AppSelection.PREF_KEY, null))) {
+            Intent launch = pm.getLaunchIntentForPackage(pkg);
+            if (launch == null) continue; // uninstalled: silently gone, no placeholder
+            String name = pkg;
+            Drawable icon = null;
+            try {
+                name = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+                icon = pm.getApplicationIcon(pkg);
+            } catch (PackageManager.NameNotFoundException ignored) { }
+            View tile = UiBinder.buildHomeTile(this, name, icon, 0, contrast(), null);
+            guard(tile, () -> startActivity(launch));
+            built.add(tile);
+        }
+
+        float d = getResources().getDisplayMetrics().density;
+        int m = (int) (6 * d);
+        int h = (int) (170 * d);
+        for (int i = 0; i < built.size(); i += 2) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, h, 1f);
+            lp.setMargins(m, m, m, m);
+            row.addView(built.get(i), lp);
+            if (i + 1 < built.size()) {
+                row.addView(built.get(i + 1), lp);
+            } else {
+                row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+            }
+            tiles.addView(row, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
     }
 
     @Override
     public void onBackPressed() {
-        // As a home launcher, BACK on the main screen must not exit to a blank state.
-        // Deliberate no-op: the grid IS the home screen.
+        // Home launcher: BACK on the everyday screen must not exit to a blank state.
     }
 }

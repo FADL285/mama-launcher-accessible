@@ -10,10 +10,66 @@
     <string name="speak_unavailable">نطق الاسم مش متاح على الجهاز ده، لكن الاسم ظاهر كبير على الشاشة.</string>
     <string name="call_blocked_hint">إذن الاتصال محتاج يتظبط من اللي جهز التليفون: الإعدادات > التطبيقات > موبايل ماما > الأذونات > الهاتف.</string>
     <string name="no_name">بدون اسم</string>
-    <string name="app_not_installed">مش مثبت</string>
     <string name="no_contacts_yet">مفيش جهات اتصال بأرقام تليفون على الجهاز لسه.</string>
-    <string name="whatsapp">واتساب</string>
-    <string name="messenger">ماسنجر</string>
-    <string name="youtube">يوتيوب</string>
     <string name="choose_number">اختار الرقم الأول</string>
+
+    <string name="tile_phone">الهاتف</string>
+    <string name="dialpad_title">لوحة الأرقام</string>
+    <string name="save_number">حفظ الرقم</string>
+    <string name="dial_empty_hint">اكتب رقم الأول</string>
+    <string name="open_settings_hint">للإعدادات: اضغط مطولًا على الساعة فوق</string>
+
+    <string name="settings_title">الإعدادات</string>
+    <string name="apps_section_title">أزرار الشاشة الرئيسية</string>
+    <string name="apps_section_hint">الزر المحدد يظهر في الشاشة. الأسهم تغيّر ترتيبه.</string>
+    <string name="apps_loading">بيحمل قائمة التطبيقات…</string>
+    <string name="perms_section_title">الأذونات</string>
+    <string name="perm_contacts_label">جهات الاتصال</string>
+    <string name="perm_call_label">المكالمات</string>
+    <string name="perm_allowed">مسموح</string>
+    <string name="perm_denied">مش مسموح - اضغط فتح الإعدادات وسمّحه</string>
+    <string name="open_app_settings">فتح الإعدادات</string>
+    <string name="sound_section_title">الصوت</string>
+    <string name="auto_speak_label">نطق الاسم تلقائيًا</string>
+    <string name="auto_speak_hint">عند فتح شاشة الاتصال</string>
+    <string name="tts_checking">بيتم فحص محرك الصوت…</string>
+    <string name="tts_ready">محرك الصوت جاهز</string>
+    <string name="tts_missing">محرك الصوت مش متاح على الجهاز ده</string>
+    <string name="tts_arabic_missing">بيانات صوت العربي ناقصة</string>
+    <string name="tts_test">جرب الصوت</string>
+    <string name="tts_test_ok">النطق اشتغل</string>
+    <string name="tts_test_failed">النطق فشل - جرب تحميل صوت العربي</string>
+    <string name="tts_data">تحميل صوت العربي</string>
+    <string name="volume_zero_hint">صوت الميديا على الصفر - ارفعه من أزرار الصوت في التليفون عشان الاسم يتسمع.</string>
+
+    <string name="access_section_title">سهولة الاستخدام</string>
+    <string name="font_size_label">حجم الخط</string>
+    <string name="font_normal">عادي</string>
+    <string name="font_large">كبير</string>
+    <string name="font_huge">كبير جدًا</string>
+    <string name="contrast_label">وضع التباين العالي</string>
+    <string name="contrast_hint">أصفر على أسود لضعف النظر</string>
+    <string name="touch_guard_label">حماية اللمس الخاطئ</string>
+    <string name="touch_guard_hint">الزر يستجيب بعد ضغطة أطول شوية</string>
+    <string name="vibrate_label">الاهتزاز عند الضغط</string>
+    <string name="vibrate_hint">تأكيد إن الزر اتضغط</string>
+
+    <string name="protect_section_title">حماية الإعدادات</string>
+    <string name="pin_label">رمز الإعدادات (PIN)</string>
+    <string name="pin_hint">مطلوب عند دخول وضع الإعدادات</string>
+    <string name="pin_change">تغيير الرمز</string>
+    <string name="device_lock_label">استخدام قفل الجهاز</string>
+    <string name="device_lock_hint">نفس قفل شاشة التليفون (رقم أو نمط)</string>
+    <string name="device_lock_unavailable">مفيش قفل شاشة مظبوط على التليفون ده</string>
+
+    <string name="pingate_title">وضع الإعدادات</string>
+    <string name="pingate_enter">أدخل رمز الإعدادات</string>
+    <string name="pingate_set_new">اختار رمز جديد من ٤ أرقام</string>
+    <string name="pingate_confirm">أكد الرمز الجديد</string>
+    <string name="pingate_mismatch">الرمزين مش زي بعض - جرب تاني</string>
+    <string name="pingate_wrong">الرمز غلط</string>
+    <string name="pingate_locked">محاولات كتير غلط - استنى شوية وجرب تاني</string>
+    <string name="pingate_saved">اتحفظ الرمز</string>
+    <string name="or_use_device_lock">أو استخدم قفل الجهاز</string>
+    <string name="device_lock_prompt">أكد قفل الجهاز عشان تدخل الإعدادات</string>
 </resources>

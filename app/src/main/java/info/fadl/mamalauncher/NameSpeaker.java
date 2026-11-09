@@ -20,6 +20,8 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
     private boolean ready;
     private String pending;
     private AvailabilityListener availabilityListener;
+    private final android.os.Handler main =
+            new android.os.Handler(android.os.Looper.getMainLooper());
 
     public void setAvailabilityListener(AvailabilityListener l) {
         this.availabilityListener = l;
@@ -47,6 +49,20 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
         if (avail >= android.speech.tts.TextToSpeech.LANG_AVAILABLE) {
             tts.setLanguage(ar);
         }
+        // Queued success is not proof of sound: synthesis can still fail
+        // after speak() returns. Surface that so the screen can say so.
+        tts.setOnUtteranceProgressListener(
+                new android.speech.tts.UtteranceProgressListener() {
+                    @Override public void onStart(String utteranceId) { }
+                    @Override public void onDone(String utteranceId) { }
+                    @Override public void onError(String utteranceId) {
+                        main.post(() -> {
+                            if (availabilityListener != null) {
+                                availabilityListener.onUnavailable();
+                            }
+                        });
+                    }
+                });
         if (pending != null) {
             speak(pending);
             pending = null;

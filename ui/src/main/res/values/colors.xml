@@ -12,4 +12,6 @@
     <color name="wa_green">#1FA855</color>
     <color name="msg_blue">#0068E0</color>
     <color name="yt_red">#C4302B</color>
+    <color name="contrast_bg">#000000</color>
+    <color name="contrast_text">#FFD600</color>
 </resources>

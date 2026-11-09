@@ -93,4 +93,60 @@ public final class UiBinder {
     private static int dp(View root, int v) {
         return (int) (v * root.getResources().getDisplayMetrics().density);
     }
+
+    /**
+     * One big everyday-mode home tile: 68dp icon area on top, bold label below,
+     * tall enough for shaky hands. Built in code so the same path serves the
+     * device and the snapshot tests. chipBgRes != 0 draws a colored circle
+     * behind the icon (used for the special "Phone" tile); chipBgRes == 0
+     * shows the app's real icon directly.
+     */
+    public static View buildHomeTile(android.content.Context ctx, String label,
+                                     android.graphics.drawable.Drawable icon,
+                                     int chipBgRes, boolean contrast,
+                                     View.OnClickListener onTap) {
+        LinearLayout tile = new LinearLayout(ctx);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(android.view.Gravity.CENTER);
+        tile.setBackgroundResource(contrast ? R.drawable.tile_bg_contrast : R.drawable.tile_bg);
+        tile.setTag("card");
+
+        int chip = dp(tile, 68);
+        if (chipBgRes != 0) {
+            android.widget.FrameLayout frame = new android.widget.FrameLayout(ctx);
+            frame.setBackgroundResource(chipBgRes);
+            android.widget.ImageView iv = new android.widget.ImageView(ctx);
+            int s = dp(tile, 34);
+            android.widget.FrameLayout.LayoutParams ip =
+                    new android.widget.FrameLayout.LayoutParams(s, s);
+            ip.gravity = android.view.Gravity.CENTER;
+            iv.setLayoutParams(ip);
+            if (icon != null) iv.setImageDrawable(icon);
+            frame.addView(iv);
+            LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(chip, chip);
+            tile.addView(frame, fp);
+        } else {
+            android.widget.ImageView iv = new android.widget.ImageView(ctx);
+            LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(chip, chip);
+            iv.setLayoutParams(ip);
+            if (icon != null) iv.setImageDrawable(icon);
+            tile.addView(iv);
+        }
+
+        TextView tv = new TextView(ctx);
+        tv.setText(label);
+        tv.setTextSize(24f);
+        tv.setTypeface(tv.getTypeface(), android.graphics.Typeface.BOLD);
+        tv.setTextColor(ctx.getResources().getColor(
+                contrast ? R.color.contrast_text : R.color.text_main));
+        tv.setGravity(android.view.Gravity.CENTER);
+        tv.setMaxLines(2);
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        tp.setMargins(0, dp(tile, 6), 0, 0);
+        tile.addView(tv, tp);
+
+        if (onTap != null) tile.setOnClickListener(onTap);
+        return tile;
+    }
 }
