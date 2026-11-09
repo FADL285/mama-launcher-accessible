@@ -135,7 +135,7 @@ public class PinGateFitTest {
         View v=paparazzi.inflate(R.layout.activity_dialpad);
         ((android.widget.TextView)v.findViewById(R.id.dial_display)).setText("01000000001");v.findViewById(R.id.dial_display).setVisibility(View.VISIBLE);v.findViewById(R.id.dial_placeholder).setVisibility(View.GONE);
         ((android.widget.TextView)v.findViewById(R.id.save_number_label)).setText(R.string.dial_view_saved);
-        android.widget.Button match=new android.widget.Button(v.getContext());match.setText("متسجّل · اسم تجريبي\n01000000001");match.setTextSize(18);match.setAllCaps(false);
+        android.widget.Button match=DialMatchUi.preview(v.getContext(),new ContactEntry(1,"اسم تجريبي","0100 000 0001",null,false),true);
         ((android.widget.LinearLayout)v.findViewById(R.id.dial_matches)).addView(match);
         snapshot(v,"dialpad-saved-match-largest");
     }
@@ -143,7 +143,7 @@ public class PinGateFitTest {
         View v=paparazzi.inflate(R.layout.activity_dialpad);
         ((android.widget.TextView)v.findViewById(R.id.dial_display)).setText("010");v.findViewById(R.id.dial_display).setVisibility(View.VISIBLE);v.findViewById(R.id.dial_placeholder).setVisibility(View.GONE);
         android.widget.LinearLayout box=v.findViewById(R.id.dial_matches);
-        android.widget.Button match=new android.widget.Button(v.getContext());match.setText("اقتراح · اسم تجريبي\n01000000001");match.setTextSize(18);match.setAllCaps(false);box.addView(match);
+        android.widget.Button match=DialMatchUi.preview(v.getContext(),new ContactEntry(1,"اسم تجريبي","0100 000 0001",null,false),false);box.addView(match);
         android.widget.Button more=new android.widget.Button(v.getContext());more.setText("كل النتائج (6)");more.setTextSize(18);box.addView(more);
         snapshot(v,"dialpad-suggestions-largest");
     }

@@ -188,7 +188,7 @@ public class HandsetUxTest {
   org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){@Override public Cursor query(Uri uri,String[] p,String selection,String[] args,String sort){MatrixCursor c=new MatrixCursor(p);c.addRow(new Object[]{8,"اقتراح","030123459",2,null,null,0});c.addRow(new Object[]{7,"متعدد","030123456",2,null,null,0});c.addRow(new Object[]{7,"متعدد","03012345",2,null,null,0});return c;}});
   DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();type(a,"03012345");settle(a);
   String preview=((TextView)((LinearLayout)a.findViewById(R.id.dial_matches)).getChildAt(0)).getText().toString();
-  assertEquals(a.getString(R.string.dial_saved)+" · متعدد\n03012345",preview);
+  assertEquals(a.getString(R.string.dial_saved)+" · متعدد\n"+info.fadl.mamalauncher.ui.DialMatchUi.isolatedNumber("03012345"),preview);
  }
  void saveCannotNavigateAfterPause(String... names)throws Exception {
   Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.READ_CONTACTS);provider(null);
