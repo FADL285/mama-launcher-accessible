@@ -22,6 +22,9 @@
             android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
             android:gravity="center" android:textSize="34sp" android:textStyle="bold"
             android:textColor="@color/text_main" android:padding="10dp"
+            android:maxLines="1" android:scrollHorizontally="true" android:ellipsize="none"
+            android:autoSizeTextType="uniform" android:autoSizeMinTextSize="18sp"
+            android:autoSizeMaxTextSize="34sp" android:autoSizeStepGranularity="2sp"
             android:hint="@string/dial_empty_hint" android:textDirection="ltr"/>
         <ImageView android:id="@+id/btn_backspace"
             android:layout_width="48dp" android:layout_height="48dp"

@@ -37,8 +37,26 @@ public class PinGateFitTest {
     @Test
     public void dialpadA10sLargestText() {
         View v = paparazzi.inflate(R.layout.activity_dialpad);
-        ((android.widget.TextView) v.findViewById(R.id.dial_display)).setText("0100 000 0");
+        // Full 11-digit Egyptian mobile number: every digit must stay visible.
+        ((android.widget.TextView) v.findViewById(R.id.dial_display)).setText("0100 000 0000");
         paparazzi.snapshot(v, "dialpad-a10s-largest");
+    }
+
+    @Test
+    public void dialpadA10sInternationalLength() {
+        View v = paparazzi.inflate(R.layout.activity_dialpad);
+        // International-length input must not truncate or lose digits.
+        ((android.widget.TextView) v.findViewById(R.id.dial_display)).setText("+2010 0000 0000");
+        paparazzi.snapshot(v, "dialpad-a10s-international");
+    }
+
+    @Test
+    public void pinGateLockedOutShowsReachableRecovery() {
+        View v = paparazzi.inflate(R.layout.activity_pingate);
+        ((android.widget.TextView) v.findViewById(R.id.pin_error))
+                .setText("محاولات كتير غلط - استنى شوية وجرب تاني");
+        v.findViewById(R.id.btn_device_lock).setVisibility(View.VISIBLE);
+        paparazzi.snapshot(v, "pin-gate-locked-recovery");
     }
 
     @Test

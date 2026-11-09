@@ -67,6 +67,10 @@ public class DialpadActivity extends BaseActivity {
 
     private void sync() {
         display.setText(number.toString());
+        // Long numbers shrink via autosize (API 26+); on older devices the
+        // field scrolls horizontally and we keep the last digit in view.
+        // Digits are NEVER dropped or ellipsized.
+        display.post(() -> display.bringPointIntoView(number.length()));
         boolean has = number.length() >= 3;
         callBtn.setAlpha(has ? 1f : 0.45f);
         saveBtn.setAlpha(has ? 1f : 0.45f);
