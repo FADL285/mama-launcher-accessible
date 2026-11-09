@@ -11,7 +11,7 @@
          WhatsApp/Messenger/YouTube are installed (buttons would look "not installed"). -->
     <queries>
         <intent>
-            <action android:name="android.speech.tts.engine.INTENT_ACTION_TTS_SERVICE" />
+            <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
         <package android:name="com.whatsapp" />
         <package android:name="com.facebook.orca" />
