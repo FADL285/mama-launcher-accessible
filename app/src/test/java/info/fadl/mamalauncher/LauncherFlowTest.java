@@ -187,7 +187,7 @@ public class LauncherFlowTest {
         DialpadActivity a = Robolectric.buildActivity(DialpadActivity.class).setup().get();
         tapDial(a, "0100");
         a.findViewById(R.id.btn_save_number).performClick();
-        Thread.sleep(150);org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+        a.awaitLookupsForTest();org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
         Intent insert = shadow(a).getNextStartedActivity();
         assertNotNull(insert);
         assertEquals(Intent.ACTION_INSERT, insert.getAction());

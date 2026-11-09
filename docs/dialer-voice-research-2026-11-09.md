@@ -18,7 +18,7 @@ For this pilot, keep device speech offline. Prefer an installed Egyptian Arabic 
 
 ## Egyptian voice options
 
-| Option | Fit and limits | Decision for 0.7 |
+| Option | Fit and limits | Decision for 0.8 |
 | --- | --- | --- |
 | Installed Android TTS voice | Android exposes locale, network requirement and not-installed features. The app can prefer offline ar-EG if actually offered. Availability and pronunciation depend on the installed engine/data.[5][6] | Use now, with offline-only checks. No Egyptian pack is bundled or promised. |
 | NAMAA-Egyptian-TTS | Its model card says MIT, local/hosted inference and Python Chatterbox usage. It warns about pronunciation of ق, numbers and prompt consistency. No verified Samsung A10s benchmark or drop-in Android TTS installer was established.[7] | Candidate for a separate local prototype, not a promised replacement. Dependency/provenance review still needed. |
@@ -47,3 +47,7 @@ Manual engine selection making speech work does not establish one root cause. Th
 10. Piper model card: https://huggingface.co/rhasspy/piper-voices/blob/main/ar/ar_JO/kareem/medium/MODEL_CARD
 11. Microsoft, official language/voice list: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=tts
 12. Microsoft, official embedded speech overview: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/embedded-speech
+
+## Review correction scope
+
+Prefix bridging from international to national form is explicitly implemented for Egypt; other countries keep raw and international-prefix suggestions. Exact full-number equivalence remains country-aware. The initial review identified13inline issues; the0.8candidate addresses all13with regression coverage. Its separate generic docstring warning is not an audio or runtime check. The new source has not gained a new independent review merely because local tests pass.

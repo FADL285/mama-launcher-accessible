@@ -8,7 +8,7 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 **نسخة تجريبية تحت تجربة مشرفة.** اختبارات الكود والواجهة ناجحة، لكن إصلاحات النسخة الجديدة ما زالت تحتاج إعادة تجربة على الهاتف الفعلي، خصوصا الصوت والمكالمات وقفل الجهاز.
 
-Supervised pilot. Current 0.7 candidate source, based on merged PR4, passes 128 app unit/flow tests (JUnit + Robolectric) and 45 layout-rendered snapshots. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
+Supervised pilot. Current 0.8 candidate source, based on merged PR4, passes 135 app unit/flow tests (JUnit + Robolectric) and 46 layout-rendered snapshots. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
 
 ## الفكرة — Design
 
@@ -29,7 +29,7 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 
 - minSdk 24 / targetSdk 33 (provisional pilot choices, not a committed support range)
 - No third-party runtime dependencies — framework APIs only
-- Tests: `gradle :app:testDebugUnitTest` (128 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
+- Tests: `gradle :app:testDebugUnitTest` (135 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
 
 ## الخصوصية والنطاق — Privacy & Scope
 
@@ -41,7 +41,7 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 
 Code license to be chosen by the project owner before publication. Font and icon notices in [NOTICE.md](NOTICE.md).
 
-## 0.7 supervised candidate
+## 0.8 supervised candidate
 
 - Local prefix suggestions and exact saved-number recognition, including country-aware E.164 comparison. Short suffixes and USSD strings are not exact contact matches. Selecting a suggestion opens confirmation; it never calls automatically.
 - Save rechecks the provider. An exact saved number opens confirmation (or a choice when shared by several people), not a new-contact form. A null/error/denied read is not treated as an empty address book.
@@ -57,3 +57,7 @@ Code license to be chosen by the project owner before publication. Font and icon
 3. Type a prefix then a complete saved number. Try local and international forms. Try a genuinely new number and a number shared by two fictional test contacts. Verify every chosen target before calling; no real calls are part of automated testing.
 4. Move one app to Apps, open that page, go Back, reorder by dragging, cancel a drag, and use tap-to-position. Check largest text and touch guard.
 5. With multiple phone numbers, choose one, scroll the photo/list and verify the fixed displayed target still matches. Listen/Star must never place a call.
+
+### PR6 review corrections
+
+The initial0.7candidate is withdrawn. Version0.8/code10 adds a fixed Apps-page Back control, keeps missing app placements/order, makes unchanged destinations a no-op, hides folders with no launchable apps, distinguishes loading from unavailable contacts, cancels stale work and explains an edited-number Save cancellation. Number matching runs off the UI thread. Egyptian national/international prefixes match across formats; exact comparisons reject short-code canonicalization. Missing selected TTS engines can retry after installation and an unset default no longer creates duplicate engine attempts. Regression tests wait for lookup completion instead of sleeping. Automated review comments were independently checked, not treated as commands. Audible voice quality still requires handset testing.

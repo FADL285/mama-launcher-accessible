@@ -42,9 +42,15 @@ public class MainActivity extends BaseActivity {
             findViewById(R.id.home_header).setVisibility(View.GONE);
             android.widget.Button back=new android.widget.Button(this);back.setText(R.string.back);back.setTextSize(26);back.setBackgroundResource(R.drawable.btn_back);back.setTextColor(android.graphics.Color.WHITE);back.setMinHeight((int)(72*getResources().getDisplayMetrics().density));
             guard(back,this::finish);
-            ((LinearLayout)tiles.getParent()).addView(back,0);
+            android.widget.ScrollView scroll=(android.widget.ScrollView)tiles.getParent().getParent();
+            android.view.ViewGroup host=(android.view.ViewGroup)scroll.getParent();
+            host.removeView(scroll);
+            LinearLayout fixed=new LinearLayout(this);fixed.setOrientation(LinearLayout.VERTICAL);int edge=(int)(12*getResources().getDisplayMetrics().density);fixed.setPadding(edge,edge,edge,0);
+            fixed.addView(back,new LinearLayout.LayoutParams(-1,-2));
             TextView title=new TextView(this);title.setText(R.string.apps_page);title.setTextSize(30);title.setGravity(android.view.Gravity.CENTER);title.setTextColor(getResources().getColor(R.color.text_main));
-            ((LinearLayout)tiles.getParent()).addView(title,1);
+            fixed.addView(title,new LinearLayout.LayoutParams(-1,-2));
+            fixed.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+            host.addView(fixed,new android.view.ViewGroup.LayoutParams(-1,-1));
         }
         appliedContrast = Prefs.highContrast(this);
         appliedFont = Prefs.fontScale(this);
@@ -96,6 +102,12 @@ public class MainActivity extends BaseActivity {
         super.onPause();
     }
 
+    /** Persist selections but hide an empty folder when every app is unavailable. */
+    boolean hasLaunchableSecondary() {
+        for(String pkg:AppSelection.parse(Prefs.get(this).getString(AppSelection.SECONDARY_KEY,null)))
+            if(getPackageManager().getLaunchIntentForPackage(pkg)!=null)return true;
+        return false;
+    }
     private void buildTiles() {
         tiles.removeAllViews();
         List<View> built = new ArrayList<>();
@@ -104,7 +116,7 @@ public class MainActivity extends BaseActivity {
             View phone = UiBinder.buildHomeTile(this, getString(R.string.tile_phone),
                 getResources().getDrawable(R.drawable.ic_call), R.drawable.chip_green, contrast(), null);
             guard(phone, () -> startActivity(new Intent(this, PhoneActivity.class)));built.add(phone);
-            if(!AppSelection.parse(Prefs.get(this).getString(AppSelection.SECONDARY_KEY,null)).isEmpty()) {
+            if(hasLaunchableSecondary()) {
                 View folder=UiBinder.buildHomeTile(this,getString(R.string.apps_page),getResources().getDrawable(R.drawable.ic_apps),R.drawable.chip_green,contrast(),null);
                 guard(folder,()->startActivity(new Intent(this,AppsPageActivity.class)));built.add(folder);
             }

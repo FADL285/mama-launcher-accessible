@@ -21,7 +21,9 @@ public class DialpadActivity extends BaseActivity {
     private DirectCallAction callAction;
     private java.util.List<info.fadl.mamalauncher.ui.ContactEntry> contacts = new java.util.ArrayList<>();
     private final java.util.concurrent.ExecutorService lookupWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
-    private int lookupGeneration;
+    private volatile int lookupGeneration;
+    private volatile int matchGeneration;
+    private boolean lookupPending;
     private boolean checkingSave;
     private boolean contactsAvailable;
     private String country() {
@@ -33,13 +35,15 @@ public class DialpadActivity extends BaseActivity {
     private boolean canReadContacts() {return checkSelfPermission(android.Manifest.permission.READ_CONTACTS)==android.content.pm.PackageManager.PERMISSION_GRANTED;}
     private void refreshContacts() {
         final int generation=++lookupGeneration;
-        if(!canReadContacts()){contactsAvailable=false;contacts.clear();renderMatches();return;}
+        if(!canReadContacts()){lookupPending=false;contactsAvailable=false;contacts.clear();renderMatches();return;}
+        lookupPending=true;renderMatches();
         lookupWorker.execute(()-> {
+            if(generation!=lookupGeneration)return;
             java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded;
             boolean ok=true;
             try {loaded=ContactsLoader.loadVerified(getContentResolver(),getResources());}catch(RuntimeException e){loaded=new java.util.ArrayList<>();ok=false;}
             final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> result=loaded;final boolean success=ok;
-            runOnUiThread(()-> {if(isDestroyed() || generation!=lookupGeneration)return;contacts=result;contactsAvailable=success;renderMatches();});
+            runOnUiThread(()-> {if(isDestroyed() || generation!=lookupGeneration)return;contacts=result;lookupPending=false;contactsAvailable=success;renderMatches();});
         });
     }
     private void saveOrShowExisting() {
@@ -49,11 +53,12 @@ public class DialpadActivity extends BaseActivity {
             java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded=new java.util.ArrayList<>();boolean ok=canReadContacts();
             try {if(ok)loaded=ContactsLoader.loadVerified(getContentResolver(),getResources());}catch(RuntimeException e){ok=false;}
             final boolean verified=ok;final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> current=loaded;
+            final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact=DialContactMatcher.matches(current,typed,country(),true);
             runOnUiThread(()-> {
-                checkingSave=false;if(isDestroyed() || isFinishing() || !typed.equals(number.toString()))return;
+                checkingSave=false;if(isDestroyed() || isFinishing())return;
+                if(!typed.equals(number.toString())){android.widget.Toast.makeText(this,R.string.dial_save_changed,android.widget.Toast.LENGTH_LONG).show();return;}
                 contacts=current;contactsAvailable=verified;renderMatches();
                 if(!verified) {android.widget.Toast.makeText(this,R.string.dial_lookup_needed,android.widget.Toast.LENGTH_LONG).show();return;}
-                java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact=DialContactMatcher.matches(current,typed,country(),true);
                 if(exact.size()==1)startActivity(ConfirmCallActivity.intentFor(this,exact.get(0)));
                 else if(exact.size()>1)new android.app.AlertDialog.Builder(this).setTitle(R.string.dial_saved_choose)
                     .setItems(exact.stream().map(c->c.name).toArray(String[]::new),(d,i)->startActivity(ConfirmCallActivity.intentFor(this,exact.get(i))))
@@ -65,16 +70,33 @@ public class DialpadActivity extends BaseActivity {
     private void renderMatches() {
         if(display==null)return;
         android.widget.LinearLayout box=findViewById(R.id.dial_matches);box.removeAllViews();
-        java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact=DialContactMatcher.matches(contacts,number.toString(),country(),true);
-        ((TextView)findViewById(R.id.save_number_label)).setText(exact.isEmpty()?R.string.save_number:R.string.dial_view_saved);
+        final int generation=++matchGeneration;
+        final String typed=number.toString();
+        ((TextView)findViewById(R.id.save_number_label)).setText(R.string.save_number);
         if(number.length()<3)return;
-        if(!contactsAvailable) {TextView hint=new TextView(this);hint.setText(R.string.dial_lookup_needed);hint.setTextSize(16);hint.setTextColor(getResources().getColor(R.color.text_main));box.addView(hint);return;}
-        java.util.List<info.fadl.mamalauncher.ui.ContactEntry> found=DialContactMatcher.matches(contacts,number.toString(),country(),false);
+        if(lookupPending || !contactsAvailable) {
+            TextView hint=new TextView(this);hint.setText(lookupPending?R.string.dial_lookup_loading:R.string.dial_lookup_needed);hint.setTextSize(16);hint.setTextColor(getResources().getColor(R.color.text_main));box.addView(hint);return;
+        }
+        final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> snapshot=new java.util.ArrayList<>(contacts);
+        final String region=country();
+        lookupWorker.execute(()-> {
+            if(generation!=matchGeneration)return;
+            java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact=DialContactMatcher.matches(snapshot,typed,region,true);
+            java.util.List<info.fadl.mamalauncher.ui.ContactEntry> found=DialContactMatcher.matches(snapshot,typed,region,false);
+            runOnUiThread(()-> {
+                if(isDestroyed() || generation!=matchGeneration || !typed.equals(number.toString()))return;
+                ((TextView)findViewById(R.id.save_number_label)).setText(exact.isEmpty()?R.string.save_number:R.string.dial_view_saved);
+                showMatches(found,exact,typed);
+            });
+        });
+    }
+    private void showMatches(java.util.List<info.fadl.mamalauncher.ui.ContactEntry> found,java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact,String typed) {
+        android.widget.LinearLayout box=findViewById(R.id.dial_matches);box.removeAllViews();
         int shown=0;
         for(info.fadl.mamalauncher.ui.ContactEntry c:found) {
             if(shown++==1)break;
             android.widget.Button row=new android.widget.Button(this);
-            boolean saved=DialContactMatcher.exact(number.toString(),c.firstNumber(),country());
+            boolean saved=exact.stream().anyMatch(e->e.id==c.id);
             row.setText((saved?getString(R.string.dial_saved):getString(R.string.dial_suggestion))+" · "+c.name+"\n"+c.firstNumber());
             row.setTextSize(18);row.setAllCaps(false);row.setMinHeight((int)(64*getResources().getDisplayMetrics().density));
             guard(row,()->startActivity(ConfirmCallActivity.intentFor(this,c)));box.addView(row);
@@ -86,7 +108,9 @@ public class DialpadActivity extends BaseActivity {
                 .setNegativeButton(android.R.string.cancel,null).show());box.addView(more);
         }
     }
-    @Override protected void onDestroy(){lookupGeneration++;lookupWorker.shutdownNow();super.onDestroy();}
+    /** Deterministic synchronization point for isolated JVM flow tests. */
+    void awaitLookupsForTest() throws Exception {lookupWorker.submit(()->{}).get(5,java.util.concurrent.TimeUnit.SECONDS);}
+    @Override protected void onDestroy(){lookupGeneration++;matchGeneration++;lookupWorker.shutdownNow();super.onDestroy();}
 
 
     @Override

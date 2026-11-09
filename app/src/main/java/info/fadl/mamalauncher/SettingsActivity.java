@@ -263,9 +263,9 @@ public class SettingsActivity extends ProtectedModeActivity {
         for (String[] a : apps) installedPkgs.add(a[0]);
         selected.clear();
         selected.addAll(AppSelection.parse(prefs.getString(AppSelection.PREF_KEY, null)));
-        selected.retainAll(installedPkgs);
+
         secondary.clear();secondary.addAll(AppSelection.parse(prefs.getString(AppSelection.SECONDARY_KEY,null)));
-        secondary.retainAll(installedPkgs);secondary.removeAll(selected);
+        secondary.removeAll(selected);
         saveSelection();
         rebuildPicker();
     }
@@ -290,6 +290,8 @@ public class SettingsActivity extends ProtectedModeActivity {
         android.widget.Button location=outer.findViewWithTag("app_place");
         location.setOnClickListener(v->new android.app.AlertDialog.Builder(this).setTitle(app[1])
             .setSingleChoiceItems(new String[]{getString(R.string.apps_home),getString(R.string.apps_folder),getString(R.string.apps_hidden)},group==selected?0:group==secondary?1:2,(dialog,which)-> {
+                int previous=group==selected?0:group==secondary?1:2;
+                if(which==previous){dialog.dismiss();return;}
                 selected.remove(app[0]);secondary.remove(app[0]);if(which==0)selected.add(app[0]);else if(which==1)secondary.add(app[0]);saveSelection();rebuildPicker();dialog.dismiss();
             }).setNegativeButton(android.R.string.cancel,null).show());
         if(group!=null) {
@@ -308,7 +310,7 @@ public class SettingsActivity extends ProtectedModeActivity {
                     default:return true;
                 }
             });
-            handle.setOnClickListener(v->{String[] positions=new String[group.size()];for(int i=0;i<positions.length;i++)positions[i]=(i+1)+" · "+findApp(group.get(i))[1];
+            handle.setOnClickListener(v->{String[] positions=new String[group.size()];for(int i=0;i<positions.length;i++)positions[i]=(i+1)+" · "+(findApp(group.get(i))==null?group.get(i):findApp(group.get(i))[1]);
                 new android.app.AlertDialog.Builder(this).setTitle(R.string.app_move_title).setSingleChoiceItems(positions,position,(dialog,target)->{reorder(group,app[0],target);dialog.dismiss();}).setNegativeButton(android.R.string.cancel,null).show();});
             outer.setOnDragListener((v,event)->{
                 Object dragged=event.getLocalState();if(!(dragged instanceof String) || !group.contains(dragged))return false;

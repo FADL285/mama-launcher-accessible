@@ -157,12 +157,23 @@ public class PinGateFitTest {
     }
     @Test public void secondaryAppsPageLargestText() {
         View v=paparazzi.inflate(R.layout.activity_main);v.findViewById(R.id.home_header).setVisibility(View.GONE);
-        android.widget.LinearLayout box=v.findViewById(R.id.tiles_container);android.widget.LinearLayout parent=(android.widget.LinearLayout)box.getParent();
-        android.widget.Button back=new android.widget.Button(v.getContext());back.setText(R.string.back);back.setTextSize(26);back.setBackgroundResource(R.drawable.btn_back);back.setTextColor(android.graphics.Color.WHITE);back.setMinHeight((int)(72*v.getResources().getDisplayMetrics().density));parent.addView(back,0);
-        android.widget.TextView title=AppPickerUi.heading(v.getContext(),"تطبيقات",30);title.setGravity(android.view.Gravity.CENTER);parent.addView(title,1);
+        android.widget.LinearLayout box=v.findViewById(R.id.tiles_container);
+        android.widget.LinearLayout fixed=new android.widget.LinearLayout(v.getContext());fixed.setOrientation(android.widget.LinearLayout.VERTICAL);int edge=(int)(12*v.getResources().getDisplayMetrics().density);fixed.setPadding(edge,edge,edge,0);
+        android.widget.Button back=new android.widget.Button(v.getContext());back.setText(R.string.back);back.setTextSize(26);back.setBackgroundResource(R.drawable.btn_back);back.setTextColor(android.graphics.Color.WHITE);back.setMinHeight((int)(72*v.getResources().getDisplayMetrics().density));fixed.addView(back,new android.widget.LinearLayout.LayoutParams(-1,-2));
+        android.widget.TextView title=AppPickerUi.heading(v.getContext(),"تطبيقات",30);title.setGravity(android.view.Gravity.CENTER);fixed.addView(title,new android.widget.LinearLayout.LayoutParams(-1,-2));
+        fixed.addView(v,new android.widget.LinearLayout.LayoutParams(-1,0,1));
         addAppRow(v,box,new String[]{"الحاسبة","تطبيق الإنترنت من سامسونج"},new int[]{R.drawable.ic_apps,R.drawable.ic_play});
         addAppRow(v,box,new String[]{"يوتيوب","الخرائط"},new int[]{R.drawable.ic_play,R.drawable.ic_apps});
-        snapshot(v,"secondary-apps-page-largest");
+        snapshot(fixed,"secondary-apps-page-largest");
+    }
+    @Test public void secondaryAppsScrolledBackRemainsVisible() {
+        View v=paparazzi.inflate(R.layout.activity_main);v.findViewById(R.id.home_header).setVisibility(View.GONE);
+        android.widget.LinearLayout box=v.findViewById(R.id.tiles_container);android.widget.LinearLayout fixed=new android.widget.LinearLayout(v.getContext());fixed.setOrientation(android.widget.LinearLayout.VERTICAL);int edge=(int)(12*v.getResources().getDisplayMetrics().density);fixed.setPadding(edge,edge,edge,0);
+        android.widget.Button back=new android.widget.Button(v.getContext());back.setText(R.string.back);back.setTextSize(26);back.setBackgroundResource(R.drawable.btn_back);back.setTextColor(android.graphics.Color.WHITE);back.setMinHeight((int)(72*v.getResources().getDisplayMetrics().density));fixed.addView(back,new android.widget.LinearLayout.LayoutParams(-1,-2));
+        for(int i=0;i<7;i++)addAppRow(v,box,new String[]{"تطبيق تجريبي "+i,"تطبيق آخر "+i},new int[]{R.drawable.ic_apps,R.drawable.ic_play});
+        fixed.addView(v,new android.widget.LinearLayout.LayoutParams(-1,0,1));
+        int w=(int)(720f/280*160),h=(int)(1520f/280*160);fixed.measure(View.MeasureSpec.makeMeasureSpec(w,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(h,View.MeasureSpec.EXACTLY));fixed.layout(0,0,w,h);((android.widget.ScrollView)v).fullScroll(View.FOCUS_DOWN);
+        snapshot(fixed,"secondary-scrolled-fixed-back");
     }
     private void addAppRow(View v,android.widget.LinearLayout box,String[] labels,int[] icons) {
         android.widget.LinearLayout row=new android.widget.LinearLayout(v.getContext());row.setOrientation(android.widget.LinearLayout.HORIZONTAL);

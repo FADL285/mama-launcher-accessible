@@ -58,7 +58,7 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
             initializationFinished=true;
             if(availabilityListener!=null)availabilityListener.onUnavailable();return;
         }
-        engines.add(requested);
+        if(requested!=null || installed.isEmpty())engines.add(requested);
         // A manual selection is binding. Only an unset choice may try another
         // installed engine, and no contact text is passed until offline Arabic exists.
         if(!explicit)for(String pkg:installed.keySet())if(!engines.contains(pkg))engines.add(pkg);
@@ -130,8 +130,8 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
             pending=name;
             // Retry on a deliberate Listen tap after failed initialization/data
             // install. Queue during first init, without creating parallel engines.
-            if(tts!=null && context!=null && initializationFinished) {
-                tts.shutdown();initializationFinished=false;init(context);
+            if(context!=null && initializationFinished) {
+                if(tts!=null)tts.shutdown();initializationFinished=false;init(context);
             }
             return;
         }

@@ -118,4 +118,6 @@
     <string name="dial_more">كل النتائج (%1$d)</string>
     <string name="dial_results">اختار الاسم والرقم</string>
     <string name="call_choose_hint">اختار رقم من القائمة فوق للاتصال</string>
+    <string name="dial_lookup_loading">بدور في الأسماء…</string>
+    <string name="dial_save_changed">الرقم اتغيّر، الحفظ اتلغى. اضغط حفظ تاني للرقم الجديد.</string>
 </resources>
