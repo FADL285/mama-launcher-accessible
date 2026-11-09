@@ -81,7 +81,7 @@ public class DialpadActivity extends BaseActivity {
         ((TextView)findViewById(R.id.save_number_label)).setText(R.string.save_number);
         if(number.length()<3)return;
         if(lookupPending || !contactsAvailable) {
-            TextView hint=new TextView(this);hint.setText(lookupPending?R.string.dial_lookup_loading:R.string.dial_lookup_needed);hint.setTextSize(16);hint.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));box.addView(hint);return;
+            TextView hint=new TextView(this);hint.setText(lookupPending?R.string.dial_lookup_loading:R.string.dial_lookup_needed);hint.setTextSize(16);int inset=(int)(8*getResources().getDisplayMetrics().density);hint.setPadding(inset,0,inset,0);hint.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));box.addView(hint);return;
         }
         final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> snapshot=new java.util.ArrayList<>(contacts);
         final String region=country();

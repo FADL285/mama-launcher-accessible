@@ -207,7 +207,7 @@ public class HandsetUxTest {
  @Test public void pausedSaveCannotOpenChooserAndChooserDismissesOnPause()throws Exception {saveCannotNavigateAfterPause("الأول","الثاني");}
  @Test public void newSurfaceTextUsesYellowOnHighContrastBlack()throws Exception {
   Prefs.get(app).edit().putBoolean(Prefs.HIGH_CONTRAST,true).apply();DialpadActivity dial=Robolectric.buildActivity(DialpadActivity.class).setup().get();type(dial,"010");
-  TextView hint=(TextView)((LinearLayout)dial.findViewById(R.id.dial_matches)).getChildAt(0);assertEquals(0xFFFFD600,hint.getCurrentTextColor());
+  TextView hint=(TextView)((LinearLayout)dial.findViewById(R.id.dial_matches)).getChildAt(0);assertEquals(0xFFFFD600,hint.getCurrentTextColor());assertEquals((int)(8*dial.getResources().getDisplayMetrics().density),hint.getPaddingRight());assertEquals(hint.getPaddingLeft(),hint.getPaddingRight());
   AppsPageActivity apps=Robolectric.buildActivity(AppsPageActivity.class).setup().get();ViewGroup host=apps.findViewById(android.R.id.content);ViewGroup fixed=(ViewGroup)host.getChildAt(0);
   assertEquals(0xFFFFD600,((TextView)fixed.getChildAt(1)).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)((LinearLayout)apps.findViewById(R.id.tiles_container)).getChildAt(0)).getCurrentTextColor());
  }

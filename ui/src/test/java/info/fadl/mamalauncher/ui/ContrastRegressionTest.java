@@ -15,7 +15,7 @@ public class ContrastRegressionTest {
  private View dialHint(int text) {
   View v=paparazzi.inflate(R.layout.activity_dialpad);v.setBackgroundColor(android.graphics.Color.BLACK);
   ((TextView)v.findViewById(R.id.dial_display)).setText("010");v.findViewById(R.id.dial_display).setVisibility(View.VISIBLE);v.findViewById(R.id.dial_placeholder).setVisibility(View.GONE);
-  TextView hint=new TextView(v.getContext());hint.setText(text);hint.setTextSize(16);hint.setTextColor(SurfaceText.color(v.getContext()));((LinearLayout)v.findViewById(R.id.dial_matches)).addView(hint);return v;
+  TextView hint=new TextView(v.getContext());hint.setText(text);hint.setTextSize(16);int inset=(int)(8*v.getResources().getDisplayMetrics().density);hint.setPadding(inset,0,inset,0);hint.setTextColor(SurfaceText.color(v.getContext()));((LinearLayout)v.findViewById(R.id.dial_matches)).addView(hint);return v;
  }
  @Test public void lookupUnavailable(){paparazzi.snapshot(dialHint(R.string.dial_lookup_needed),"contrast-lookup-unavailable");}
  @Test public void lookupLoading(){paparazzi.snapshot(dialHint(R.string.dial_lookup_loading),"contrast-lookup-loading");}
