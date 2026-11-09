@@ -7,16 +7,21 @@ android {
         applicationId "info.fadl.mamalauncher"
         minSdk 24
         targetSdk 33
-        versionCode 4
-        versionName "0.3-pilot"
+        versionCode 6
+        versionName "0.5-pilot"
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+    testOptions {
+        // Robolectric flow tests need the merged manifest + resources.
+        unitTests { includeAndroidResources = true }
     }
 }
 
 dependencies {
     implementation project(':ui')
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.11.1'
 }

@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="12dp">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <LinearLayout android:id="@+id/btn_settings_back" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical" android:padding="8dp">
+                <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_back_dark"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/back" android:textSize="20sp" android:textColor="@color/back_blue"/>
+            </LinearLayout>
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                android:gravity="center" android:text="@string/settings_title" android:textSize="28sp" android:textStyle="bold" android:textColor="@color/text_main"/>
+            <Space android:layout_width="76dp" android:layout_height="1dp"/>
+        </LinearLayout>
+
+        <!-- ======= Home buttons (picker + order) ======= -->
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp"
+            android:text="@string/apps_section_title" android:textSize="18sp" android:textStyle="bold" android:textColor="#5A5348"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/apps_section_hint" android:textSize="15sp" android:textColor="#5A5348"/>
+        <LinearLayout android:id="@+id/settings_apps_list"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:layout_marginTop="4dp"/>
+        <TextView android:id="@+id/apps_loading"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/apps_loading" android:textSize="16sp" android:gravity="center" android:padding="10dp"/>
+
+        <!-- ======= Sound ======= -->
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:text="@string/sound_section_title" android:textSize="18sp" android:textStyle="bold" android:textColor="#5A5348"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/auto_speak_label" android:textSize="20sp" android:textColor="@color/text_main"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/auto_speak_hint" android:textSize="15sp" android:textColor="#5A5348"/>
+            </LinearLayout>
+            <Switch android:id="@+id/switch_auto_speak" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="حالة محرك الصوت" android:textSize="20sp" android:textColor="@color/text_main"/>
+                <TextView android:id="@+id/tts_status" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/tts_checking" android:textSize="15sp" android:textColor="#5A5348"/>
+            </LinearLayout>
+            <Button android:id="@+id/btn_tts_test" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:background="@drawable/btn_back" android:textColor="#FFFFFF" android:textStyle="bold"
+                android:text="@string/tts_test" android:textSize="17sp" android:enabled="false"/>
+        </LinearLayout>
+        <Button android:id="@+id/btn_tts_data" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" android:visibility="gone"
+            android:background="@drawable/btn_back" android:textColor="#FFFFFF" android:textStyle="bold"
+            android:text="@string/tts_data" android:textSize="17sp"/>
+        <TextView android:id="@+id/volume_hint" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" android:visibility="gone"
+            android:text="@string/volume_zero_hint" android:textSize="15sp" android:textColor="@color/danger_text" android:padding="8dp"/>
+
+        <!-- ======= Permissions ======= -->
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:text="@string/perms_section_title" android:textSize="18sp" android:textStyle="bold" android:textColor="#5A5348"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/perm_contacts_label" android:textSize="20sp" android:textColor="@color/text_main"/>
+            </LinearLayout>
+            <TextView android:id="@+id/perm_contacts_status" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="15sp" android:textStyle="bold" android:textColor="@color/call_green"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/perm_call_label" android:textSize="20sp" android:textColor="@color/text_main"/>
+            </LinearLayout>
+            <TextView android:id="@+id/perm_call_status" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="15sp" android:textStyle="bold" android:textColor="@color/danger_text"/>
+        </LinearLayout>
+        <Button android:id="@+id/btn_open_app_settings" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/btn_back" android:textColor="#FFFFFF" android:textStyle="bold"
+            android:text="@string/open_app_settings" android:textSize="17sp"/>
+
+        <!-- ======= Accessibility ======= -->
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:text="@string/access_section_title" android:textSize="18sp" android:textStyle="bold" android:textColor="#5A5348"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:orientation="vertical" android:background="@drawable/tile_bg" android:padding="12dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/font_size_label" android:textSize="20sp" android:textColor="@color/text_main"/>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="horizontal">
+                <TextView android:id="@+id/btn_font_normal" android:layout_width="0dp" android:layout_weight="1" android:layout_height="52dp" android:layout_margin="4dp"
+                    android:background="@drawable/tile_bg" android:gravity="center" android:text="@string/font_normal" android:textSize="18sp" android:textColor="@color/text_main"/>
+                <TextView android:id="@+id/btn_font_large" android:layout_width="0dp" android:layout_weight="1" android:layout_height="52dp" android:layout_margin="4dp"
+                    android:background="@drawable/btn_back" android:gravity="center" android:text="@string/font_large" android:textSize="20sp" android:textStyle="bold" android:textColor="#FFFFFF"/>
+                <TextView android:id="@+id/btn_font_huge" android:layout_width="0dp" android:layout_weight="1" android:layout_height="52dp" android:layout_margin="4dp"
+                    android:background="@drawable/tile_bg" android:gravity="center" android:text="@string/font_huge" android:textSize="18sp" android:textColor="@color/text_main"/>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/contrast_label" android:textSize="20sp" android:textColor="@color/text_main"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/contrast_hint" android:textSize="15sp" android:textColor="#5A5348"/>
+            </LinearLayout>
+            <Switch android:id="@+id/switch_contrast" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/touch_guard_label" android:textSize="20sp" android:textColor="@color/text_main"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/touch_guard_hint" android:textSize="15sp" android:textColor="#5A5348"/>
+            </LinearLayout>
+            <Switch android:id="@+id/switch_touch_guard" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/vibrate_label" android:textSize="20sp" android:textColor="@color/text_main"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/vibrate_hint" android:textSize="15sp" android:textColor="#5A5348"/>
+            </LinearLayout>
+            <Switch android:id="@+id/switch_vibrate" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        </LinearLayout>
+
+        <!-- ======= Protection ======= -->
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:text="@string/protect_section_title" android:textSize="18sp" android:textStyle="bold" android:textColor="#5A5348"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/pin_label" android:textSize="20sp" android:textColor="@color/text_main"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/pin_hint" android:textSize="15sp" android:textColor="#5A5348"/>
+            </LinearLayout>
+            <Button android:id="@+id/btn_change_pin" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:background="@drawable/btn_back" android:textColor="#FFFFFF" android:textStyle="bold"
+                android:text="@string/pin_change" android:textSize="17sp"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/device_lock_label" android:textSize="20sp" android:textColor="@color/text_main"/>
+                <TextView android:id="@+id/device_lock_hint" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/device_lock_hint" android:textSize="15sp" android:textColor="#5A5348"/>
+            </LinearLayout>
+            <Switch android:id="@+id/switch_device_lock" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

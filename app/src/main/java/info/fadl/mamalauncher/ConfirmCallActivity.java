@@ -5,7 +5,6 @@ import info.fadl.mamalauncher.ui.UiBinder;
 import info.fadl.mamalauncher.ui.ContactGridAdapter;
 import info.fadl.mamalauncher.ui.ContactPhotoLoader;
 import android.Manifest;
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -26,7 +25,7 @@ import java.util.List;
  * the person has more than one number + ONE big green call button (the only
  * thing that starts a call) + a big clear back button.
  */
-public class ConfirmCallActivity extends Activity {
+public class ConfirmCallActivity extends BaseActivity {
 
     private static final int REQ_CALL = 42;
     private static final String EXTRA_ID = "id";
@@ -115,7 +114,7 @@ public class ConfirmCallActivity extends Activity {
                 findViewById(R.id.speak_unavailable).setVisibility(View.VISIBLE));
         speaker.init(this);
         final String spoken = NameSpeaker.speakText(name, getString(R.string.no_name));
-        if (savedInstanceState == null) speaker.speak(spoken);
+        if (savedInstanceState == null && Prefs.autoSpeak(this)) speaker.speak(spoken);
 
         android.widget.ImageButton repeat = findViewById(R.id.btn_repeat_name);
         repeat.setOnClickListener(v -> speaker.speak(spoken)); // hearing the name NEVER calls

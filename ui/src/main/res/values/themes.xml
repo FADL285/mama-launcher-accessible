@@ -7,4 +7,11 @@
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:fontFamily">@font/cairo</item>
     </style>
+    <style name="MamaTheme.Contrast" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/contrast_bg</item>
+        <item name="android:colorPrimary">@color/contrast_text</item>
+        <item name="android:statusBarColor">@color/contrast_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:fontFamily">@font/cairo</item>
+    </style>
 </resources>

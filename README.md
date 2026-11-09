@@ -6,15 +6,18 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 ## الحالة — Status
 
-**نسخة تجريبية مبكرة (pilot).** الكود يُبنى وتنجح اختباراته (وحدة + لقطات شاشة معروضة عبر layoutlib)، لكنه **لم يُختبر بعد على جهاز حقيقي**. التوافق الفعلي يتأكد بالتجربة على الأجهزة.
+**نسخة تجريبية مبكرة (pilot).** الكود يُبنى وتنجح اختباراته: ٦٣ اختبار وحدة وتدفق (JUnit + Robolectric يشمل مسارات بوابة PIN والقفل والاتصال والطلب عبر أنشطة حقيقية على JVM) + ٢٣ لقطة شاشة معروضة عبر layoutlib، لكنه **لم يُختبر بعد على جهاز حقيقي**. التوافق الفعلي يتأكد بالتجربة على الأجهزة.
 
-Early pilot. Builds cleanly, unit tests and layout-rendered snapshot tests pass (see `ui/src/test/snapshots/images/`), **but it has not been tested on a real device yet**.
+Early pilot. Builds cleanly, 63 unit and flow tests pass (JUnit + Robolectric: real Activities covering the PIN gate, relock, dial/save intents and call-permission discipline on the JVM) plus 23 layout-rendered snapshot tests (see `ui/src/test/snapshots/images/`), **but it has not been tested on a real device yet**.
 
 ## الفكرة — Design
 
-- الشاشة الرئيسية: شبكة جهات اتصال كبيرة بالصور؛ المفضلة (المعلَّمة بنجمة في جهات الاتصال) مثبتة فوق، ومن لا صورة له يظهر باسمه الكبير على بلاطة ملوّنة.
-- ضغطة على الشخص تفتح **شاشة تأكيد**: صورة مكبّرة، الاسم يُنطق صوتيًا (TTS)، اسم كبير، وزر أخضر كبير واحد هو وحده الذي يبدأ المكالمة. لو للشخص أكثر من رقم، لا يتصل شيء قبل اختيار الرقم بشكل ظاهر.
-- أزرار كبيرة لفتح واتساب وماسنجر ويوتيوب بأيقوناتها الحقيقية كما هي مثبتة على الجهاز.
+**وضعان: وضع يومي لماما، ووضع إعدادات محمي لمن يجهّز الهاتف.**
+
+- الوضع اليومي: ساعة وتاريخ كبيران، وأزرار كبيرة فقط لما اختاره معدّ الهاتف من التطبيقات المثبتة فعلًا + زر «الهاتف» دائمًا. تطبيق أُزيل من الهاتف يختفي زره بصمت، ولا توجد أزرار إضافة أو إعدادات في هذه الشاشة.
+- «الهاتف» يفتح شبكة صور جهات الاتصال الكبيرة (المفضلة بالنجمة فوق)، ومنها **لوحة الأرقام** لكتابة رقم جديد: الزر الأخضر يسلّم الرقم لتطبيق الاتصال الأصلي، و«حفظ الرقم» يفتح شاشة إضافة جهة اتصال الأصلية بالرقم جاهزًا — بدون أي أذونات جديدة.
+- ضغطة على الشخص تفتح **شاشة تأكيد**: صورة مكبّرة، الاسم يُنطق صوتيًا (TTS، يمكن إيقاف النطق التلقائي)، وزر أخضر واحد وحده يبدأ المكالمة. لو للشخص أكثر من رقم، لا يتصل شيء قبل اختيار الرقم بشكل ظاهر.
+- وضع الإعدادات يُفتح بضغطة مطوّلة على الساعة ثم **رمز PIN من ٤ أرقام** (يُحفظ مملّحًا ومُجزّأً مع تحديد عدد المحاولات، وبديل اختياري: قفل شاشة الجهاز نفسه). فيه: اختيار وترتيب أزرار الشاشة، حالة الصوت وتجربته، حالة الأذونات ورابط إعدادات النظام، حجم الخط (عادي/كبير/كبير جدًا)، تباين عالٍ (أصفر على أسود)، حماية اللمس من الضغطات العارضة، والاهتزاز.
 - مبني على إرشادات أبحاث تصميم الواجهات لكبار السن وضعاف القراءة: أهداف لمس كبيرة، ضغطة واحدة بدون إيماءات، ثبات أماكن العناصر، شاشة واحدة لمهمة واحدة، وزر رجوع ظاهر دائمًا.
 - خصوصية كاملة: **بدون إذن إنترنت أصلًا**، بدون تتبع، كل البيانات محلية على الجهاز. الأذونات الوحيدة: قراءة جهات الاتصال وإجراء المكالمات.
 
@@ -26,7 +29,7 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 
 - minSdk 24 / targetSdk 33 (provisional pilot choices, not a committed support range)
 - No third-party runtime dependencies — framework APIs only
-- Tests: `gradle :app:testDebugUnitTest` (unit) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
+- Tests: `gradle :app:testDebugUnitTest` (32 unit + 31 Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
 
 ## الخصوصية والنطاق — Privacy & Scope
 
