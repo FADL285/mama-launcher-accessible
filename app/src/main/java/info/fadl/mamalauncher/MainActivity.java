@@ -26,6 +26,7 @@ import info.fadl.mamalauncher.ui.UiBinder;
 public class MainActivity extends BaseActivity {
 
     private LinearLayout tiles;
+    protected boolean isSecondary(){return false;}
     private boolean appliedContrast;
     private int appliedFont;
     private final android.content.BroadcastReceiver packageChanges = new android.content.BroadcastReceiver() {
@@ -37,6 +38,14 @@ public class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         tiles = findViewById(R.id.tiles_container);
+        if(isSecondary()) {
+            findViewById(R.id.home_header).setVisibility(View.GONE);
+            android.widget.Button back=new android.widget.Button(this);back.setText(R.string.back);back.setTextSize(26);back.setBackgroundResource(R.drawable.btn_back);back.setTextColor(android.graphics.Color.WHITE);back.setMinHeight((int)(72*getResources().getDisplayMetrics().density));
+            guard(back,this::finish);
+            ((LinearLayout)tiles.getParent()).addView(back,0);
+            TextView title=new TextView(this);title.setText(R.string.apps_page);title.setTextSize(30);title.setGravity(android.view.Gravity.CENTER);title.setTextColor(getResources().getColor(R.color.text_main));
+            ((LinearLayout)tiles.getParent()).addView(title,1);
+        }
         appliedContrast = Prefs.highContrast(this);
         appliedFont = Prefs.fontScale(this);
         android.content.IntentFilter changes = new android.content.IntentFilter();
@@ -61,6 +70,7 @@ public class MainActivity extends BaseActivity {
     };
 
     private void updateClock() {
+        if(isSecondary())return;
         ((TextView) findViewById(R.id.home_clock)).setText(
                 new SimpleDateFormat("h:mm", Locale.US).format(new Date()));
         ((TextView) findViewById(R.id.home_date)).setText(
@@ -90,14 +100,18 @@ public class MainActivity extends BaseActivity {
         tiles.removeAllViews();
         List<View> built = new ArrayList<>();
 
-        View phone = UiBinder.buildHomeTile(this, getString(R.string.tile_phone),
-                getResources().getDrawable(R.drawable.ic_call), R.drawable.chip_green,
-                contrast(), null);
-        guard(phone, () -> startActivity(new Intent(this, PhoneActivity.class)));
-        built.add(phone);
+        if(!isSecondary()) {
+            View phone = UiBinder.buildHomeTile(this, getString(R.string.tile_phone),
+                getResources().getDrawable(R.drawable.ic_call), R.drawable.chip_green, contrast(), null);
+            guard(phone, () -> startActivity(new Intent(this, PhoneActivity.class)));built.add(phone);
+            if(!AppSelection.parse(Prefs.get(this).getString(AppSelection.SECONDARY_KEY,null)).isEmpty()) {
+                View folder=UiBinder.buildHomeTile(this,getString(R.string.apps_page),getResources().getDrawable(R.drawable.ic_apps),R.drawable.chip_green,contrast(),null);
+                guard(folder,()->startActivity(new Intent(this,AppsPageActivity.class)));built.add(folder);
+            }
+        }
 
         PackageManager pm = getPackageManager();
-        for (String pkg : AppSelection.parse(Prefs.get(this).getString(AppSelection.PREF_KEY, null))) {
+        for (String pkg : AppSelection.parse(Prefs.get(this).getString(isSecondary()?AppSelection.SECONDARY_KEY:AppSelection.PREF_KEY, null))) {
             Intent launch = pm.getLaunchIntentForPackage(pkg);
             if (launch == null) continue; // uninstalled: silently gone, no placeholder
             String name = pkg;
@@ -114,6 +128,9 @@ public class MainActivity extends BaseActivity {
             built.add(tile);
         }
 
+        if(isSecondary() && built.isEmpty()) {
+            TextView empty=new TextView(this);empty.setText(R.string.apps_empty);empty.setTextSize(24);empty.setTextColor(getResources().getColor(R.color.text_main));tiles.addView(empty);
+        }
         float d = getResources().getDisplayMetrics().density;
         int m = (int) (6 * d);
         int h = (int) (170 * d);
@@ -143,6 +160,7 @@ public class MainActivity extends BaseActivity {
 
     @Override
     public void onBackPressed() {
+        if(isSecondary()){finish();return;}
         // Home launcher: BACK on the everyday screen must not exit to a blank state.
     }
 }

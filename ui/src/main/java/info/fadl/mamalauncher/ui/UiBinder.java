@@ -37,6 +37,8 @@ public final class UiBinder {
             return;
         }
         single.setVisibility(View.GONE);
+        TextView target=root.findViewById(R.id.selected_call_number);
+        target.setVisibility(View.VISIBLE);target.setText(R.string.call_choose_hint);
         box.setVisibility(View.VISIBLE);
         box.removeAllViews();
 
@@ -72,6 +74,7 @@ public final class UiBinder {
                     }
                 }
                 v.setBackgroundResource(R.drawable.btn_number_selected);
+                target.setText((String)v.getTag());target.setTextDirection(View.TEXT_DIRECTION_LTR);
                 listener.onNumberSelected((String) v.getTag());
             });
             row.addView(b);
@@ -81,6 +84,8 @@ public final class UiBinder {
     /** Re-applies the visible selection highlight (e.g. after activity recreation). */
     public static void selectNumber(View root, String number) {
         LinearLayout box = root.findViewById(R.id.numbers_container);
+        TextView target=root.findViewById(R.id.selected_call_number);
+        if(number!=null && box.getVisibility()==View.VISIBLE){target.setVisibility(View.VISIBLE);target.setText(number);target.setTextDirection(View.TEXT_DIRECTION_LTR);}
         for (int r = 0; r < box.getChildCount(); r++) {
             LinearLayout rr = (LinearLayout) box.getChildAt(r);
             for (int k = 0; k < rr.getChildCount(); k++) {

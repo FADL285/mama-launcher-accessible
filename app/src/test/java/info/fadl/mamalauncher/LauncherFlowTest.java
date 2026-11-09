@@ -178,10 +178,16 @@ public class LauncherFlowTest {
     }
 
     @Test
-    public void dialpadSaveOpensContactsInsertPrefilled() {
+    public void dialpadSaveOpensContactsInsertPrefilled() throws Exception {
+        org.robolectric.Shadows.shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.READ_CONTACTS);
+        FixtureContactsProvider provider=new FixtureContactsProvider(){
+            @Override public android.database.Cursor query(android.net.Uri uri,String[] projection,String selection,String[] args,String sort){return new android.database.MatrixCursor(projection);}
+        };
+        org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,provider);
         DialpadActivity a = Robolectric.buildActivity(DialpadActivity.class).setup().get();
         tapDial(a, "0100");
         a.findViewById(R.id.btn_save_number).performClick();
+        Thread.sleep(150);org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
         Intent insert = shadow(a).getNextStartedActivity();
         assertNotNull(insert);
         assertEquals(Intent.ACTION_INSERT, insert.getAction());

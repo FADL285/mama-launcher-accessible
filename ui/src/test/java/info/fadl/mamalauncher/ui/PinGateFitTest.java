@@ -131,6 +131,46 @@ public class PinGateFitTest {
         ((android.widget.ScrollView)v).fullScroll(View.FOCUS_DOWN);
         snapshot(v,"internet-visible-prefix-bottom");
     }
+    @Test public void dialpadSavedMatchLargestText() {
+        View v=paparazzi.inflate(R.layout.activity_dialpad);
+        ((android.widget.TextView)v.findViewById(R.id.dial_display)).setText("01000000001");v.findViewById(R.id.dial_display).setVisibility(View.VISIBLE);v.findViewById(R.id.dial_placeholder).setVisibility(View.GONE);
+        ((android.widget.TextView)v.findViewById(R.id.save_number_label)).setText(R.string.dial_view_saved);
+        android.widget.Button match=new android.widget.Button(v.getContext());match.setText("متسجّل · اسم تجريبي\n01000000001");match.setTextSize(18);match.setAllCaps(false);
+        ((android.widget.LinearLayout)v.findViewById(R.id.dial_matches)).addView(match);
+        snapshot(v,"dialpad-saved-match-largest");
+    }
+    @Test public void dialpadSuggestionsLargestText() {
+        View v=paparazzi.inflate(R.layout.activity_dialpad);
+        ((android.widget.TextView)v.findViewById(R.id.dial_display)).setText("010");v.findViewById(R.id.dial_display).setVisibility(View.VISIBLE);v.findViewById(R.id.dial_placeholder).setVisibility(View.GONE);
+        android.widget.LinearLayout box=v.findViewById(R.id.dial_matches);
+        android.widget.Button match=new android.widget.Button(v.getContext());match.setText("اقتراح · اسم تجريبي\n01000000001");match.setTextSize(18);match.setAllCaps(false);box.addView(match);
+        android.widget.Button more=new android.widget.Button(v.getContext());more.setText("كل النتائج (6)");more.setTextSize(18);box.addView(more);
+        snapshot(v,"dialpad-suggestions-largest");
+    }
+    @Test public void homeWithAppsPageLargestText() {
+        View v=paparazzi.inflate(R.layout.activity_main);
+        ((android.widget.TextView)v.findViewById(R.id.home_clock)).setText("1:00");((android.widget.TextView)v.findViewById(R.id.home_date)).setText("الاثنين ٩ نوفمبر");
+        android.widget.LinearLayout box=v.findViewById(R.id.tiles_container);
+        addAppRow(v,box,new String[]{"الهاتف","تطبيقات"},new int[]{R.drawable.ic_call,R.drawable.ic_apps});
+        addAppRow(v,box,new String[]{"واتساب","الاستوديو"},new int[]{R.drawable.ic_chat,R.drawable.ic_play});
+        snapshot(v,"home-with-apps-page-largest");
+    }
+    @Test public void secondaryAppsPageLargestText() {
+        View v=paparazzi.inflate(R.layout.activity_main);v.findViewById(R.id.home_header).setVisibility(View.GONE);
+        android.widget.LinearLayout box=v.findViewById(R.id.tiles_container);android.widget.LinearLayout parent=(android.widget.LinearLayout)box.getParent();
+        android.widget.Button back=new android.widget.Button(v.getContext());back.setText(R.string.back);back.setTextSize(26);back.setBackgroundResource(R.drawable.btn_back);back.setTextColor(android.graphics.Color.WHITE);back.setMinHeight((int)(72*v.getResources().getDisplayMetrics().density));parent.addView(back,0);
+        android.widget.TextView title=AppPickerUi.heading(v.getContext(),"تطبيقات",30);title.setGravity(android.view.Gravity.CENTER);parent.addView(title,1);
+        addAppRow(v,box,new String[]{"الحاسبة","تطبيق الإنترنت من سامسونج"},new int[]{R.drawable.ic_apps,R.drawable.ic_play});
+        addAppRow(v,box,new String[]{"يوتيوب","الخرائط"},new int[]{R.drawable.ic_play,R.drawable.ic_apps});
+        snapshot(v,"secondary-apps-page-largest");
+    }
+    private void addAppRow(View v,android.widget.LinearLayout box,String[] labels,int[] icons) {
+        android.widget.LinearLayout row=new android.widget.LinearLayout(v.getContext());row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        for(int i=0;i<labels.length;i++) {
+            View tile=UiBinder.buildHomeTile(v.getContext(),labels[i],v.getResources().getDrawable(icons[i]),R.drawable.chip_green,false,null);
+            android.widget.LinearLayout.LayoutParams lp=new android.widget.LinearLayout.LayoutParams(0,-1,1);int m=(int)(6*v.getResources().getDisplayMetrics().density);lp.setMargins(m,m,m,m);row.addView(tile,lp);
+        }box.addView(row,new android.widget.LinearLayout.LayoutParams(-1,-2));
+    }
     private void snapshot(View v,String name) {
         paparazzi.snapshot(v,name);
 
@@ -140,10 +180,9 @@ public class PinGateFitTest {
         SettingsSections.show(v,section);
         android.widget.LinearLayout box=v.findViewById(R.id.settings_apps_list);
         v.findViewById(R.id.apps_loading).setVisibility(View.GONE);
-        for(int i=0;i<30;i++) {
-            android.widget.CheckBox cb=new android.widget.CheckBox(v.getContext());
-            cb.setText("تطبيق تجريبي "+i); cb.setTextSize(20);box.addView(cb);
-        }
+        box.addView(AppPickerUi.heading(v.getContext(),v.getContext().getString(R.string.apps_drag_hint),18));
+        box.addView(AppPickerUi.heading(v.getContext(),v.getContext().getString(R.string.apps_home),24));
+        for(int i=0;i<30;i++)box.addView(AppPickerUi.row(v.getContext(),"تطبيق تجريبي "+i,i<4?0:i<8?1:2));
         return v;
     }
     @Test public void settingsLandingBeforeDiscovery() {

@@ -12,6 +12,7 @@ import java.util.List;
 public final class AppSelection {
 
     public static final String PREF_KEY = "apps_selected";
+    public static final String SECONDARY_KEY = "apps_secondary";
 
     private AppSelection() {}
 
@@ -38,6 +39,13 @@ public final class AppSelection {
             sb.append(p);
         }
         return sb.toString();
+    }
+
+    /** Move to an arbitrary drop/tap destination without mutating the input. */
+    public static List<String> moveTo(List<String> pkgs,int from,int to) {
+        List<String> out=new ArrayList<>(pkgs);
+        if(from<0 || from>=out.size() || to<0 || to>=out.size())return out;
+        out.add(to,out.remove(from));return out;
     }
 
     /** Moves the entry at index i one step up (delta -1) or down (delta +1);

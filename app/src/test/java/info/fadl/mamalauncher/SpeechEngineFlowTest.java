@@ -38,9 +38,10 @@ public class SpeechEngineFlowTest {
   TextToSpeech old=speech(c.get());c.get().findViewById(R.id.btn_tts_data).performClick();Shadows.shadowOf(c.get()).getNextStartedActivity();
   c.pause().stop();org.robolectric.shadows.ShadowTextToSpeech.addLanguageAvailability(new java.util.Locale("ar"));c.restart().resume();
   TextToSpeech now=speech(c.get());assertNotSame(old,now);assertTrue(Shadows.shadowOf(old).isShutdown());
-  Shadows.shadowOf(now).getOnInitListener().onInit(TextToSpeech.SUCCESS);
+  org.robolectric.shadows.ShadowTextToSpeech.addVoice(new android.speech.tts.Voice("offline-fixture",new java.util.Locale("ar"),300,300,false,java.util.Collections.emptySet()));
+  Shadows.shadowOf(now).getOnInitListener().onInit(TextToSpeech.SUCCESS);Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
   assertEquals(c.get().getString(R.string.tts_ready),((TextView)c.get().findViewById(R.id.tts_status)).getText().toString());
-  Shadows.shadowOf(old).getOnInitListener().onInit(TextToSpeech.ERROR);
+  Shadows.shadowOf(old).getOnInitListener().onInit(TextToSpeech.ERROR);Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
   assertEquals(c.get().getString(R.string.tts_ready),((TextView)c.get().findViewById(R.id.tts_status)).getText().toString());
  }
  @Test public void removedExplicitEngineDoesNotSilentlyBecomeDefault(){

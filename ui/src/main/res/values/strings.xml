@@ -21,8 +21,8 @@
     <string name="open_settings_hint">للإعدادات: اضغط مطولًا على الساعة فوق</string>
 
     <string name="settings_title">الإعدادات</string>
-    <string name="apps_section_title">أزرار الشاشة الرئيسية</string>
-    <string name="apps_section_hint">الزر المحدد يظهر في الشاشة. الأسهم تغيّر ترتيبه.</string>
+    <string name="apps_section_title">التطبيقات وترتيبها</string>
+    <string name="apps_section_hint">اختار مكان كل تطبيق. الترتيب محفوظ لكل صفحة لوحدها.</string>
     <string name="apps_loading">بيحمل قائمة التطبيقات…</string>
     <string name="perms_section_title">الأذونات</string>
     <string name="perm_contacts_label">جهات الاتصال</string>
@@ -77,8 +77,8 @@
     <string name="settings_menu_hint">اختار قسم. التغييرات بتتحفظ تلقائيًا.</string>
     <string name="settings_sections_back">← الأقسام</string>
     <string name="settings_back_home">← رجوع</string>
-    <string name="settings_nav_apps_title">أزرار الشاشة الرئيسية</string>
-    <string name="settings_nav_apps_hint">اختيار التطبيقات وترتيبها</string>
+    <string name="settings_nav_apps_title">التطبيقات وترتيبها</string>
+    <string name="settings_nav_apps_hint">الرئيسية وصفحة تطبيقات والترتيب</string>
     <string name="settings_nav_sound_title">الصوت</string>
     <string name="settings_nav_sound_hint">نطق الأسماء وتجربة الصوت</string>
     <string name="settings_nav_accessibility_title">سهولة الاستخدام</string>
@@ -99,4 +99,23 @@
     <string name="favorite_remove">إزالة الرقم ده من مفضلة التطبيق</string>
     <string name="favorite_choose_number">اختار رقم الأول عشان تضيفه للمفضلة</string>
     <string name="zero_plus_hint">صفر، اضغط مطولا لإضافة كود الدولة بعلامة زائد</string>
+    <string name="dial_view_saved">عرض الاسم</string>
+    <string name="dial_saved">متسجّل</string>
+    <string name="dial_suggestion">اقتراح</string>
+    <string name="dial_saved_choose">الرقم متسجّل لأكتر من اسم - اختار</string>
+    <string name="dial_lookup_needed">مش قادر أتأكد إذا الرقم متسجّل. اسمح بقراءة الأسماء من الإعدادات وجرب تاني.</string>
+    <string name="dial_refine">في نتائج تانية - كمّل الرقم</string>
+    <string name="apps_page">تطبيقات</string>
+    <string name="apps_home">الرئيسية</string>
+    <string name="apps_folder">داخل تطبيقات</string>
+    <string name="apps_hidden">مش ظاهر</string>
+    <string name="apps_empty">مفيش تطبيقات هنا لسه. اختار من إعدادات التطبيقات.</string>
+    <string name="app_place">مكان التطبيق</string>
+    <string name="app_move">ترتيب %1$s - اسحب أو اضغط</string>
+    <string name="app_move_title">نقل التطبيق لمكان</string>
+    <string name="apps_drag_hint">اختار مكان كل تطبيق. لترتيب التطبيقات اسحب من ☰، أو اضغط عليه واختار رقم المكان.</string>
+    <string name="tts_offline_only">نطق الأسماء على الجهاز فقط. بنفضّل المصري لو المحرك موفّره، وإلا عربي من غير إنترنت.</string>
+    <string name="dial_more">كل النتائج (%1$d)</string>
+    <string name="dial_results">اختار الاسم والرقم</string>
+    <string name="call_choose_hint">اختار رقم من القائمة فوق للاتصال</string>
 </resources>
