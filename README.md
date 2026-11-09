@@ -6,16 +6,16 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 ## الحالة — Status
 
-**نسخة تجريبية مبكرة (pilot).** الكود يُبنى وتنجح اختباراته: ٨٥ اختبار وحدة وتدفق (JUnit + Robolectric يشمل مسارات بوابة PIN والقفل والاتصال والطلب عبر أنشطة حقيقية على JVM) + ٢٧ لقطة شاشة معروضة عبر layoutlib، لكنه **لم يُختبر بعد على جهاز حقيقي**. التوافق الفعلي يتأكد بالتجربة على الأجهزة.
+**نسخة تجريبية تحت تجربة مشرفة.** اختبارات الكود والواجهة ناجحة، لكن إصلاحات النسخة الجديدة ما زالت تحتاج إعادة تجربة على الهاتف الفعلي، خصوصا الصوت والمكالمات وقفل الجهاز.
 
-Supervised pilot. Current PR4 source passes 109 app unit/flow tests (JUnit + Robolectric) and 40 layout-rendered snapshots. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
+Supervised pilot. Current PR4 source, including merged PR3, passes 110 app unit/flow tests (JUnit + Robolectric) and 40 layout-rendered snapshots. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
 
 ## الفكرة — Design
 
 **وضعان: وضع يومي لماما، ووضع إعدادات محمي لمن يجهّز الهاتف.**
 
 - الوضع اليومي: ساعة وتاريخ كبيران، وأزرار كبيرة فقط لما اختاره معدّ الهاتف من التطبيقات المثبتة فعلًا + زر «الهاتف» دائمًا. تطبيق أُزيل من الهاتف يختفي زره بصمت، ولا توجد أزرار إضافة أو إعدادات في هذه الشاشة.
-- «الهاتف» يفتح شبكة صور جهات الاتصال الكبيرة (المفضلة بالنجمة فوق)، ومنها **لوحة الأرقام** لكتابة رقم جديد: الزر الأخضر يسلّم الرقم لتطبيق الاتصال الأصلي، و«حفظ الرقم» يفتح شاشة إضافة جهة اتصال الأصلية بالرقم جاهزًا — بدون أي أذونات جديدة.
+- «الهاتف» يفتح شبكة صور جهات الاتصال الكبيرة (المفضلة بالنجمة فوق)، ومنها **لوحة الأرقام** لكتابة رقم جديد: الزر الأخضر يبدأ المكالمة بعد ضغطة واضحة وإذن الاتصال، و«حفظ الرقم» يفتح شاشة إضافة جهة اتصال الأصلية بالرقم جاهزًا - بدون كتابة جهات الاتصال بصمت.
 - ضغطة على الشخص تفتح **شاشة تأكيد**: صورة مكبّرة، الاسم يُنطق صوتيًا (TTS، يمكن إيقاف النطق التلقائي)، وزر أخضر واحد وحده يبدأ المكالمة. لو للشخص أكثر من رقم، لا يتصل شيء قبل اختيار الرقم بشكل ظاهر.
 - وضع الإعدادات يُفتح بضغطة مطوّلة على الساعة ثم **رمز PIN من ٤ أرقام** (يُحفظ مملّحًا ومُجزّأً مع تحديد عدد المحاولات، وبديل اختياري: قفل شاشة الجهاز نفسه). فيه: اختيار وترتيب أزرار الشاشة، حالة الصوت وتجربته، حالة الأذونات ورابط إعدادات النظام، حجم الخط (عادي/كبير/كبير جدًا)، تباين عالٍ (أصفر على أسود)، حماية اللمس من الضغطات العارضة، والاهتزاز.
 - مبني على إرشادات أبحاث تصميم الواجهات لكبار السن وضعاف القراءة: أهداف لمس كبيرة، ضغطة واحدة بدون إيماءات، ثبات أماكن العناصر، شاشة واحدة لمهمة واحدة، وزر رجوع ظاهر دائمًا.
@@ -29,7 +29,7 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 
 - minSdk 24 / targetSdk 33 (provisional pilot choices, not a committed support range)
 - No third-party runtime dependencies — framework APIs only
-- Tests: `gradle :app:testDebugUnitTest` (34 unit + 51 Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
+- Tests: `gradle :app:testDebugUnitTest` (110 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
 
 ## الخصوصية والنطاق — Privacy & Scope
 

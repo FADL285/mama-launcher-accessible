@@ -37,7 +37,7 @@ not approval to merge.
 
 ## Validation and limits
 
-109 app unit/flow tests pass. 40 UI methods generate 40 layout-render snapshots
+110 app unit/flow tests pass. 40 UI methods generate 40 layout-render snapshots
 in verify mode; debug assemble passes. Tests inspect intents and never place
 real calls. These counts exclude the independent manifest test in PR #3. The
 combined supervised candidate adds that manifest test and must be tested again.
@@ -95,3 +95,5 @@ physical touch guard enabled too. A + cannot be appended mid-number.
 Contact detail keeps Call and Back fixed, with name/photo/star/number choices
 in a scrollable region. Largest-text bottom fixture proves complete number
 choices and fixed actions; scrolling can be needed to reach numbers.
+
+PR3 is now merged on main. PR4 incorporates main and its TTS query fix/test; total app count110 includes that test. Version0.6-pilot-candidate/code8 matches the delivered combined candidate.
