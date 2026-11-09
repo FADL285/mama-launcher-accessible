@@ -13,6 +13,7 @@ import android.widget.TextView;
  * CALL_PHONE permission. Permission grant alone never calls. Save opens the
  * system contact-insert form and never writes contacts silently. */
 public class DialpadActivity extends BaseActivity {
+ @Override protected boolean homeAfterLockApplies(){return true;}
 
     private final StringBuilder number = new StringBuilder();
     private TextView display;
@@ -148,7 +149,7 @@ public class DialpadActivity extends BaseActivity {
     }
 
     @Override protected void onResume() {
-        super.onResume(); resumed=true;if(callAction!=null)callAction.onResume();refreshContacts();
+        super.onResume(); if(isFinishing())return;resumed=true;if(callAction!=null)callAction.onResume();refreshContacts();
     }
     /** Leaving the page invalidates reads and chooser actions, even if it is not destroyed. */
     @Override protected void onPause() {

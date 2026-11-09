@@ -25,6 +25,7 @@ public class MainActivity extends BaseActivity {
 
     static final String GUIDE_SEEN="first_use_guide_v1";
     private LinearLayout tiles;
+    private boolean returningFromApps;
     protected boolean isSecondary(){return false;}
     private boolean appliedContrast;
     private int appliedFont;
@@ -37,6 +38,7 @@ public class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         tiles = findViewById(R.id.tiles_container);
+        returningFromApps=savedInstanceState!=null && savedInstanceState.getBoolean("navigation.returning_from_apps",false);
         if(isSecondary()) {
             View header=info.fadl.mamalauncher.ui.PageHeader.apps((android.widget.ScrollView)findViewById(R.id.home_header).getParent().getParent());
             guard(header.findViewById(R.id.btn_back),this::finish);
@@ -74,13 +76,14 @@ public class MainActivity extends BaseActivity {
     private void updateClock() {
         if(isSecondary())return;
         Date now=clockNow();java.util.TimeZone zone=java.util.TimeZone.getDefault();
-        ((TextView)findViewById(R.id.home_clock)).setText(info.fadl.mamalauncher.ui.HomeClock.time(now,zone));
+        info.fadl.mamalauncher.ui.HomeClock.bind(findViewById(R.id.home_header),now,zone);
         ((TextView)findViewById(R.id.home_date)).setText(info.fadl.mamalauncher.ui.HomeClock.date(now,zone));
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        if(isFinishing())return;
         if (appliedContrast != Prefs.highContrast(this) || appliedFont != Prefs.fontScale(this)) {
             recreate();
             return;
@@ -90,6 +93,7 @@ public class MainActivity extends BaseActivity {
         clock.removeCallbacks(clockTick);
         clock.postDelayed(clockTick, 30_000);
         buildTiles();
+        if(!isSecondary() && returningFromApps){returningFromApps=false;resetHomeScroll();}
     }
 
     @Override
@@ -114,7 +118,7 @@ public class MainActivity extends BaseActivity {
         List<String> order=isSecondary()?chosen:AppSelection.homeOrder(Prefs.get(this).getString(AppSelection.HOME_ORDER_KEY,null),chosen);
         for (String pkg : order) {
             if(AppSelection.PHONE.equals(pkg)){View phone=UiBinder.buildHomeTile(this,getString(R.string.tile_phone),getResources().getDrawable(R.drawable.ic_call),R.drawable.chip_green,contrast(),null);phone.setTag(AppSelection.PHONE);guardTile(phone,()->startActivity(new Intent(this,PhoneActivity.class)));built.add(phone);continue;}
-            if(AppSelection.FOLDER.equals(pkg)){if(hasLaunchableSecondary()){View folder=UiBinder.buildHomeTile(this,getString(R.string.apps_page),getResources().getDrawable(R.drawable.ic_apps),R.drawable.chip_green,contrast(),null);folder.setTag(AppSelection.FOLDER);guardTile(folder,()->startActivity(new Intent(this,AppsPageActivity.class)));built.add(folder);}continue;}
+            if(AppSelection.FOLDER.equals(pkg)){if(hasLaunchableSecondary()){View folder=UiBinder.buildHomeTile(this,getString(R.string.apps_page),getResources().getDrawable(R.drawable.ic_apps),R.drawable.chip_green,contrast(),null);folder.setTag(AppSelection.FOLDER);guardTile(folder,()->{returningFromApps=true;startActivity(new Intent(this,AppsPageActivity.class));});built.add(folder);}continue;}
 
             Intent launch = pm.getLaunchIntentForPackage(pkg);
             if (launch == null) continue; // uninstalled: silently gone, no placeholder
@@ -180,6 +184,29 @@ public class MainActivity extends BaseActivity {
         unregisterReceiver(packageChanges);
         clock.removeCallbacks(clockTick);
         super.onDestroy();
+    }
+
+    /**
+     * System Home (or the launcher icon) re-delivers MAIN to this singleTask
+     * instance without a fresh onCreate. Coming back must always land at the
+     * TOP of the everyday page: the family lost their place when the old
+     * scroll position survived a Home press or the return from the Apps page.
+     * Ordinary resumes (Back from an app, settings, rotation) are untouched.
+     */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if(isSecondary() || intent==null || !(Intent.ACTION_MAIN.equals(intent.getAction()) ||
+                (intent.getComponent()!=null && MainActivity.class.getName().equals(intent.getComponent().getClassName()))))return;
+        resetHomeScroll();
+    }
+    @Override protected void onSaveInstanceState(Bundle out){
+        out.putBoolean("navigation.returning_from_apps",returningFromApps);
+        super.onSaveInstanceState(out);
+    }
+    private void resetHomeScroll(){
+        View scroll=findViewById(R.id.home_scroll);
+        if(scroll!=null)scroll.post(()->scroll.scrollTo(0,0));
     }
 
     @Override

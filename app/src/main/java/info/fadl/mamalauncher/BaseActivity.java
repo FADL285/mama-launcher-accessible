@@ -2,6 +2,7 @@ package info.fadl.mamalauncher;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -28,9 +29,74 @@ public abstract class BaseActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         if (Prefs.highContrast(this)) setTheme(R.style.MamaTheme_Contrast);
         super.onCreate(savedInstanceState);
+        returnHomePending=savedInstanceState!=null && savedInstanceState.getBoolean("navigation.home_after_lock_pending",false);
     }
 
     protected boolean contrast() { return Prefs.highContrast(this); }
+
+    // ---- optional "back to Home after a real screen lock" (family setting) ----
+    // Applies ONLY to internal content pages that opt in (Apps, Phone,
+    // Dialpad). Never to the call confirmation, the PIN gate or settings: a
+    // pending call keeps its existing behavior. Protected settings still use
+    // their separate, existing screen-off lock; this option does not change it.
+    protected boolean homeAfterLockApplies() { return false; }
+
+    private boolean foreground;
+    private boolean returnHomePending;
+    private android.content.BroadcastReceiver screenOffReceiver;
+
+    @Override protected void onStart() {
+        super.onStart();
+        if (homeAfterLockApplies() && screenOffReceiver == null) {
+            screenOffReceiver = new android.content.BroadcastReceiver() {
+                @Override public void onReceive(Context c, Intent i) {
+                    if (Intent.ACTION_SCREEN_OFF.equals(i.getAction()) && foreground) markScreenOff();
+                }
+            };
+            registerReceiver(screenOffReceiver, new android.content.IntentFilter(Intent.ACTION_SCREEN_OFF));
+        }
+    }
+    @Override protected void onResume() {
+        super.onResume();
+        foreground = true;
+        completeHomeReturnIfUnlocked();
+    }
+    @Override public void onWindowFocusChanged(boolean focused){
+        super.onWindowFocusChanged(focused);
+        if(focused && foreground)completeHomeReturnIfUnlocked();
+    }
+    private void completeHomeReturnIfUnlocked(){
+        android.os.PowerManager power=(android.os.PowerManager)getSystemService(POWER_SERVICE);
+        android.app.KeyguardManager keyguard=(android.app.KeyguardManager)getSystemService(KEYGUARD_SERVICE);
+        if(returnHomePending && (power==null || power.isInteractive())
+                && (keyguard==null || !keyguard.isKeyguardLocked())) {
+            returnHomePending=false;
+            if(Prefs.homeAfterLock(this) && homeAfterLockApplies()) {
+                startActivity(new Intent(this,MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));
+                finish();
+            }
+        }
+    }
+    @Override protected void onPause() {
+        // Screen-off and onPause order varies by Android/OEM. Capture both
+        // orders. Leaving for another app while the display is on is NOT a lock.
+        android.os.PowerManager power=(android.os.PowerManager)getSystemService(POWER_SERVICE);
+        if(foreground && power!=null && !power.isInteractive())markScreenOff();
+        foreground=false;
+        super.onPause();
+    }
+    private void markScreenOff(){
+        if(homeAfterLockApplies() && Prefs.homeAfterLock(this))returnHomePending=true;
+    }
+    @Override protected void onSaveInstanceState(Bundle out){
+        out.putBoolean("navigation.home_after_lock_pending",returnHomePending);
+        super.onSaveInstanceState(out);
+    }
+    @Override protected void onStop() {
+        if(screenOffReceiver!=null){unregisterReceiver(screenOffReceiver);screenOffReceiver=null;}
+        super.onStop();
+    }
 
     protected void haptic(View v) {
         if (Prefs.vibrate(this)) {

@@ -8,9 +8,11 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 **نسخة تجريبية تحت تجربة مشرفة.** اختبارات الكود والواجهة ناجحة، لكن إصلاحات النسخة الجديدة ما زالت تحتاج إعادة تجربة على الهاتف الفعلي، خصوصا الصوت والمكالمات وقفل الجهاز.
 
-Supervised pilot. Current 0.12 candidate source, based on merged PR6, passes 170 app unit/flow tests (JUnit + Robolectric) and 78 UI test cases (77 rendered snapshots and one assertion-only header-fit case). Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
+Supervised pilot. Current 0.13 candidate source, based on merged PR7, passes 186 app unit/flow tests (JUnit + Robolectric) and 83 UI test cases. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
 
-## الفكرة — Design
+The Home-after-lock default is pending an explicit owner decision. This candidate uses OFF as a non-final fallback. The local debug signer differs from the installed pilot, so no update APK is distributed. See [feedback changes and retest plan](docs/handset-feedback-013.md) and [current bounded security/performance review](docs/audit-013.md).
+
+## الفكرة - Design
 
 **وضعان: وضع يومي لماما، ووضع إعدادات محمي لمن يجهّز الهاتف.**
 
@@ -29,7 +31,7 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 
 - minSdk 24 / targetSdk 33 (provisional pilot choices, not a committed support range)
 - No third-party runtime dependencies — framework APIs only
-- Tests: `gradle :app:testDebugUnitTest` (170 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
+- Tests: `gradle :app:testDebugUnitTest` (186 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
 
 ## الخصوصية والنطاق — Privacy & Scope
 

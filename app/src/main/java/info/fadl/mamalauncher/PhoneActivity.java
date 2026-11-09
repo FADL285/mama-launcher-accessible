@@ -17,6 +17,7 @@ import info.fadl.mamalauncher.ui.ContactPhotoLoader;
 /** The Phone button: big photo contacts, plus the dial-pad entry for a new
  *  number. Contacts permission is requested here, not on the home screen. */
 public class PhoneActivity extends BaseActivity {
+ @Override protected boolean homeAfterLockApplies(){return true;}
 
     private static final int REQ_CONTACTS = 41;
     private static final String PREF_CONTACTS_ASKED = "contacts_asked";
@@ -65,6 +66,7 @@ public class PhoneActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if(isFinishing())return;
         refresh();
     }
 

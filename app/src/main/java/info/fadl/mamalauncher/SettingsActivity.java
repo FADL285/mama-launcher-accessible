@@ -181,6 +181,7 @@ public class SettingsActivity extends ProtectedModeActivity {
         bindSwitch(R.id.switch_contrast, Prefs.HIGH_CONTRAST, Prefs.highContrast(this), true);
         bindSwitch(R.id.switch_touch_guard, Prefs.TOUCH_GUARD, Prefs.touchGuard(this), false);
         bindSwitch(R.id.switch_vibrate, Prefs.VIBRATE, Prefs.vibrate(this), false);
+        bindSwitch(R.id.switch_home_after_lock, Prefs.HOME_AFTER_LOCK, Prefs.homeAfterLock(this), false);
     }
 
     private void markFont(int scale) {
