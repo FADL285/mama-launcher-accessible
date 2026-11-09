@@ -39,16 +39,12 @@ public class DialpadActivity extends BaseActivity {
 
         guard(callBtn, () -> {
             if (number.length() == 0) return;
-            startActivity(new Intent(Intent.ACTION_DIAL,
-                    Uri.parse("tel:" + Uri.encode(number.toString()))));
+            startActivity(DialIntents.dial(number.toString()));
         });
         guard(saveBtn, () -> {
             if (number.length() == 0) return;
-            Intent insert = new Intent(Intent.ACTION_INSERT);
-            insert.setType(ContactsContract.Contacts.CONTENT_TYPE);
-            insert.putExtra(ContactsContract.Intents.Insert.PHONE, number.toString());
             try {
-                startActivity(insert);
+                startActivity(DialIntents.saveAsContact(number.toString()));
             } catch (android.content.ActivityNotFoundException ignored) { }
         });
         sync();

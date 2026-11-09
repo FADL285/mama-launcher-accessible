@@ -35,6 +35,13 @@ public class PinGateFitTest {
     }
 
     @Test
+    public void dialpadA10sLargestText() {
+        View v = paparazzi.inflate(R.layout.activity_dialpad);
+        ((android.widget.TextView) v.findViewById(R.id.dial_display)).setText("0100 000 0");
+        paparazzi.snapshot(v, "dialpad-a10s-largest");
+    }
+
+    @Test
     public void everydayHomeA10sLargestText() {
         View v = paparazzi.inflate(R.layout.activity_main);
         ((android.widget.TextView) v.findViewById(R.id.home_clock)).setText("1:00");

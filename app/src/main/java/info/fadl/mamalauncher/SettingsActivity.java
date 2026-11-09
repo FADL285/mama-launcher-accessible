@@ -52,6 +52,7 @@ public class SettingsActivity extends BaseActivity {
 
         guard(findViewById(R.id.btn_settings_back), this::finish);
         guard(findViewById(R.id.btn_open_app_settings), () -> {
+            SessionGate.expectExternal(); // sanctioned system screen: survives this one leave
             Intent i = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:" + getPackageName()));
             startActivity(i);
@@ -74,13 +75,24 @@ public class SettingsActivity extends BaseActivity {
     protected void onResume() {
         super.onResume();
         if (!SessionGate.isValid()) {
-            // Relock: returning from home/recents/screen-off after the
-            // session expired sends the user back through the gate.
+            // Any return to a locked settings screen goes back through the gate.
             startActivity(PinGateActivity.intentForEntry(this));
             finish();
             return;
         }
+        SessionGate.clearExternal(); // the sanctioned leave was consumed; next leave locks
         updatePermissionRows();
+    }
+
+    @Override
+    protected void onStop() {
+        // Back to the everyday screen, home, recents, screen off: the session
+        // ends NOW, not after a timeout. Only a sanctioned system deep link
+        // (app info, TTS installer) keeps it alive, exactly once.
+        if (!SessionGate.externalInFlight()) {
+            SessionGate.lock();
+        }
+        super.onStop();
     }
 
     // ---- sound ----
@@ -97,6 +109,7 @@ public class SettingsActivity extends BaseActivity {
         ttsTest.setOnClickListener(v -> testSpeak());
         ttsData.setOnClickListener(v -> {
             try {
+                SessionGate.expectExternal(); // TTS installer is a sanctioned system screen
                 startActivity(new Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA));
             } catch (android.content.ActivityNotFoundException ignored) {
                 ttsStatus.setText(R.string.tts_missing);
