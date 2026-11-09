@@ -14,7 +14,7 @@ import android.view.View;
  *  (button reacts only after a slightly longer press). */
 public abstract class BaseActivity extends Activity {
 
-    private static final long GUARD_PRESS_MS = 400;
+    protected static final long GUARD_PRESS_MS = 400;
 
     @Override
     protected void attachBaseContext(Context newBase) {

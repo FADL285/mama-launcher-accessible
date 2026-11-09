@@ -16,7 +16,7 @@
     <string name="tile_phone">الهاتف</string>
     <string name="dialpad_title">لوحة الأرقام</string>
     <string name="save_number">حفظ الرقم</string>
-    <string name="dial_empty_hint">اكتب رقم الأول</string>
+    <string name="dial_empty_hint">اكتب الرقم</string>
     <string name="backspace">مسح آخر رقم</string>
     <string name="open_settings_hint">للإعدادات: اضغط مطولًا على الساعة فوق</string>
 
@@ -98,4 +98,5 @@
     <string name="favorite_add">إضافة الرقم ده للمفضلة داخل التطبيق</string>
     <string name="favorite_remove">إزالة الرقم ده من مفضلة التطبيق</string>
     <string name="favorite_choose_number">اختار رقم الأول عشان تضيفه للمفضلة</string>
+    <string name="zero_plus_hint">صفر، اضغط مطولا لإضافة كود الدولة بعلامة زائد</string>
 </resources>

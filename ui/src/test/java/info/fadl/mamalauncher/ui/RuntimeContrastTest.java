@@ -64,6 +64,7 @@ public class RuntimeContrastTest {
         View v=paparazzi.inflate(R.layout.activity_dialpad);
         v.setBackgroundColor(ctx.getResources().getColor(R.color.contrast_bg));
         ((TextView)v.findViewById(R.id.dial_display)).setText("0100 000 0000");
+        v.findViewById(R.id.dial_display).setVisibility(View.VISIBLE);v.findViewById(R.id.dial_placeholder).setVisibility(View.GONE);
         paparazzi.snapshot(v,"dialpad-runtime-contrast");
     }
 }

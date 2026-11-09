@@ -28,6 +28,18 @@ public class PinGateFitTest {
     public final Paparazzi paparazzi = new Paparazzi(
             app.cash.paparazzi.EnvironmentKt.detectEnvironment(), a10sLargestText(), "MamaTheme");
 
+    @Test public void dialpadEmptyHintLargestText(){
+        snapshot(paparazzi.inflate(R.layout.activity_dialpad), "dialpad-empty-hint");
+    }
+    @Test public void confirmLargestTextBottomActions(){
+        View v=paparazzi.inflate(R.layout.activity_confirm);
+        ((android.widget.TextView)v.findViewById(R.id.big_name)).setText("سوسن محمود");
+        v.findViewById(R.id.favorite_hint).setVisibility(View.VISIBLE);
+        UiBinder.bindNumbers(v, java.util.Arrays.asList(new ContactEntry.PhoneNumber("01000000001","موبايل"),new ContactEntry.PhoneNumber("0200000002","البيت")), n -> {});
+        android.widget.ScrollView scroll=v.findViewById(R.id.confirm_scroll);
+        v.measure(View.MeasureSpec.makeMeasureSpec(400,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(650,View.MeasureSpec.EXACTLY));v.layout(0,0,400,650);scroll.fullScroll(View.FOCUS_DOWN);
+        snapshot(v, "confirm-largest-bottom");
+    }
     @Test
     public void pinGateFitsA10sLargestText() {
         View v = paparazzi.inflate(R.layout.activity_pingate);
@@ -39,6 +51,7 @@ public class PinGateFitTest {
         View v = paparazzi.inflate(R.layout.activity_dialpad);
         // Full 11-digit Egyptian mobile number: every digit must stay visible.
         ((android.widget.TextView) v.findViewById(R.id.dial_display)).setText("0100 000 0000");
+        v.findViewById(R.id.dial_display).setVisibility(View.VISIBLE);v.findViewById(R.id.dial_placeholder).setVisibility(View.GONE);
         snapshot(v, "dialpad-a10s-largest");
     }
 
@@ -47,6 +60,7 @@ public class PinGateFitTest {
         View v = paparazzi.inflate(R.layout.activity_dialpad);
         // International-length input must not truncate or lose digits.
         ((android.widget.TextView) v.findViewById(R.id.dial_display)).setText("+2010 0000 0000");
+        v.findViewById(R.id.dial_display).setVisibility(View.VISIBLE);v.findViewById(R.id.dial_placeholder).setVisibility(View.GONE);
         snapshot(v, "dialpad-a10s-international");
     }
 

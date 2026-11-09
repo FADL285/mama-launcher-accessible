@@ -114,6 +114,7 @@ public class UiSnapshotTest {
     public void dialpadComposing() {
         View v = paparazzi.inflate(R.layout.activity_dialpad);
         ((TextView) v.findViewById(R.id.dial_display)).setText("0100 000 0");
+        v.findViewById(R.id.dial_display).setVisibility(View.VISIBLE);v.findViewById(R.id.dial_placeholder).setVisibility(View.GONE);
         paparazzi.snapshot(v, "dialpad-composing");
     }
 
@@ -194,6 +195,18 @@ public class UiSnapshotTest {
         v.findViewById(R.id.btn_call).setEnabled(true);
         ((TextView)v.findViewById(R.id.btn_favorite)).setText("★");
         paparazzi.snapshot(v, "confirm-multi-selected");
+    }
+
+    @Test public void confirmMultiNumberScrolledActions() {
+        View v = paparazzi.inflate(R.layout.activity_confirm);
+        bindConfirmCommon(v, "سوسن محمود", 0xFF8A2F4E);
+        UiBinder.bindNumbers(v, nums("01000000001", "موبايل", "0200000002", "البيت"), n -> { });
+        v.findViewById(R.id.btn_favorite).setEnabled(false);
+        v.findViewById(R.id.favorite_hint).setVisibility(View.VISIBLE);
+        v.findViewById(R.id.btn_call).setEnabled(false);
+        android.widget.ScrollView scroll=v.findViewById(R.id.confirm_scroll);
+        v.measure(View.MeasureSpec.makeMeasureSpec(400,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(650,View.MeasureSpec.EXACTLY));v.layout(0,0,400,650);scroll.fullScroll(View.FOCUS_DOWN);
+        paparazzi.snapshot(v, "confirm-multi-bottom");
     }
 
     @Test

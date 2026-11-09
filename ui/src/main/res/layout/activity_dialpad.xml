@@ -22,14 +22,17 @@
 
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="6dp">
+        <FrameLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="92dp">
+            <TextView android:id="@+id/dial_placeholder" android:layout_width="match_parent" android:layout_height="match_parent" android:text="@string/dial_empty_hint" android:textSize="24sp" android:textColor="?attr/surfaceSecondaryText" android:gravity="center" android:textDirection="rtl" />
         <TextView android:id="@+id/dial_display"
-            android:layout_width="0dp" android:layout_weight="1" android:layout_height="92dp"
+            android:layout_width="match_parent" android:layout_height="92dp"
             android:gravity="center" android:textSize="34sp" android:textStyle="bold"
             android:textColor="?attr/surfaceText" android:padding="10dp"
             android:maxLines="1" android:scrollHorizontally="true" android:ellipsize="none"
             android:autoSizeTextType="uniform" android:autoSizeMinTextSize="18sp"
-            android:autoSizeMaxTextSize="34sp" android:autoSizeStepGranularity="2sp"
-            android:hint="@string/dial_empty_hint" android:textDirection="ltr"/>
+            android:autoSizeMaxTextSize="30sp" android:autoSizeStepGranularity="2sp"
+            android:visibility="invisible" android:textDirection="firstStrong"/>
+        </FrameLayout>
         <ImageView android:id="@+id/btn_backspace"
             android:layout_width="48dp" android:layout_height="48dp"
             android:src="@drawable/ic_backspace" android:tint="?attr/surfaceSecondaryText" android:padding="8dp"
@@ -54,9 +57,12 @@
             <TextView android:tag="8" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="62dp" android:layout_margin="4dp" android:background="@drawable/tile_bg" android:gravity="center" android:text="8" android:textSize="27sp" android:includeFontPadding="false" android:textStyle="bold" android:textColor="@color/text_main"/>
             <TextView android:tag="9" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="62dp" android:layout_margin="4dp" android:background="@drawable/tile_bg" android:gravity="center" android:text="9" android:textSize="27sp" android:includeFontPadding="false" android:textStyle="bold" android:textColor="@color/text_main"/>
         </LinearLayout>
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:baselineAligned="false">
             <TextView android:tag="*" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="62dp" android:layout_margin="4dp" android:background="@drawable/tile_bg" android:gravity="center" android:text="*" android:textSize="27sp" android:includeFontPadding="false" android:textStyle="bold" android:textColor="@color/text_main"/>
-            <TextView android:tag="0" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="62dp" android:layout_margin="4dp" android:background="@drawable/tile_bg" android:gravity="center" android:text="0" android:textSize="27sp" android:includeFontPadding="false" android:textStyle="bold" android:textColor="@color/text_main"/>
+            <LinearLayout android:tag="0" android:layout_width="0dp" android:layout_weight="1" android:layout_height="74dp" android:minHeight="74dp" android:layout_margin="4dp" android:background="@drawable/tile_bg" android:gravity="center" android:orientation="vertical" android:contentDescription="@string/zero_plus_hint">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textSize="27sp" android:fontFamily="sans-serif" android:includeFontPadding="false" android:textStyle="bold" android:textColor="@color/text_main" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="+" android:textSize="14sp" android:fontFamily="sans-serif" android:includeFontPadding="false" android:textColor="@color/text_main" />
+            </LinearLayout>
             <TextView android:tag="#" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="62dp" android:layout_margin="4dp" android:background="@drawable/tile_bg" android:gravity="center" android:text="#" android:textSize="27sp" android:includeFontPadding="false" android:textStyle="bold" android:textColor="@color/text_main"/>
         </LinearLayout>
     </LinearLayout>

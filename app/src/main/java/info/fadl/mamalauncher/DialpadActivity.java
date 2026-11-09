@@ -70,7 +70,7 @@ public class DialpadActivity extends BaseActivity {
     private void wireDigits(ViewGroup group) {
         for (int i = 0; i < group.getChildCount(); i++) {
             View child = group.getChildAt(i);
-            if (child instanceof ViewGroup) {
+            if (child.getTag() == null && child instanceof ViewGroup) {
                 wireDigits((ViewGroup) child);
             } else if (child.getTag() != null) {
                 final String digit = child.getTag().toString();
@@ -78,12 +78,37 @@ public class DialpadActivity extends BaseActivity {
                     number.append(digit);
                     sync();
                 });
+                if ("0".equals(digit)) {
+                    child.setOnLongClickListener(v -> {
+                        if (number.length() == 0) { number.append('+'); sync(); }
+                        return true; // consume: never append a trailing 0 after a hold
+                    });
+                    if (Prefs.touchGuard(this)) {
+                        final long[] down={-1};
+                        child.setOnTouchListener((v,event)->{
+                            boolean inside=event.getX()>=0 && event.getX()<v.getWidth() && event.getY()>=0 && event.getY()<v.getHeight();
+                            switch(event.getActionMasked()) {
+                                case android.view.MotionEvent.ACTION_DOWN: down[0]=event.getEventTime(); return true;
+                                case android.view.MotionEvent.ACTION_MOVE: if(!inside)down[0]=-1; return true;
+                                case android.view.MotionEvent.ACTION_UP:
+                                    long duration=down[0]<0?-1:event.getEventTime()-down[0]; down[0]=-1;
+                                    if(inside && duration>=android.view.ViewConfiguration.getLongPressTimeout())v.performLongClick();
+                                    else if(inside && duration>=GUARD_PRESS_MS)v.performClick();
+                                    return true;
+                                case android.view.MotionEvent.ACTION_CANCEL: down[0]=-1; return true;
+                                default:return true;
+                            }
+                        });
+                    }
+                }
             }
         }
     }
 
     private void sync() {
         display.setText(number.toString());
+        display.setVisibility(number.length()==0?View.INVISIBLE:View.VISIBLE);
+        findViewById(R.id.dial_placeholder).setVisibility(number.length()==0?View.VISIBLE:View.GONE);
         // Long numbers shrink via autosize (API 26+); on older devices the
         // field scrolls horizontally and we keep the last digit in view.
         // Digits are NEVER dropped or ellipsized.

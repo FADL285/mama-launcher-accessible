@@ -37,7 +37,7 @@ not approval to merge.
 
 ## Validation and limits
 
-107 app unit/flow tests pass. 37 UI methods generate 37 layout-render snapshots
+109 app unit/flow tests pass. 40 UI methods generate 40 layout-render snapshots
 in verify mode; debug assemble passes. Tests inspect intents and never place
 real calls. These counts exclude the independent manifest test in PR #3. The
 combined supervised candidate adds that manifest test and must be tested again.
@@ -87,3 +87,11 @@ Layout evidence is layoutlib, not device/emulator screenshots. Phone audio,
 actual system credential UI, real call flow and touch/screen-reader experience
 still require a supervised physical-device trial. These corrections do not
 constitute production/security certification or daily-use readiness.
+
+Latest dial follow-up: shorter separate 24sp empty prompt, standard spatial
+LTR 123/456/789/*0#, and 0 with a small + hint. Short click appends 0;
+long hold on an empty number adds +, consumes the click, and works with
+physical touch guard enabled too. A + cannot be appended mid-number.
+Contact detail keeps Call and Back fixed, with name/photo/star/number choices
+in a scrollable region. Largest-text bottom fixture proves complete number
+choices and fixed actions; scrolling can be needed to reach numbers.

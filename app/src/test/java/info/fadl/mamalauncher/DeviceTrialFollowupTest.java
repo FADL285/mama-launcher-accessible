@@ -11,6 +11,22 @@ import static org.junit.Assert.*;
 public class DeviceTrialFollowupTest {
  @Before public void reset(){Prefs.get(RuntimeEnvironment.getApplication()).edit().clear().apply();SessionGate.unlock();Shadows.shadowOf(RuntimeEnvironment.getApplication()).denyPermissions(android.Manifest.permission.CALL_PHONE);}
  private View key(View v,String tag){if(tag.equals(v.getTag()))return v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){View r=key(((ViewGroup)v).getChildAt(i),tag);if(r!=null)return r;}return null;}
+ @Test public void guardedPhysicalZeroHoldAddsPlusWithoutZero(){
+  android.content.Context app=RuntimeEnvironment.getApplication();Prefs.get(app).edit().putBoolean(Prefs.TOUCH_GUARD,true).apply();
+  DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();View zero=key(a.findViewById(R.id.dial_grid),"0");zero.layout(0,0,100,100);
+  zero.dispatchTouchEvent(android.view.MotionEvent.obtain(1000,1000,android.view.MotionEvent.ACTION_DOWN,20,20,0));
+  zero.dispatchTouchEvent(android.view.MotionEvent.obtain(1000,2000,android.view.MotionEvent.ACTION_UP,20,20,0));
+  assertEquals("+",((android.widget.TextView)a.findViewById(R.id.dial_display)).getText().toString());
+ }
+ @Test public void zeroTapAndLongHoldAreDistinctAndPreservePrefix(){
+  DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();
+  View zero=key(a.findViewById(R.id.dial_grid),"0");assertTrue(zero.performLongClick());
+  assertEquals("+",((android.widget.TextView)a.findViewById(R.id.dial_display)).getText().toString());
+  zero.performClick();assertEquals("+0",((android.widget.TextView)a.findViewById(R.id.dial_display)).getText().toString());
+  zero.performLongClick();assertEquals("+0",((android.widget.TextView)a.findViewById(R.id.dial_display)).getText().toString());
+  assertNull(Shadows.shadowOf(a).getNextStartedActivity());
+  assertEquals("اكتب الرقم",((android.widget.TextView)a.findViewById(R.id.dial_placeholder)).getText().toString());
+ }
  @Test public void dialPressCallsDirectlyOnlyOnceWhenGranted(){
   Shadows.shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.CALL_PHONE);
   DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();

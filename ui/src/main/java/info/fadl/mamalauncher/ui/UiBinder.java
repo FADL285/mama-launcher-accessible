@@ -52,7 +52,8 @@ public final class UiBinder {
             ContactEntry.PhoneNumber pn = numbers.get(i);
             Button b = new Button(root.getContext());
             b.setMinHeight(dp(root, 72));
-            b.setTextSize(19f);
+            b.setTextSize(17f);
+            b.setPadding(dp(root, 6),dp(root, 6),dp(root, 6),dp(root, 6));
             b.setTextColor(root.getResources().getColor(R.color.text_main));
             b.setTextDirection(View.TEXT_DIRECTION_LTR);
             String label = pn.label.isEmpty() ? "" : pn.label + "\n";
