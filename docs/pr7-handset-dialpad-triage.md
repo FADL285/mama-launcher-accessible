@@ -61,3 +61,47 @@ approved. Final review state is recorded separately after the last push.
 ## Requested developer attribution
 
 Settings menu footer adds Developed by Mohamed Fadl with a fadl.info link. The HTTPS destination was fetched and showed Mohamed Fadl, Senior Software Engineer. Link activation is tested as ACTION_VIEW to the exact URL, with no-browser fallback. Largest-font normal and actual contrast-theme footer pixels inspected. No copyright year, new ownership claim or license change.
+
+## Expanded handset follow-up, 0.11/code13
+
+The current candidate also includes the user's later Home ordering, common
+header, equal-card and speech setup requests. This section supersedes the
+older statement that Apps/speech behavior was unchanged.
+
+- Home order now includes Phone and the Apps folder alongside selected apps.
+  Old app-only choices migrate without losing order. Unavailable packages and
+  a temporarily hidden empty folder retain their saved slot. App-only order
+  is kept in sync for backward compatibility. Special items cannot be moved
+  into the Apps folder or hidden; each app still has independent placement.
+- Phone, Dialpad, Apps and settings use the same compact fixed inline
+  Back/title header. Long section titles wrap to two lines rather than
+  silently shrinking. Primary call decisions stay large and fixed.
+- Home/Apps cards have equal two-line end-ellipsized label areas. Full label
+  remains the accessibility name, a tooltip on Android26+, and a long-press
+  dialog. With touch guard enabled, a 1-second hold opens the full name;
+  an ordinary guarded tap still launches the app. Android24 has a regression.
+- Name speech separates engine initialization, ready, retryable failure,
+  preparing data and needs-setup states. An unavailable engine does not
+  become a permanent unsupported-device claim. The photo's Listen icon is
+  shown only when ready; failure retains separate Retry and protected Setup
+  actions. Retry never places a call. Returning from setup rechecks speech;
+  backgrounding stops speech and discards callbacks from the old generation.
+- A dismissible first-use guide explains long-pressing the clock and the PIN.
+  Its sound shortcut goes through the existing PIN gate, including entering
+  a new PIN twice on first setup. Sound settings repeat the guide on demand,
+  offer explicit engine recheck, and ask the listener whether the test was
+  actually heard. Engine completion alone is not human confirmation.
+- Missing-browser handling clears the sanctioned-leave exemption before
+  showing an error. Regression triggers the actual failing launch then
+  leaves/resumes settings and verifies it is locked.
+- Confirmation body and unboxed sound/setup text use active theme colors;
+  white-backed number-choice buttons keep dark labels for their own surface.
+
+Validation: 160 app tests and 71 UI test cases (70 snapshot images plus
+one header-completeness assertion-only case). Full fresh verification is
+required before reporting ready. New visual fixtures use the shared header
+and speech-state renderer rather than substitute UI. They are layoutlib
+renders, not handset/emulator screenshots. The handset retest still includes
+speech audibility/pronunciation, touch/drag speed, settings lock and real call
+behavior under supervision. No model, cloud speech or extra permission was
+added. Public fixtures contain no handset contacts, photos, numbers or PIN.

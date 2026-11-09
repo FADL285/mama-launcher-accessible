@@ -70,7 +70,7 @@ public class UiSnapshotTest {
     @Test
     public void everydayHome() {
         View v = paparazzi.inflate(R.layout.activity_main);
-        ((TextView) v.findViewById(R.id.home_clock)).setText("1:00");
+        ((TextView) v.findViewById(R.id.home_clock)).setText("13:00");
         ((TextView) v.findViewById(R.id.home_date)).setText("الاثنين ٩ نوفمبر");
         addHomeRows(v, v.findViewById(R.id.tiles_container), false);
         paparazzi.snapshot(v, "everyday-home");

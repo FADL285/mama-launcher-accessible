@@ -31,6 +31,7 @@ public class PhoneActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_phone);
+        info.fadl.mamalauncher.ui.PageHeader.title(findViewById(android.R.id.content),R.string.tile_phone);
         photos = new ContactPhotoLoader(getContentResolver());
         grid = findViewById(R.id.contacts_grid);
         setupView = findViewById(R.id.setup_view);

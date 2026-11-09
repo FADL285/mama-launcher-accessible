@@ -37,6 +37,7 @@ public class ConfirmCallActivity extends BaseActivity {
 
     private String selectedNumber; // null until visibly chosen (multi-number)
     private NameSpeaker speaker;
+    private boolean refreshSpeech;
     private Button callButton;
     private DirectCallAction callAction;
     private long contactId;
@@ -142,8 +143,8 @@ public class ConfirmCallActivity extends BaseActivity {
 
         speaker = new NameSpeaker();
         speaker.setAvailabilityListener(new NameSpeaker.AvailabilityListener() {
-            @Override public void onUnavailable(){findViewById(R.id.speak_unavailable).setVisibility(View.VISIBLE);}
-            @Override public void onAvailable(){findViewById(R.id.speak_unavailable).setVisibility(View.GONE);}
+            @Override public void onUnavailable(){}
+            @Override public void onStateChanged(NameSpeaker.State state){info.fadl.mamalauncher.ui.SpeechStatusUi.show(findViewById(android.R.id.content),state.name());}
         });
         speaker.init(this);
         final String spoken = NameSpeaker.speakText(name, getString(R.string.no_name));
@@ -151,6 +152,8 @@ public class ConfirmCallActivity extends BaseActivity {
 
         android.widget.ImageButton repeat = findViewById(R.id.btn_repeat_name);
         repeat.setOnClickListener(v -> speaker.speak(spoken)); // hearing the name NEVER calls
+        guard(findViewById(R.id.btn_speech_retry),()->speaker.speak(spoken));
+        guard(findViewById(R.id.btn_speech_setup),()->startActivity(PinGateActivity.intentForEntry(this).putExtra(SettingsActivity.EXTRA_SOUND,true)));
 
         Button back = findViewById(R.id.btn_back);
         back.setOnClickListener(v -> finish());
@@ -167,6 +170,7 @@ public class ConfirmCallActivity extends BaseActivity {
 
     @Override protected void onResume() {
         super.onResume();if(callAction!=null)callAction.onResume();
+        if(refreshSpeech && speaker!=null){refreshSpeech=false;speaker.init(this);}
     }
     @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results) {
         super.onRequestPermissionsResult(code,permissions,results);
@@ -178,6 +182,8 @@ public class ConfirmCallActivity extends BaseActivity {
         super.onSaveInstanceState(outState);
         if (selectedNumber != null) outState.putString(STATE_NUMBER, selectedNumber);
     }
+
+    @Override protected void onPause(){if(speaker!=null){speaker.shutdown();refreshSpeech=true;}super.onPause();}
 
     @Override
     protected void onDestroy() {

@@ -8,7 +8,7 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 **نسخة تجريبية تحت تجربة مشرفة.** اختبارات الكود والواجهة ناجحة، لكن إصلاحات النسخة الجديدة ما زالت تحتاج إعادة تجربة على الهاتف الفعلي، خصوصا الصوت والمكالمات وقفل الجهاز.
 
-Supervised pilot. Current 0.10 candidate source, based on merged PR6, passes 148 app unit/flow tests (JUnit + Robolectric) and 61 layout-rendered snapshots. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
+Supervised pilot. Current 0.11 candidate source, based on merged PR6, passes 160 app unit/flow tests (JUnit + Robolectric) and 71 UI test cases (70 rendered snapshots and one assertion-only header-fit case). Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
 
 ## الفكرة — Design
 
@@ -29,7 +29,7 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 
 - minSdk 24 / targetSdk 33 (provisional pilot choices, not a committed support range)
 - No third-party runtime dependencies — framework APIs only
-- Tests: `gradle :app:testDebugUnitTest` (135 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
+- Tests: `gradle :app:testDebugUnitTest` (160 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
 
 ## الخصوصية والنطاق — Privacy & Scope
 
@@ -76,3 +76,27 @@ coordinates at normal and largest contrast text settings. These are isolated
 JVM tests and layout-rendered pixels, not a physical-device retest.
 
 Settings now includes the requested developer attribution and a browser link to https://fadl.info, without changing licensing or adding an ownership claim.
+
+
+## 0.11 expanded handset corrections
+
+- Reorder Phone and the Apps-folder card among all Home items; old app choices
+  migrate and missing apps keep their saved positions.
+- Shared compact fixed Back/title header across Phone, Dialpad, Apps and settings.
+- Equal two-line app-card labels with end ellipsis, full-name long press and
+  accessibility name; no app label is renamed or invented.
+- Honest initializing/ready/retry/setup speech states with reachable recovery.
+  Returning from setup rechecks the engine; leaving confirmation stops queued
+  speech. Engine readiness is not proof of audible or correct pronunciation.
+- First-use clock/PIN guidance and a gated sound shortcut; the sound section
+  repeats setup steps and asks the person whether the test was heard clearly.
+- Failed website launch clears the temporary lock exemption. Confirmation
+  body and unboxed setup text follow the active contrast theme.
+
+No downloadable Egyptian model is bundled. Habibi EGY is a research candidate,
+not a measured Android/A10s solution. Runtime/dependency redistribution and
+actual device RAM, ABI, storage, latency and name pronunciation are unverified.
+See [expanded regression notes](docs/pr7-handset-dialpad-triage.md).
+
+Local validation does not prove a carrier call, physical touch/drag behavior,
+actual speaker output, or daily-use readiness. Upgrade trial remains supervised.

@@ -34,6 +34,7 @@ import java.util.Locale;
  */
 public class SettingsActivity extends ProtectedModeActivity {
 
+    public static final String EXTRA_SOUND="open_sound_section";
     private int currentSection = -1;
     private SharedPreferences prefs;
     private TextToSpeech tts;
@@ -55,12 +56,12 @@ public class SettingsActivity extends ProtectedModeActivity {
         prefs = Prefs.get(this);
         selected.addAll(AppSelection.parse(prefs.getString(AppSelection.PREF_KEY, null)));
 
-        guard(findViewById(R.id.btn_settings_back), this::onBackPressed);
+        guard(findViewById(R.id.btn_back), this::onBackPressed);
         for(int i=0;i<info.fadl.mamalauncher.ui.SettingsSections.BUTTONS.length;i++) {
             final int section=i;
             guard(findViewById(info.fadl.mamalauncher.ui.SettingsSections.BUTTONS[i]), () -> showSection(section));
         }
-        showSection(savedInstanceState == null ? -1 : savedInstanceState.getInt("settings.section", -1));
+        showSection(savedInstanceState == null ? (getIntent().getBooleanExtra(EXTRA_SOUND,false)?1:-1) : savedInstanceState.getInt("settings.section", -1));
         guard(findViewById(R.id.btn_open_app_settings), () -> {
             SessionGate.expectExternal(); // sanctioned system screen: survives this one leave
             Intent i = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -72,6 +73,7 @@ public class SettingsActivity extends ProtectedModeActivity {
             Intent site = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.developer_url)));
             try { SessionGate.expectExternal(); startActivity(site); }
             catch (android.content.ActivityNotFoundException missingBrowser) {
+                SessionGate.clearExternal();
                 android.widget.Toast.makeText(this, R.string.browser_unavailable, android.widget.Toast.LENGTH_SHORT).show();
             }
         });
@@ -89,6 +91,7 @@ public class SettingsActivity extends ProtectedModeActivity {
         initTts();
     }
 
+    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);if(SessionGate.isValid() && intent.getBooleanExtra(EXTRA_SOUND,false))showSection(1);}
     private void showSection(int section) {
         currentSection = section >= 0 && section < info.fadl.mamalauncher.ui.SettingsSections.PANELS.length ? section : -1;
         info.fadl.mamalauncher.ui.SettingsSections.show(findViewById(android.R.id.content), currentSection);
@@ -143,6 +146,10 @@ public class SettingsActivity extends ProtectedModeActivity {
         ttsTest = findViewById(R.id.btn_tts_test);
         ttsData = findViewById(R.id.btn_tts_data);
         ttsTest.setOnClickListener(v -> testSpeak());
+        guard(findViewById(R.id.btn_tts_retry),this::initTts);
+        guard(findViewById(R.id.btn_sound_guide),()->{View details=findViewById(R.id.sound_guide_details);details.setVisibility(details.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE);});
+        guard(findViewById(R.id.btn_tts_heard),()->{ttsStatus.setText(R.string.tts_human_ok);findViewById(R.id.tts_human_check).setVisibility(View.GONE);});
+        guard(findViewById(R.id.btn_tts_not_heard),()->{ttsStatus.setText(R.string.tts_human_not_ok);findViewById(R.id.tts_human_check).setVisibility(View.GONE);});
         findViewById(R.id.btn_tts_engine).setOnClickListener(v -> chooseEngine());
         ttsData.setOnClickListener(v -> {
             try {
@@ -279,12 +286,14 @@ public class SettingsActivity extends ProtectedModeActivity {
     }
 
     private final List<String> secondary=new ArrayList<>();
+    private final List<String> homeOrder=new ArrayList<>();
     private void rebuildPicker() {
         findViewById(R.id.apps_loading).setVisibility(View.GONE);
         LinearLayout box = findViewById(R.id.settings_apps_list);
         box.removeAllViews();
         TextView hint=new TextView(this);hint.setText(R.string.apps_drag_hint);hint.setTextSize(18);hint.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));hint.setPadding((int)(8*getResources().getDisplayMetrics().density),8,(int)(8*getResources().getDisplayMetrics().density),16);box.addView(hint);
-        addGroup(box,selected,getString(R.string.apps_home));
+        homeOrder.clear();homeOrder.addAll(AppSelection.homeOrder(prefs.getString(AppSelection.HOME_ORDER_KEY,null),selected));
+        addGroup(box,homeOrder,getString(R.string.apps_home));
         addGroup(box,secondary,getString(R.string.apps_folder));
         for(String[] app:installed)if(!selected.contains(app[0]) && !secondary.contains(app[0]))box.addView(pickerRow(app,null,-1));
     }
@@ -294,14 +303,16 @@ public class SettingsActivity extends ProtectedModeActivity {
     }
     private View pickerRow(String[] app,List<String> group,int position) {
         float d=getResources().getDisplayMetrics().density;
-        LinearLayout outer=info.fadl.mamalauncher.ui.AppPickerUi.row(this,app[1],group==selected?0:group==secondary?1:2);
+        LinearLayout outer=info.fadl.mamalauncher.ui.AppPickerUi.row(this,app[1],(group==selected || group==homeOrder)?0:group==secondary?1:2);
+        outer.setTag("app_row:"+app[0]);
         android.widget.Button location=outer.findViewWithTag("app_place");
         location.setOnClickListener(v->new android.app.AlertDialog.Builder(this).setTitle(app[1])
-            .setSingleChoiceItems(new String[]{getString(R.string.apps_home),getString(R.string.apps_folder),getString(R.string.apps_hidden)},group==selected?0:group==secondary?1:2,(dialog,which)-> {
-                int previous=group==selected?0:group==secondary?1:2;
+            .setSingleChoiceItems(new String[]{getString(R.string.apps_home),getString(R.string.apps_folder),getString(R.string.apps_hidden)},(group==selected || group==homeOrder)?0:group==secondary?1:2,(dialog,which)-> {
+                int previous=(group==selected || group==homeOrder)?0:group==secondary?1:2;
                 if(which==previous){dialog.dismiss();return;}
                 selected.remove(app[0]);secondary.remove(app[0]);if(which==0)selected.add(app[0]);else if(which==1)secondary.add(app[0]);saveSelection();rebuildPicker();dialog.dismiss();
             }).setNegativeButton(android.R.string.cancel,null).show());
+        if(AppSelection.PHONE.equals(app[0]) || AppSelection.FOLDER.equals(app[0]))location.setVisibility(View.GONE);
         if(group!=null) {
             TextView handle=outer.findViewWithTag("app_handle");
             handle.setOnLongClickListener(v->v.startDragAndDrop(android.content.ClipData.newPlainText("app",app[0]),new View.DragShadowBuilder(outer),app[0],0));
@@ -338,10 +349,12 @@ public class SettingsActivity extends ProtectedModeActivity {
         return outer;
     }
     void reorder(List<String> group,String pkg,int target) {
-        List<String> moved=AppSelection.moveTo(group,group.indexOf(pkg),target);group.clear();group.addAll(moved);saveSelection();rebuildPicker();
+        List<String> moved=AppSelection.moveTo(group,group.indexOf(pkg),target);group.clear();group.addAll(moved);if(group==homeOrder){prefs.edit().putString(AppSelection.HOME_ORDER_KEY,AppSelection.join(homeOrder)).apply();selected.clear();for(String item:homeOrder)if(!item.equals(AppSelection.PHONE)&&!item.equals(AppSelection.FOLDER))selected.add(item);}saveSelection();rebuildPicker();
     }
 
     private String[] findApp(String pkg) {
+        if(AppSelection.PHONE.equals(pkg))return new String[]{pkg,getString(R.string.tile_phone)};
+        if(AppSelection.FOLDER.equals(pkg))return new String[]{pkg,getString(R.string.apps_page)};
         for (String[] a : installed) if (a[0].equals(pkg)) return a;
         return null;
     }
@@ -368,6 +381,7 @@ public class SettingsActivity extends ProtectedModeActivity {
     private void initTts() {
         final int generation=++speechGeneration;
         if(tts!=null) {tts.stop();tts.shutdown();}
+        findViewById(R.id.tts_human_check).setVisibility(View.GONE);
         ttsReady=false;ttsTest.setEnabled(false);ttsStatus.setText(R.string.tts_checking);
         requestedEngine=SpeechEngineChoice.requested(this);
         java.util.Map<String,String> engines=SpeechEngineChoice.installed(this);
@@ -380,7 +394,7 @@ public class SettingsActivity extends ProtectedModeActivity {
         tts=new TextToSpeech(getApplicationContext(),status -> new android.os.Handler(android.os.Looper.getMainLooper()).post(()-> {
             if(generation!=speechGeneration || isDestroyed() || isFinishing())return;
             ttsReady=status==TextToSpeech.SUCCESS;
-            if(!ttsReady) {ttsStatus.setText(R.string.tts_missing);ttsData.setVisibility(View.VISIBLE);return;}
+            if(!ttsReady) {ttsStatus.setText(R.string.speech_retryable);ttsData.setVisibility(View.VISIBLE);return;}
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String id) { }
                 @Override public void onDone(String id) { update(R.string.tts_test_ok); }
@@ -389,11 +403,14 @@ public class SettingsActivity extends ProtectedModeActivity {
                     update(error==TextToSpeech.ERROR_NOT_INSTALLED_YET?R.string.tts_preparing:R.string.tts_test_failed);
                 }
                 private void update(int message) {runOnUiThread(()-> {
-                    if(generation==speechGeneration && !isFinishing() && !isDestroyed())ttsStatus.setText(message);
+                    if(generation==speechGeneration && !isFinishing() && !isDestroyed()){ttsStatus.setText(message);findViewById(R.id.tts_human_check).setVisibility(message==R.string.tts_test_ok?View.VISIBLE:View.GONE);}
                 });}
             });
             refreshTtsHealth();
         }),requestedEngine);
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(()->{
+            if(generation==speechGeneration && !ttsReady && !isFinishing() && !isDestroyed())ttsStatus.setText(R.string.speech_retryable);
+        },6000);
     }
 
     private void refreshTtsHealth() {
@@ -413,6 +430,7 @@ public class SettingsActivity extends ProtectedModeActivity {
         if(!ttsReady)return;
         refreshTtsHealth();
         if(ArabicVoicePolicy.prepare(tts)!=ArabicSpeechState.State.READY)return;
+        findViewById(R.id.tts_human_check).setVisibility(View.GONE);
         ttsStatus.setText(R.string.tts_test_started);
         if(tts.speak(getString(R.string.app_name),TextToSpeech.QUEUE_FLUSH,null,"settings-test")==TextToSpeech.ERROR)
             ttsStatus.setText(R.string.tts_test_failed);

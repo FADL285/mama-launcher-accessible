@@ -165,3 +165,27 @@ treated as untrusted content, not instructions.
 - Not covered by this audit (requires the physical device): runtime behavior
   of permissions dialogs, TTS output, and real contact photos — the on-device
   pilot trial (T4/T6) owns those.
+
+
+## 0.11 focused regression audit, 2026-11-09
+
+The original 0.2 findings/tool counts above are historical, not the current
+validation totals. Current scope: Home-order persistence, shared UI, local
+speech state/retry/setup, first-use guide and failed browser-launch relock.
+No new permission, exported component, remote endpoint, analytics or model
+was added. Only READ_CONTACTS and CALL_PHONE remain in the merged manifest.
+
+- Current app suite: 160 JUnit/Robolectric tests, zero failures.
+- Current UI suite: 71 cases (70 snapshot images plus one assertion-only case).
+- Android Lint: zero errors; 11 warnings in five categories: seven deliberate
+  portrait-lock warnings, one UnusedAttribute, one RedundantNamespace, one
+  MonochromeLauncherIcon, one ClickableViewAccessibility for the drag handle.
+  The handle has a performClick path and tap-to-position alternative, both
+  tested; this warning is not treated as an accessibility certification.
+- Semgrep CE: Java and security-audit registries, 88 rules, metrics off,
+  scanned locally. A clean result is not proof the app is secure.
+- Failed developer-site launch is exercised with ActivityNotFoundException;
+  leaving settings afterward invalidates the session. Setup shortcuts still
+  go through PIN creation/unlock. Screen-off lock regressions remain enabled.
+- Public-source PII/secrets pattern scan plus diff review; handset media
+  remains private and absent from this repository. No real calls were tested.

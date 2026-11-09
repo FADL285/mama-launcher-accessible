@@ -231,6 +231,7 @@ public class PinGateActivity extends ProtectedModeActivity {
         // the everyday screen no Settings is on the stack, so this just opens
         // it fresh; its onResume re-checks the session either way.
         startActivity(new Intent(this, SettingsActivity.class)
+                .putExtra(SettingsActivity.EXTRA_SOUND,getIntent().getBooleanExtra(SettingsActivity.EXTRA_SOUND,false))
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
         finish();
     }

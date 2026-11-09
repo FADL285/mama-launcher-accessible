@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <attr name="surfaceCardBackground" format="reference"/>
+    <attr name="pageHeaderTitle" format="reference"/>
+    <style name="DialHeaderTheme"><item name="pageHeaderTitle">@string/dialpad_title</item></style>
+    <style name="SettingsHeaderTheme"><item name="pageHeaderTitle">@string/settings_title</item></style>
     <attr name="surfaceText" format="color"/>
     <attr name="surfaceAction" format="color"/>
     <attr name="surfaceSecondaryText" format="color"/>
     <style name="MamaTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="surfaceCardBackground">@drawable/tile_bg</item>
+        <item name="pageHeaderTitle">@string/tile_phone</item>
         <item name="android:windowBackground">@color/bg</item>
         <item name="surfaceText">@color/text_main</item>
         <item name="surfaceAction">@color/back_blue</item>
@@ -14,6 +20,8 @@
         <item name="android:fontFamily">@font/cairo</item>
     </style>
     <style name="MamaTheme.Contrast" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="surfaceCardBackground">@drawable/tile_bg_contrast</item>
+        <item name="pageHeaderTitle">@string/tile_phone</item>
         <item name="android:windowBackground">@color/contrast_bg</item>
         <item name="surfaceText">@color/contrast_text</item>
         <item name="surfaceAction">@color/contrast_text</item>

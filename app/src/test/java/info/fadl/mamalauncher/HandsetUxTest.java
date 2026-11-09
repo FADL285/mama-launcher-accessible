@@ -24,6 +24,14 @@ public class HandsetUxTest {
   assertEquals("Developed by Mohamed Fadl",((TextView)a.findViewById(R.id.developer_credit)).getText().toString());
   a.findViewById(R.id.developer_site).performClick();Intent link=Shadows.shadowOf(a).getNextStartedActivity();assertNotNull(link);assertEquals(Intent.ACTION_VIEW,link.getAction());assertEquals("https://fadl.info",link.getDataString());
  }
+ public static class NoBrowserSettings extends SettingsActivity {
+  @Override public void startActivity(Intent intent){if(Intent.ACTION_VIEW.equals(intent.getAction()))throw new ActivityNotFoundException();super.startActivity(intent);}
+ }
+ @Test public void missingBrowserCannotLeaveExternalLockExemption(){
+  org.robolectric.android.controller.ActivityController<NoBrowserSettings> c=Robolectric.buildActivity(NoBrowserSettings.class).setup();
+  c.get().findViewById(R.id.developer_site).performClick();assertFalse(SessionGate.externalInFlight());
+  c.pause().stop();assertFalse(SessionGate.isValid());c.restart().resume();assertTrue(c.get().isFinishing());
+ }
  @Test public void exactMatchDoesNotConfusePrefixSuffixOrInternationalCountry(){
   assertTrue(DialContactMatcher.exact("٠١٠٠٠٠٠٠٠٠١","0100 000-0001","EG"));
   assertTrue(DialContactMatcher.exact("01000000001","+201000000001","EG"));
@@ -82,9 +90,9 @@ public class HandsetUxTest {
  @Test public void pickerMoveDestinationAndTapReorderPersistWithoutArrows(){
   Prefs.get(app).edit().putString(AppSelection.PREF_KEY,"com.example.first,com.example.second").apply();SettingsActivity a=Robolectric.buildActivity(SettingsFixture.class).setup().get();
   a.applyDiscoveredApps(Arrays.asList(new String[]{"com.example.first","الأول"},new String[]{"com.example.second","الثاني"}));
-  ViewGroup box=a.findViewById(R.id.settings_apps_list);key(box,"app_handle").performClick();android.app.AlertDialog order=org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();order.getListView().performItemClick(null,1,1);
+  ViewGroup box=a.findViewById(R.id.settings_apps_list);key(key(box,"app_row:com.example.first"),"app_handle").performClick();android.app.AlertDialog order=org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();order.getListView().performItemClick(null,3,3);
   assertEquals("com.example.second,com.example.first",Prefs.get(a).getString(AppSelection.PREF_KEY,null));
-  key(box,"app_place").performClick();android.app.AlertDialog place=org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();place.getListView().performItemClick(null,1,1);
+  key(key(box,"app_row:com.example.second"),"app_place").performClick();android.app.AlertDialog place=org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();place.getListView().performItemClick(null,1,1);
   assertEquals("com.example.first",Prefs.get(a).getString(AppSelection.PREF_KEY,null));assertEquals("com.example.second",Prefs.get(a).getString(AppSelection.SECONDARY_KEY,null));
  }
  @Test public void arbitraryDragMovePreservesAllApps(){
@@ -138,7 +146,7 @@ public class HandsetUxTest {
  @Test public void actualRowDropReordersWithinGroupAndCancellationDoesNot() {
   Prefs.get(app).edit().putString(AppSelection.PREF_KEY,"example.a,example.b,example.c").apply();SettingsFixture a=Robolectric.buildActivity(SettingsFixture.class).setup().get();
   a.applyDiscoveredApps(Arrays.asList(new String[]{"example.a","الأول"},new String[]{"example.b","الثاني"},new String[]{"example.c","الثالث"}));
-  LinearLayout box=a.findViewById(R.id.settings_apps_list);View last=box.getChildAt(4);
+  LinearLayout box=a.findViewById(R.id.settings_apps_list);View last=key(box,"app_row:example.c");
   assertTrue(last.dispatchDragEvent(drag(android.view.DragEvent.ACTION_DRAG_STARTED,"example.a")));
   last.dispatchDragEvent(drag(android.view.DragEvent.ACTION_DRAG_ENDED,"example.a"));assertEquals("example.a,example.b,example.c",Prefs.get(a).getString(AppSelection.PREF_KEY,null));
   assertTrue(last.dispatchDragEvent(drag(android.view.DragEvent.ACTION_DRAG_STARTED,"example.a")));
@@ -157,11 +165,11 @@ public class HandsetUxTest {
  @Test public void sameDestinationAndTemporarilyMissingAppPreserveOrder(){
   Prefs.get(app).edit().putString(AppSelection.PREF_KEY,"example.a,example.b,example.missing").apply();SettingsFixture a=Robolectric.buildActivity(SettingsFixture.class).setup().get();
   a.applyDiscoveredApps(Arrays.asList(new String[]{"example.a","الأول"},new String[]{"example.b","الثاني"}));
-  key(a.findViewById(R.id.settings_apps_list),"app_place").performClick();android.app.AlertDialog dialog=org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();dialog.getListView().performItemClick(null,0,0);
+  key(key(a.findViewById(R.id.settings_apps_list),"app_row:example.a"),"app_place").performClick();android.app.AlertDialog dialog=org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();dialog.getListView().performItemClick(null,0,0);
   assertEquals("example.a,example.b,example.missing",Prefs.get(a).getString(AppSelection.PREF_KEY,null));
  }
  @Test public void appsBackRemainsOutsideScrollAndEmptyFolderIsHidden(){
-  AppsPageActivity a=Robolectric.buildActivity(AppsPageActivity.class).setup().get();ViewGroup host=a.findViewById(android.R.id.content);ViewGroup fixed=(ViewGroup)host.getChildAt(0);assertTrue(fixed.getChildAt(0) instanceof Button);assertTrue(fixed.getChildAt(2) instanceof ScrollView);
+  AppsPageActivity a=Robolectric.buildActivity(AppsPageActivity.class).setup().get();ViewGroup host=a.findViewById(android.R.id.content);ViewGroup fixed=(ViewGroup)host.getChildAt(0);assertNotNull(fixed.getChildAt(0).findViewById(R.id.btn_back));assertTrue(fixed.getChildAt(1) instanceof ScrollView);assertSame(fixed,a.findViewById(R.id.page_title).getParent().getParent());
   Prefs.get(app).edit().putString(AppSelection.SECONDARY_KEY,"example.uninstalled").apply();MainActivity home=Robolectric.buildActivity(MainActivity.class).setup().get();assertFalse(home.hasLaunchableSecondary());assertEquals("example.uninstalled",Prefs.get(app).getString(AppSelection.SECONDARY_KEY,null));
  }
  @Test public void missingEngineCanRecoverFromListenWithoutReopeningScreen(){
@@ -214,12 +222,12 @@ public class HandsetUxTest {
   Prefs.get(app).edit().putBoolean(Prefs.HIGH_CONTRAST,true).apply();DialpadActivity dial=Robolectric.buildActivity(DialpadActivity.class).setup().get();type(dial,"010");
   TextView hint=(TextView)((LinearLayout)dial.findViewById(R.id.dial_matches)).getChildAt(0);assertEquals(0xFFFFD600,hint.getCurrentTextColor());assertEquals((int)(8*dial.getResources().getDisplayMetrics().density),hint.getPaddingRight());assertEquals(hint.getPaddingLeft(),hint.getPaddingRight());
   AppsPageActivity apps=Robolectric.buildActivity(AppsPageActivity.class).setup().get();ViewGroup host=apps.findViewById(android.R.id.content);ViewGroup fixed=(ViewGroup)host.getChildAt(0);
-  assertEquals(0xFFFFD600,((TextView)fixed.getChildAt(1)).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)((LinearLayout)apps.findViewById(R.id.tiles_container)).getChildAt(0)).getCurrentTextColor());
+  assertEquals(0xFFFFD600,((TextView)apps.findViewById(R.id.page_title)).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)((LinearLayout)apps.findViewById(R.id.tiles_container)).getChildAt(0)).getCurrentTextColor());
  }
  @Test public void highContrastPickerUsesThemeForActualHintHeadingAndRow(){
   Prefs.get(app).edit().putBoolean(Prefs.HIGH_CONTRAST,true).putString(AppSelection.PREF_KEY,"example.a").apply();
   SettingsFixture a=Robolectric.buildActivity(SettingsFixture.class).setup().get();a.applyDiscoveredApps(Collections.singletonList(new String[]{"example.a","تطبيق تجريبي"}));
-  LinearLayout box=a.findViewById(R.id.settings_apps_list);assertEquals(0xFFFFD600,((TextView)box.getChildAt(0)).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)box.getChildAt(1)).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)key(box,"app_handle")).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)a.findViewById(R.id.settings_page_title)).getCurrentTextColor());
+  LinearLayout box=a.findViewById(R.id.settings_apps_list);assertEquals(0xFFFFD600,((TextView)box.getChildAt(0)).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)box.getChildAt(1)).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)key(box,"app_handle")).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)a.findViewById(R.id.page_title)).getCurrentTextColor());
  }
  @Test public void roamingUsesSimCountryForExactAndPrefixRecognition()throws Exception {
   provider("اختبار");Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.READ_CONTACTS);

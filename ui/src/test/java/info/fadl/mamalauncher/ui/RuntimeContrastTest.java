@@ -54,7 +54,7 @@ public class RuntimeContrastTest {
         android.content.Context ctx=paparazzi.getContext();
         View v=paparazzi.inflate(R.layout.activity_main);
         v.setBackgroundColor(ctx.getResources().getColor(R.color.contrast_bg));
-        ((TextView) v.findViewById(R.id.home_clock)).setText("1:00");
+        ((TextView) v.findViewById(R.id.home_clock)).setText("13:00");
         ((TextView) v.findViewById(R.id.home_date)).setText("الاثنين ٩ نوفمبر");
         addHomeRows(v, v.findViewById(R.id.tiles_container), true);
         paparazzi.snapshot(v, "everyday-home-contrast");

@@ -126,6 +126,7 @@ public class DialpadActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dialpad);
+        info.fadl.mamalauncher.ui.PageHeader.title(findViewById(android.R.id.content),R.string.dialpad_title);
         display = findViewById(R.id.dial_display);
         if (savedInstanceState != null) number.append(savedInstanceState.getString("number", ""));
         callBtn = findViewById(R.id.btn_call);

@@ -21,9 +21,7 @@ public class ContrastRegressionTest {
  @Test public void lookupLoading(){paparazzi.snapshot(dialHint(R.string.dial_lookup_loading),"contrast-lookup-loading");}
  @Test public void appsEmpty() {
   View v=paparazzi.inflate(R.layout.activity_main);v.setBackgroundColor(android.graphics.Color.BLACK);v.findViewById(R.id.home_header).setVisibility(View.GONE);
-  LinearLayout fixed=new LinearLayout(v.getContext());fixed.setBackgroundColor(android.graphics.Color.BLACK);fixed.setOrientation(LinearLayout.VERTICAL);int edge=(int)(12*v.getResources().getDisplayMetrics().density);fixed.setPadding(edge,edge,edge,0);
-  Button back=new Button(v.getContext());back.setText(R.string.back);back.setTextSize(26);back.setBackgroundResource(R.drawable.btn_back);back.setTextColor(android.graphics.Color.WHITE);back.setMinHeight((int)(72*v.getResources().getDisplayMetrics().density));fixed.addView(back,new LinearLayout.LayoutParams(-1,-2));
-  TextView title=new TextView(v.getContext());title.setText(R.string.apps_page);title.setTextSize(30);title.setGravity(Gravity.CENTER);title.setTextColor(SurfaceText.color(v.getContext()));fixed.addView(title,new LinearLayout.LayoutParams(-1,-2));fixed.addView(v,new LinearLayout.LayoutParams(-1,0,1));
+  View header=PageHeader.apps((android.widget.ScrollView)v);View fixed=(View)header.getParent();fixed.setBackgroundColor(android.graphics.Color.BLACK);
   TextView empty=new TextView(v.getContext());empty.setText(R.string.apps_empty);empty.setTextSize(24);empty.setTextColor(SurfaceText.color(v.getContext()));((LinearLayout)v.findViewById(R.id.tiles_container)).addView(empty);paparazzi.snapshot(fixed,"contrast-apps-empty");
  }
  @Test public void pickerHeadingsAndLabels() {

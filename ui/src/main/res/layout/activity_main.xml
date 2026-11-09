@@ -22,6 +22,7 @@
                 android:textColor="?attr/surfaceSecondaryText"/>
         </LinearLayout>
 
+        <include layout="@layout/first_use_guide" />
         <LinearLayout
             android:id="@+id/tiles_container"
             android:layout_width="match_parent" android:layout_height="wrap_content"

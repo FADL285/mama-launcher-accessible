@@ -25,6 +25,7 @@ import info.fadl.mamalauncher.ui.UiBinder;
  */
 public class MainActivity extends BaseActivity {
 
+    static final String GUIDE_SEEN="first_use_guide_v1";
     private LinearLayout tiles;
     protected boolean isSecondary(){return false;}
     private boolean appliedContrast;
@@ -39,19 +40,13 @@ public class MainActivity extends BaseActivity {
         setContentView(R.layout.activity_main);
         tiles = findViewById(R.id.tiles_container);
         if(isSecondary()) {
-            findViewById(R.id.home_header).setVisibility(View.GONE);
-            android.widget.Button back=new android.widget.Button(this);back.setText(R.string.back);back.setTextSize(26);back.setBackgroundResource(R.drawable.btn_back);back.setTextColor(android.graphics.Color.WHITE);back.setMinHeight((int)(72*getResources().getDisplayMetrics().density));
-            guard(back,this::finish);
-            android.widget.ScrollView scroll=(android.widget.ScrollView)tiles.getParent().getParent();
-            android.view.ViewGroup host=(android.view.ViewGroup)scroll.getParent();
-            host.removeView(scroll);
-            LinearLayout fixed=new LinearLayout(this);fixed.setOrientation(LinearLayout.VERTICAL);int edge=(int)(12*getResources().getDisplayMetrics().density);fixed.setPadding(edge,edge,edge,0);
-            fixed.addView(back,new LinearLayout.LayoutParams(-1,-2));
-            TextView title=new TextView(this);title.setText(R.string.apps_page);title.setTextSize(30);title.setGravity(android.view.Gravity.CENTER);title.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));
-            fixed.addView(title,new LinearLayout.LayoutParams(-1,-2));
-            fixed.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-            host.addView(fixed,new android.view.ViewGroup.LayoutParams(-1,-1));
+            View header=info.fadl.mamalauncher.ui.PageHeader.apps((android.widget.ScrollView)findViewById(R.id.home_header).getParent().getParent());
+            guard(header.findViewById(R.id.btn_back),this::finish);
         }
+        View guide=findViewById(R.id.first_use_guide);
+        guide.setVisibility(!isSecondary() && !Prefs.get(this).getBoolean(GUIDE_SEEN,false)?View.VISIBLE:View.GONE);
+        guard(findViewById(R.id.btn_guide_done),()->{Prefs.get(this).edit().putBoolean(GUIDE_SEEN,true).apply();guide.setVisibility(View.GONE);});
+        guard(findViewById(R.id.btn_guide_sound),()->startActivity(PinGateActivity.intentForEntry(this).putExtra(SettingsActivity.EXTRA_SOUND,true)));
         appliedContrast = Prefs.highContrast(this);
         appliedFont = Prefs.fontScale(this);
         android.content.IntentFilter changes = new android.content.IntentFilter();
@@ -112,18 +107,13 @@ public class MainActivity extends BaseActivity {
         tiles.removeAllViews();
         List<View> built = new ArrayList<>();
 
-        if(!isSecondary()) {
-            View phone = UiBinder.buildHomeTile(this, getString(R.string.tile_phone),
-                getResources().getDrawable(R.drawable.ic_call), R.drawable.chip_green, contrast(), null);
-            guard(phone, () -> startActivity(new Intent(this, PhoneActivity.class)));built.add(phone);
-            if(hasLaunchableSecondary()) {
-                View folder=UiBinder.buildHomeTile(this,getString(R.string.apps_page),getResources().getDrawable(R.drawable.ic_apps),R.drawable.chip_green,contrast(),null);
-                guard(folder,()->startActivity(new Intent(this,AppsPageActivity.class)));built.add(folder);
-            }
-        }
-
         PackageManager pm = getPackageManager();
-        for (String pkg : AppSelection.parse(Prefs.get(this).getString(isSecondary()?AppSelection.SECONDARY_KEY:AppSelection.PREF_KEY, null))) {
+        List<String> chosen=AppSelection.parse(Prefs.get(this).getString(isSecondary()?AppSelection.SECONDARY_KEY:AppSelection.PREF_KEY,null));
+        List<String> order=isSecondary()?chosen:AppSelection.homeOrder(Prefs.get(this).getString(AppSelection.HOME_ORDER_KEY,null),chosen);
+        for (String pkg : order) {
+            if(AppSelection.PHONE.equals(pkg)){View phone=UiBinder.buildHomeTile(this,getString(R.string.tile_phone),getResources().getDrawable(R.drawable.ic_call),R.drawable.chip_green,contrast(),null);phone.setTag(AppSelection.PHONE);guardTile(phone,()->startActivity(new Intent(this,PhoneActivity.class)));built.add(phone);continue;}
+            if(AppSelection.FOLDER.equals(pkg)){if(hasLaunchableSecondary()){View folder=UiBinder.buildHomeTile(this,getString(R.string.apps_page),getResources().getDrawable(R.drawable.ic_apps),R.drawable.chip_green,contrast(),null);folder.setTag(AppSelection.FOLDER);guardTile(folder,()->startActivity(new Intent(this,AppsPageActivity.class)));built.add(folder);}continue;}
+
             Intent launch = pm.getLaunchIntentForPackage(pkg);
             if (launch == null) continue; // uninstalled: silently gone, no placeholder
             String name = pkg;
@@ -133,7 +123,7 @@ public class MainActivity extends BaseActivity {
                 icon = pm.getApplicationIcon(pkg);
             } catch (PackageManager.NameNotFoundException ignored) { }
             View tile = UiBinder.buildHomeTile(this, name, icon, 0, contrast(), null);
-            guard(tile, () -> {
+            guardTile(tile, () -> {
                 try { startActivity(launch); }
                 catch (android.content.ActivityNotFoundException e) { buildTiles(); }
             });
@@ -163,6 +153,24 @@ public class MainActivity extends BaseActivity {
             tiles.addView(row, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         }
+    }
+
+    private void guardTile(View tile,Runnable action){
+        guard(tile,action);
+        if(!Prefs.touchGuard(this))return;
+        final long[] down={-1};
+        tile.setOnTouchListener((v,e)->{
+            boolean inside=e.getX()>=0 && e.getX()<v.getWidth() && e.getY()>=0 && e.getY()<v.getHeight();
+            switch(e.getActionMasked()){
+                case android.view.MotionEvent.ACTION_DOWN:down[0]=e.getEventTime();return true;
+                case android.view.MotionEvent.ACTION_MOVE:if(!inside)down[0]=-1;return true;
+                case android.view.MotionEvent.ACTION_UP:
+                    long held=down[0]<0?-1:e.getEventTime()-down[0];down[0]=-1;
+                    if(inside && held>=1000)v.performLongClick();else if(inside && held>=GUARD_PRESS_MS)v.performClick();return true;
+                case android.view.MotionEvent.ACTION_CANCEL:down[0]=-1;return true;
+                default:return true;
+            }
+        });
     }
 
     @Override protected void onDestroy() {
