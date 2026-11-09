@@ -11,7 +11,7 @@ Date: 2026-11-10. Base: `c239668040c7231c10752bf01b034b0fae2d1a09` (merged 0.12 
 - F05: balance the measured Back width with an equal invisible side. On narrow/large-text layouts, Back and a full-width centered title use separate rows.
 - F06: add a persistent Home-after-screen-lock switch. It applies to Apps, Phone and Dialpad, waits for an interactive/unlocked screen, preserves pending navigation over saved-state recreation, and ignores screen-off while already paused in another app.
 
-F06 default is **pending owner decision**. The candidate fallback is OFF to avoid silently changing current behavior; this is not an agreed final default. Call confirmation keeps its prior behavior. Protected settings/PIN already lock and return Home on screen-off independently of this preference; this change does not weaken that behavior.
+F06 is **ON by default**, as chosen by the owner on 2026-11-10. The family setter can turn it OFF in accessibility settings. Call confirmation keeps its prior behavior. Protected settings/PIN already lock and return Home on screen-off independently of this preference; this change does not weaken that behavior.
 
 No speakerphone feature, Egyptian TTS integration, new external service, real call, device mutation, or private contact fixture is included.
 
@@ -27,7 +27,7 @@ These are local JVM/layout tests, not an Android emulator or Samsung handset run
 
 ## Before distribution or merge
 
-1. Owner chooses the F06 default, then update its fallback/test/docs if needed.
+1. F06 default ON is confirmed. Review the setting and test both choices on the handset.
 2. Review the PR and merge manually. No automatic merge.
 3. Recover the existing pilot signing key before issuing an update APK. The local debug signer differs from the installed pilot. The new APK is not distributed.
 4. If the original signer cannot be recovered, obtain explicit agreement before any uninstall/reinstall. That loses launcher preferences, selected apps/order, favorites, PIN and TTS/UI choices; contacts and the separate TTS engine are not launcher app storage.

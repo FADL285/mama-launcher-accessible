@@ -66,4 +66,4 @@ The build still uses pinned but old Gradle/AGP/Paparazzi versions; this pass did
 
 The recovered project does not include the existing pilot signing key. A new local debug signer cannot update that installed app. No APK was distributed and no uninstall performed. Release/update-signing continuity must be resolved before delivery.
 
-The F06 default is an unresolved product choice. Candidate fallback OFF preserves current behavior pending an explicit owner decision; it is not approval by silence.
+The owner chose F06 default ON on 2026-11-10. The switch remains configurable; tests pin the default and both saved choices.
