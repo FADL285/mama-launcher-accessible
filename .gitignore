@@ -6,3 +6,6 @@ local.properties
 .idea/
 *.keystore
 *.jks
+
+# Paparazzi failure/diff output is local evidence, not a golden fixture.
+*/out/
