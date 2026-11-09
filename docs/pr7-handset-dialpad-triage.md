@@ -97,7 +97,7 @@ older statement that Apps/speech behavior was unchanged.
 - Confirmation body and unboxed sound/setup text use active theme colors;
   white-backed number-choice buttons keep dark labels for their own surface.
 
-Validation: 160 app tests and 71 UI test cases (70 snapshot images plus
+Validation: 160 app tests and 73 UI test cases (72 snapshot images plus
 one header-completeness assertion-only case). Full fresh verification is
 required before reporting ready. New visual fixtures use the shared header
 and speech-state renderer rather than substitute UI. They are layoutlib
@@ -105,3 +105,7 @@ renders, not handset/emulator screenshots. The handset retest still includes
 speech audibility/pronunciation, touch/drag speed, settings lock and real call
 behavior under supervision. No model, cloud speech or extra permission was
 added. Public fixtures contain no handset contacts, photos, numbers or PIN.
+
+### Speech recovery discoverability
+
+At 150% text the initial confirmation screen cannot show the full photo, body and recovery buttons at once. A fixed, labeled 48dp-minimum Sound options button now reveals Retry/Setup without requiring discovery of scrolling. It appears only for retry/preparing/setup states and never calls, speaks or bypasses the PIN. Call/Back remain fixed. Initial/revealed contrast renders and visibility assertions pass. Physical swipes and hardware navigation remain unverified.

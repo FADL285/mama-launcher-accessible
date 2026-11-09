@@ -13,5 +13,8 @@ public final class SpeechStatusUi {
    "NEEDS_SETUP".equals(state)?R.string.speech_setup_needed:R.string.speech_retryable);
   root.findViewById(R.id.btn_speech_retry).setVisibility(loading?View.GONE:View.VISIBLE);
   root.findViewById(R.id.btn_speech_setup).setVisibility(loading?View.GONE:View.VISIBLE);
+  View options=root.findViewById(R.id.btn_speech_options);
+  options.setVisibility(ready||loading?View.GONE:View.VISIBLE);
+  options.setOnClickListener(v -> {android.widget.ScrollView scroll=root.findViewById(R.id.confirm_scroll);scroll.scrollTo(0,scroll.getChildAt(0).getHeight());});
  }
 }

@@ -8,7 +8,7 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 **نسخة تجريبية تحت تجربة مشرفة.** اختبارات الكود والواجهة ناجحة، لكن إصلاحات النسخة الجديدة ما زالت تحتاج إعادة تجربة على الهاتف الفعلي، خصوصا الصوت والمكالمات وقفل الجهاز.
 
-Supervised pilot. Current 0.11 candidate source, based on merged PR6, passes 160 app unit/flow tests (JUnit + Robolectric) and 71 UI test cases (70 rendered snapshots and one assertion-only header-fit case). Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
+Supervised pilot. Current 0.11 candidate source, based on merged PR6, passes 160 app unit/flow tests (JUnit + Robolectric) and 73 UI test cases (72 rendered snapshots and one assertion-only header-fit case). Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
 
 ## الفكرة — Design
 

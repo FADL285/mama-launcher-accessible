@@ -143,4 +143,5 @@
     <string name="tts_human_not_ok">جرّب رفع صوت الوسائط أو اختيار محرك وبيانات عربي، ثم أعد التجربة.</string>
     <string name="sound_guide">خطوات إعداد الصوت والدخول للإعدادات</string>
     <string name="guide_short">للدخول لاحقًا: اضغط مطوّلًا على الساعة، ثم أدخل رمز القفل وافتح قسم الصوت.</string>
+    <string name="speech_options">خيارات الصوت ↓</string>
 </resources>
