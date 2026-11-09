@@ -9,18 +9,16 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-/**
- * Big dial pad for a new number. No new permissions by design: the green
- * button hands the composed number to the phone's own dialer (ACTION_DIAL),
- * and "save number" opens the phone's normal add-contact screen with the
- * number prefilled (Contacts insert UI does the writing, not us).
- */
+/** Big dial pad. The green action calls directly after an explicit press and
+ * CALL_PHONE permission. Permission grant alone never calls. Save opens the
+ * system contact-insert form and never writes contacts silently. */
 public class DialpadActivity extends BaseActivity {
 
     private final StringBuilder number = new StringBuilder();
     private TextView display;
     private View callBtn;
     private View saveBtn;
+    private DirectCallAction callAction;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,11 +36,10 @@ public class DialpadActivity extends BaseActivity {
         });
         wireDigits(findViewById(R.id.dial_grid));
 
-        guard(callBtn, () -> {
-            if (number.length() == 0) return;
-            try { startActivity(DialIntents.dial(number.toString())); }
-            catch (android.content.ActivityNotFoundException e) { handoffUnavailable(); }
-        });
+        callAction=new DirectCallAction(this,(blocked,granted) ->
+                android.widget.Toast.makeText(this,blocked?R.string.call_blocked_hint:R.string.call_permission_ready,
+                        android.widget.Toast.LENGTH_LONG).show());
+        guard(callBtn, () -> callAction.tap(number.toString()));
         guard(saveBtn, () -> {
             if (number.length() == 0) return;
             try {
@@ -50,6 +47,14 @@ public class DialpadActivity extends BaseActivity {
             } catch (android.content.ActivityNotFoundException e) { handoffUnavailable(); }
         });
         sync();
+    }
+
+    @Override protected void onResume() {
+        super.onResume(); if(callAction!=null)callAction.onResume();
+    }
+    @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results) {
+        super.onRequestPermissionsResult(code,permissions,results);
+        callAction.permissionResult(code,results);
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {

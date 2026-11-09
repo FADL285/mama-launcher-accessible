@@ -17,11 +17,11 @@ public class AdditionalAuditProbeTest {
   MainActivity a=Robolectric.buildActivity(MainActivity.class).setup().get();
   assertEquals(a.getResources().getColor(R.color.contrast_text),((android.widget.TextView)a.findViewById(R.id.home_clock)).getCurrentTextColor());
  }
- @Test public void pickerMustBeAfterProtectionControls() {
+ @Test public void pickerCannotDisplaceProtectionBecauseSectionsAreSeparate() {
   android.content.Context app=RuntimeEnvironment.getApplication();Prefs.get(app).edit().clear().apply();SessionGate.unlock();
   SettingsActivity a=Robolectric.buildActivity(SettingsActivity.class).setup().get();
-  android.view.View picker=a.findViewById(R.id.settings_apps_list),pin=a.findViewById(R.id.btn_change_pin);
-  android.view.ViewGroup content=(android.view.ViewGroup)picker.getParent();while(pin.getParent()!=content)pin=(android.view.View)pin.getParent();
-  assertTrue(content.indexOfChild(picker)>content.indexOfChild(pin));
+  a.findViewById(R.id.open_section_protection).performClick();
+  assertTrue(a.findViewById(R.id.btn_change_pin).isShown());
+  assertFalse(a.findViewById(R.id.settings_apps_list).isShown());
  }
 }

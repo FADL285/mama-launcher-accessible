@@ -78,8 +78,10 @@ public class PhoneActivity extends BaseActivity {
         grid.setVisibility(View.VISIBLE);
         final int generation = ++refreshGeneration;
         new Thread(() -> {
-            List<ContactEntry> sorted = ContactSorter.sort(
-                    ContactsLoader.load(getContentResolver(), getResources()));
+            List<ContactEntry> original=ContactsLoader.load(getContentResolver(),getResources());
+            final java.util.Set<Long> systemStars=new java.util.HashSet<>();
+            for(ContactEntry c:original)if(c.starred)systemStars.add(c.id);
+            List<ContactEntry> sorted=ContactSorter.sort(LocalFavorites.apply(this,original));
             runOnUiThread(() -> {
                 if (generation != refreshGeneration) return; // stale results
                 if (isDestroyed() || isFinishing()) return;
@@ -88,7 +90,7 @@ public class PhoneActivity extends BaseActivity {
                         View tile = super.getView(position, recycled, parent);
                         ContactEntry contact = sorted.get(position);
                         guard(tile, () -> startActivity(ConfirmCallActivity.intentFor(
-                                PhoneActivity.this, contact)));
+                                PhoneActivity.this, contact).putExtra("system_favorite",systemStars.contains(contact.id))));
                         return tile;
                     }
                 });

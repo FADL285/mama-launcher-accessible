@@ -8,7 +8,7 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 **نسخة تجريبية مبكرة (pilot).** الكود يُبنى وتنجح اختباراته: ٨٥ اختبار وحدة وتدفق (JUnit + Robolectric يشمل مسارات بوابة PIN والقفل والاتصال والطلب عبر أنشطة حقيقية على JVM) + ٢٧ لقطة شاشة معروضة عبر layoutlib، لكنه **لم يُختبر بعد على جهاز حقيقي**. التوافق الفعلي يتأكد بالتجربة على الأجهزة.
 
-Early pilot. Builds cleanly, 85 unit and flow tests pass (JUnit + Robolectric: real Activities covering the PIN gate, relock, dial/save intents and call-permission discipline on the JVM) plus 27 layout-rendered snapshot tests (see `ui/src/test/snapshots/images/`), **but it has not been tested on a real device yet**.
+Supervised pilot. Current PR4 source passes 107 app unit/flow tests (JUnit + Robolectric) and 37 layout-rendered snapshots. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
 
 ## الفكرة — Design
 

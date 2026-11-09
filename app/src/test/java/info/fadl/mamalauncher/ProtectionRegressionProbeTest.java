@@ -75,20 +75,17 @@ public class ProtectionRegressionProbeTest {
         c.get().applyDiscoveredApps(apps);
         assertEquals("new.app",Prefs.get(app).getString(AppSelection.PREF_KEY,null));
     }
-    @Test public void delayedAppListIsBelowStaticControlsAndCannotPushThemAway() {
+    @Test public void delayedAppListCannotDisplaceLandingOrSound() {
         SessionGate.unlock();
         SettingsActivity a=Robolectric.buildActivity(SettingsActivity.class).setup().get();
-        android.view.View picker=a.findViewById(R.id.settings_apps_list);
+        a.findViewById(R.id.open_section_sound).performClick();
         android.view.View sound=a.findViewById(R.id.switch_auto_speak);
-        android.view.View pin=a.findViewById(R.id.btn_change_pin);
         int[] before=new int[2]; sound.getLocationOnScreen(before);
         java.util.List<String[]> apps=new java.util.ArrayList<>();
         for(int n=0;n<30;n++) apps.add(new String[]{"fake.app"+n,"App "+n});
         a.applyDiscoveredApps(apps);
-        android.view.ViewGroup content=(android.view.ViewGroup)picker.getParent();
-        android.view.View pinSection=pin;
-        while(pinSection.getParent()!=content) pinSection=(android.view.View)pinSection.getParent();
-        assertTrue(content.indexOfChild(picker)>content.indexOfChild(pinSection));
+        assertTrue(sound.isShown());
+        assertFalse(a.findViewById(R.id.settings_apps_list).isShown());
         int[] after=new int[2];sound.getLocationOnScreen(after);
         assertArrayEquals(before,after);
     }

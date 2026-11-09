@@ -120,7 +120,7 @@ public class MainActivity extends BaseActivity {
         for (int i = 0; i < built.size(); i += 2) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f);
             lp.setMargins(m, m, m, m);
             built.get(i).setMinimumHeight(h);
             row.addView(built.get(i), lp);

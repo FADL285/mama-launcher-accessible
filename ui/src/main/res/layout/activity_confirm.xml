@@ -38,16 +38,6 @@
                     android:visibility="gone"
                     android:padding="20dp"/>
 
-                <ImageButton
-                    android:id="@+id/btn_repeat_name"
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:layout_gravity="bottom|end"
-                    android:layout_margin="10dp"
-                    android:background="@drawable/circle_white"
-                    android:src="@drawable/ic_speaker"
-                    android:padding="14dp"
-                    android:contentDescription="@string/repeat_name"/>
             </FrameLayout>
 
             <TextView
@@ -64,6 +54,21 @@
         </LinearLayout>
     </ScrollView>
 
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                <TextView android:id="@+id/btn_favorite" android:layout_width="64dp" android:layout_height="64dp"  android:layout_margin="10dp" android:background="@drawable/circle_white" android:text="☆" android:textSize="34sp" android:textColor="@color/back_blue" android:gravity="center" android:contentDescription="@string/favorite_add" android:clickable="true" android:focusable="true" />
+        <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+                <ImageButton
+                    android:id="@+id/btn_repeat_name"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    
+                    android:layout_margin="10dp"
+                    android:background="@drawable/circle_white"
+                    android:src="@drawable/ic_speaker"
+                    android:padding="14dp"
+                    android:contentDescription="@string/repeat_name"/>
+    </LinearLayout>
+    <TextView android:id="@+id/favorite_hint" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/favorite_choose_number" android:textSize="15sp" android:textColor="@color/text_main" android:gravity="center" android:padding="4dp" android:visibility="gone" />
     <TextView
         android:id="@+id/single_number"
         android:layout_width="match_parent"

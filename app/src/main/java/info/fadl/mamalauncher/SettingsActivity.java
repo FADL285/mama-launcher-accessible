@@ -26,19 +26,24 @@ import java.util.Locale;
 
 /**
  * Family-setter screen (the person preparing the phone, not mama), reached
- * only through the PIN / device-lock gate. Sections: home-button picker
+ * only through the PIN / device-lock gate. Landing menu opens one section
+ * within this Activity, preserving the authorized session. Sections: home-button picker
  * (chosen apps, in the setter's order), sound (auto-speak + TTS health),
  * permissions (status + system deep link), accessibility (font, contrast,
  * touch guard, vibration), protection (change PIN, device-lock toggle).
  */
-public class SettingsActivity extends BaseActivity {
+public class SettingsActivity extends ProtectedModeActivity {
 
+    private int currentSection = -1;
     private SharedPreferences prefs;
     private TextToSpeech tts;
     private boolean ttsReady;
     private TextView ttsStatus;
     private Button ttsTest;
     private Button ttsData;
+    private String requestedEngine;
+    private boolean refreshSpeechOnReturn;
+    private int speechGeneration;
 
     private final List<String> selected = new ArrayList<>();
     private List<String[]> installed = new ArrayList<>(); // [pkg, label], alphabetical
@@ -50,7 +55,12 @@ public class SettingsActivity extends BaseActivity {
         prefs = Prefs.get(this);
         selected.addAll(AppSelection.parse(prefs.getString(AppSelection.PREF_KEY, null)));
 
-        guard(findViewById(R.id.btn_settings_back), this::finish);
+        guard(findViewById(R.id.btn_settings_back), this::onBackPressed);
+        for(int i=0;i<info.fadl.mamalauncher.ui.SettingsSections.BUTTONS.length;i++) {
+            final int section=i;
+            guard(findViewById(info.fadl.mamalauncher.ui.SettingsSections.BUTTONS[i]), () -> showSection(section));
+        }
+        showSection(savedInstanceState == null ? -1 : savedInstanceState.getInt("settings.section", -1));
         guard(findViewById(R.id.btn_open_app_settings), () -> {
             SessionGate.expectExternal(); // sanctioned system screen: survives this one leave
             Intent i = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -71,9 +81,25 @@ public class SettingsActivity extends BaseActivity {
         initTts();
     }
 
+    private void showSection(int section) {
+        currentSection = section >= 0 && section < info.fadl.mamalauncher.ui.SettingsSections.PANELS.length ? section : -1;
+        info.fadl.mamalauncher.ui.SettingsSections.show(findViewById(android.R.id.content), currentSection);
+    }
+
+    @Override public void onBackPressed() {
+        if (currentSection != -1) showSection(-1);
+        else super.onBackPressed();
+    }
+
+    @Override protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out);
+        out.putInt("settings.section", currentSection);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+        if (isFinishing()) return;
         if (!SessionGate.isValid()) {
             // Any return to a locked settings screen goes back through the gate.
             startActivity(PinGateActivity.intentForEntry(this));
@@ -82,7 +108,8 @@ public class SettingsActivity extends BaseActivity {
         }
         SessionGate.clearExternal(); // the sanctioned leave was consumed; next leave locks
         updatePermissionRows();
-        if (tts != null) refreshTtsHealth();
+        if (refreshSpeechOnReturn) { refreshSpeechOnReturn=false; initTts(); }
+        else if (tts != null) refreshTtsHealth();
     }
 
     @Override
@@ -108,10 +135,16 @@ public class SettingsActivity extends BaseActivity {
         ttsTest = findViewById(R.id.btn_tts_test);
         ttsData = findViewById(R.id.btn_tts_data);
         ttsTest.setOnClickListener(v -> testSpeak());
+        findViewById(R.id.btn_tts_engine).setOnClickListener(v -> chooseEngine());
         ttsData.setOnClickListener(v -> {
             try {
                 SessionGate.expectExternal(); // TTS installer is a sanctioned system screen
-                startActivity(new Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA));
+                String engine=requestedEngine;
+                if(engine==null || !SpeechEngineChoice.installed(this).containsKey(engine)) {
+                    SessionGate.clearExternal();chooseEngine();return;
+                }
+                refreshSpeechOnReturn=true;
+                startActivity(SpeechEngineChoice.installIntent(engine));
             } catch (android.content.ActivityNotFoundException ignored) {
                 // Nothing handled the installer: the sanctioned leave never
                 // happened, so the exemption must not survive either.
@@ -316,54 +349,76 @@ public class SettingsActivity extends BaseActivity {
 
     // ---- TTS health ----
 
+    private void chooseEngine() {
+        java.util.Map<String,String> engines=SpeechEngineChoice.installed(this);
+        if(engines.isEmpty()) { ttsStatus.setText(R.string.tts_no_engines);return; }
+        String[] packages=engines.keySet().toArray(new String[0]);
+        String[] labels=engines.values().toArray(new String[0]);
+        new android.app.AlertDialog.Builder(this).setTitle(R.string.tts_choose_engine)
+            .setItems(labels,(dialog,index)-> {
+                if(protectedModeEnded() || isFinishing())return;
+                prefs.edit().putString(SpeechEngineChoice.KEY,packages[index]).apply();
+                initTts();
+            }).setNegativeButton(android.R.string.cancel,null).show();
+    }
+
     private void initTts() {
-        tts = new TextToSpeech(getApplicationContext(), status -> {
-            if (isDestroyed() || isFinishing()) return;
-            ttsReady = status == TextToSpeech.SUCCESS;
-            if (!ttsReady) {
-                ttsStatus.setText(R.string.tts_missing);
-                ttsData.setVisibility(View.VISIBLE);
-                return;
-            }
-            refreshTtsHealth();
+        final int generation=++speechGeneration;
+        if(tts!=null) {tts.stop();tts.shutdown();}
+        ttsReady=false;ttsTest.setEnabled(false);ttsStatus.setText(R.string.tts_checking);
+        requestedEngine=SpeechEngineChoice.requested(this);
+        java.util.Map<String,String> engines=SpeechEngineChoice.installed(this);
+        String label=requestedEngine==null?getString(R.string.tts_engine_default):engines.get(requestedEngine);
+        ((TextView)findViewById(R.id.tts_engine_label)).setText(getString(R.string.tts_engine_selected,label==null?requestedEngine:label));
+        // A removed explicit choice must not silently switch to a different vendor.
+        if(Prefs.get(this).contains(SpeechEngineChoice.KEY) && !engines.containsKey(requestedEngine)) {
+            ttsStatus.setText(R.string.tts_no_engines);ttsData.setVisibility(View.GONE);return;
+        }
+        tts=new TextToSpeech(getApplicationContext(),status -> runOnUiThread(()-> {
+            if(generation!=speechGeneration || isDestroyed() || isFinishing())return;
+            ttsReady=status==TextToSpeech.SUCCESS;
+            if(!ttsReady) {ttsStatus.setText(R.string.tts_missing);ttsData.setVisibility(View.VISIBLE);return;}
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String id) { }
-                @Override public void onDone(String id) {
-                    runOnUiThread(() -> ttsStatus.setText(R.string.tts_test_ok));
+                @Override public void onDone(String id) { update(R.string.tts_test_ok); }
+                @Override public void onError(String id) { update(R.string.tts_test_failed); }
+                @Override public void onError(String id,int error) {
+                    update(error==TextToSpeech.ERROR_NOT_INSTALLED_YET?R.string.tts_preparing:R.string.tts_test_failed);
                 }
-                @Override public void onError(String id) {
-                    runOnUiThread(() -> ttsStatus.setText(R.string.tts_test_failed));
-                }
+                private void update(int message) {runOnUiThread(()-> {
+                    if(generation==speechGeneration && !isFinishing() && !isDestroyed())ttsStatus.setText(message);
+                });}
             });
             refreshTtsHealth();
-        });
+        }),requestedEngine);
     }
 
     private void refreshTtsHealth() {
-        if (!ttsReady || tts == null) return;
-        boolean arabic = NameSpeaker.shouldAutoSpeak(tts.isLanguageAvailable(new Locale("ar")));
-        ttsStatus.setText(arabic ? R.string.tts_ready : R.string.tts_arabic_missing);
-        ttsData.setVisibility(arabic ? View.GONE : View.VISIBLE);
-        ttsTest.setEnabled(arabic);
+        if(!ttsReady || tts==null)return;
+        // setLanguage is the official engine-supported automatic voice download
+        // trigger. Never use a different-language fallback as a successful test.
+        int result=tts.setLanguage(new Locale("ar"));
+        ArabicSpeechState.State state=ArabicSpeechState.from(result,tts.getVoice());
+        ttsStatus.setText(state==ArabicSpeechState.State.PREPARING?R.string.tts_preparing:
+            state==ArabicSpeechState.State.READY?R.string.tts_ready:
+            state==ArabicSpeechState.State.UNSUPPORTED?R.string.tts_unsupported:R.string.tts_arabic_missing);
+        ttsData.setVisibility(state==ArabicSpeechState.State.READY?View.GONE:View.VISIBLE);
+        // Allow another explicit try to refresh after an engine download finishes.
+        ttsTest.setEnabled(true);
     }
 
     private void testSpeak() {
-        if (!ttsReady) return;
-        Locale ar = new Locale("ar");
-        if (tts.isLanguageAvailable(ar) >= TextToSpeech.LANG_AVAILABLE) {
-            tts.setLanguage(ar);
-            if (tts.speak(getString(R.string.app_name), TextToSpeech.QUEUE_FLUSH, null,
-                    "settings-test") == TextToSpeech.ERROR) {
-                ttsStatus.setText(R.string.tts_test_failed);
-            }
-        }
-        // Arabic missing: do NOT test in the default voice. A "success" status
-        // would be misleading - automatic name speech requires Arabic - so the
-        // Arabic-missing warning stays on screen instead.
+        if(!ttsReady)return;
+        refreshTtsHealth();
+        if(ArabicSpeechState.from(tts.setLanguage(new Locale("ar")),tts.getVoice())!=ArabicSpeechState.State.READY)return;
+        ttsStatus.setText(R.string.tts_test_started);
+        if(tts.speak(getString(R.string.app_name),TextToSpeech.QUEUE_FLUSH,null,"settings-test")==TextToSpeech.ERROR)
+            ttsStatus.setText(R.string.tts_test_failed);
     }
 
     @Override
     protected void onDestroy() {
+        speechGeneration++;
         if (tts != null) { tts.stop(); tts.shutdown(); }
         super.onDestroy();
     }

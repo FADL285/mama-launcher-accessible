@@ -18,6 +18,7 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
 
     private android.speech.tts.TextToSpeech tts;
     private boolean ready;
+    private boolean closed;
     private String pending;
     private AvailabilityListener availabilityListener;
     private final android.os.Handler main =
@@ -41,19 +42,24 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
     }
 
     public void init(android.content.Context context) {
-        tts = new android.speech.tts.TextToSpeech(context.getApplicationContext(), this);
+        String engine=SpeechEngineChoice.requested(context);
+        if(Prefs.get(context).contains(SpeechEngineChoice.KEY) && !SpeechEngineChoice.installed(context).containsKey(engine)) {
+            if(availabilityListener!=null)availabilityListener.onUnavailable();return;
+        }
+        tts = new android.speech.tts.TextToSpeech(context.getApplicationContext(), this, engine);
     }
 
     @Override
     public void onInit(int status) {
+        if(closed)return;
         ready = status == android.speech.tts.TextToSpeech.SUCCESS;
         if (!ready) {
             if (availabilityListener != null) availabilityListener.onUnavailable();
             return;
         }
         Locale ar = new Locale("ar");
-        int avail = tts.isLanguageAvailable(ar);
-        if (!shouldAutoSpeak(avail)) {
+        int avail = tts.setLanguage(ar);
+        if (ArabicSpeechState.from(avail,tts.getVoice())!=ArabicSpeechState.State.READY) {
             // Arabic missing on this engine: say so instead of pronouncing
             // the name wrongly in a default locale. The settings screen
             // already offers the official Arabic data installer. NOT ready:
@@ -63,7 +69,6 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
             pending = null;
             return;
         }
-        tts.setLanguage(ar);
         // Queued success is not proof of sound: synthesis can still fail
         // after speak() returns. Surface that so the screen can say so.
         tts.setOnUtteranceProgressListener(
@@ -72,7 +77,7 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
                     @Override public void onDone(String utteranceId) { }
                     @Override public void onError(String utteranceId) {
                         main.post(() -> {
-                            if (availabilityListener != null) {
+                            if (!closed && availabilityListener != null) {
                                 availabilityListener.onUnavailable();
                             }
                         });
@@ -85,6 +90,7 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
     }
 
     public void speak(String name) {
+        if(closed)return;
         if (!ready) { pending = name; return; }
         int r = tts.speak(name, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "mama-name");
         if (r == android.speech.tts.TextToSpeech.ERROR && availabilityListener != null) {
@@ -93,6 +99,7 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
     }
 
     public void shutdown() {
+        closed=true;ready=false;pending=null;
         if (tts != null) { tts.stop(); tts.shutdown(); }
     }
 }

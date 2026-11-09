@@ -178,6 +178,9 @@ public class UiSnapshotTest {
         bindConfirmCommon(v, "سوسن محمود", 0xFF8A2F4E);
         UiBinder.bindNumbers(v, nums("01000000001", "موبايل", "0200000002", "البيت"), n -> { });
         v.findViewById(R.id.btn_call).setEnabled(false); // until a number is tapped
+        v.findViewById(R.id.btn_favorite).setEnabled(false);
+        v.findViewById(R.id.btn_favorite).setAlpha(0.5f);
+        v.findViewById(R.id.favorite_hint).setVisibility(View.VISIBLE);
         paparazzi.snapshot(v, "confirm-multi-unselected");
     }
 
@@ -189,6 +192,7 @@ public class UiSnapshotTest {
         android.view.ViewGroup box = v.findViewById(R.id.numbers_container);
         ((android.view.ViewGroup) box.getChildAt(0)).getChildAt(1).performClick();
         v.findViewById(R.id.btn_call).setEnabled(true);
+        ((TextView)v.findViewById(R.id.btn_favorite)).setText("★");
         paparazzi.snapshot(v, "confirm-multi-selected");
     }
 

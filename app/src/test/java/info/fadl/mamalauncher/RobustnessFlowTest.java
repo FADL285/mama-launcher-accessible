@@ -75,12 +75,13 @@ public class RobustnessFlowTest {
  }
  public static class NoDialerActivity extends DialpadActivity {
   @Override public void startActivity(Intent i) {
-   if(Intent.ACTION_DIAL.equals(i.getAction()))throw new ActivityNotFoundException();
+   if(Intent.ACTION_CALL.equals(i.getAction()))throw new ActivityNotFoundException();
    super.startActivity(i);
   }
  }
  @Test public void noDialerProducesFeedbackInsteadOfCrash(){
   DialpadActivity a=Robolectric.buildActivity(NoDialerActivity.class).setup().get();
+  org.robolectric.Shadows.shadowOf(a.getApplication()).grantPermissions(android.Manifest.permission.CALL_PHONE);
   key(a.findViewById(R.id.dial_grid),"1").performClick();
   a.findViewById(R.id.btn_call).performClick();
   assertEquals(a.getString(R.string.handoff_unavailable),org.robolectric.shadows.ShadowToast.getTextOfLatestToast());
@@ -117,8 +118,8 @@ public class RobustnessFlowTest {
   android.speech.tts.TextToSpeech tts=(android.speech.tts.TextToSpeech)field.get(c.get());
   org.robolectric.shadows.ShadowTextToSpeech st=org.robolectric.Shadows.shadowOf(tts);
   st.getOnInitListener().onInit(android.speech.tts.TextToSpeech.SUCCESS);
-  assertEquals(c.get().getString(R.string.tts_arabic_missing),((TextView)c.get().findViewById(R.id.tts_status)).getText().toString());
-  assertFalse(c.get().findViewById(R.id.btn_tts_test).isEnabled());
+  assertEquals(c.get().getString(R.string.tts_unsupported),((TextView)c.get().findViewById(R.id.tts_status)).getText().toString());
+  assertTrue(c.get().findViewById(R.id.btn_tts_test).isEnabled());
   SessionGate.expectExternal();c.pause().stop();
   org.robolectric.shadows.ShadowTextToSpeech.addLanguageAvailability(new java.util.Locale("ar"));
   c.restart().resume();

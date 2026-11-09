@@ -4,11 +4,10 @@ import android.content.Intent;
 import android.net.Uri;
 import android.provider.ContactsContract;
 
-/** The dial pad's two handoffs. The URI building is pure JVM (pinned by
+/** The dial pad's handoffs. The URI building is pure JVM (pinned by
  *  DialIntentsTest without ever starting an activity); the Intent wrappers
- *  are one-liners the activity calls on the device. Neither handoff needs a
- *  permission: ACTION_DIAL only opens the system dialer prefilled (the user
- *  taps call there), and the contacts insert UI does the saving itself. */
+ *  are one-liners the activity calls on the device. Direct calling needs CALL_PHONE and a deliberate press. The
+ *  contacts insert UI does the saving itself without a write permission. */
 public final class DialIntents {
 
     private DialIntents() {}
@@ -25,6 +24,11 @@ public final class DialIntents {
     /** Opens the system dialer with the number composed; never calls by itself. */
     public static Intent dial(String number) {
         return new Intent(Intent.ACTION_DIAL, Uri.parse(dialUri(number)));
+    }
+
+    /** Direct call, only behind DirectCallAction's explicit press/permission gate. */
+    public static Intent call(String number) {
+        return new Intent(Intent.ACTION_CALL, Uri.parse(dialUri(number)));
     }
 
     /** Opens the system's normal add-contact screen with the number prefilled. */

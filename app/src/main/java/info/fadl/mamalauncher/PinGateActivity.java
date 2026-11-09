@@ -21,7 +21,7 @@ import java.security.SecureRandom;
  *    tapping without punishing the family setter. If the phone itself has a
  *    screen lock and the family enabled it, the device lock is accepted too.
  */
-public class PinGateActivity extends BaseActivity {
+public class PinGateActivity extends ProtectedModeActivity {
 
     private static final String EXTRA_MODE = "mode";
     private static final int MODE_SETUP = 1;
@@ -125,6 +125,11 @@ public class PinGateActivity extends BaseActivity {
         super.onStop();
     }
 
+    @Override protected void clearProtectedInput() {
+        entered.setLength(0);firstEntry=null;recovery=false;
+        if(dots!=null)syncDots();
+    }
+
     private void wirePad(ViewGroup group) {
         for (int i = 0; i < group.getChildCount(); i++) {
             View child = group.getChildAt(i);
@@ -138,6 +143,7 @@ public class PinGateActivity extends BaseActivity {
     }
 
     private void onDigit(String digit) {
+        if (protectedModeEnded() || isFinishing()) return;
         if (mode == MODE_UNLOCK && isLockedOut()) return;
         if (entered.length() >= PIN_LEN) return;
         entered.append(digit);
@@ -232,7 +238,7 @@ public class PinGateActivity extends BaseActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_DEVICE_CRED && resultCode == RESULT_OK) {
+        if (!protectedModeEnded() && requestCode == REQ_DEVICE_CRED && resultCode == RESULT_OK) {
             Prefs.get(this).edit()
                     .putInt(Prefs.PIN_FAILURES, 0)
                     .putLong(Prefs.PIN_LOCKOUT_UNTIL, 0)
