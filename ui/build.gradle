@@ -1,0 +1,16 @@
+apply plugin: 'com.android.library'
+apply plugin: 'app.cash.paparazzi'
+
+android {
+    namespace 'info.fadl.mamalauncher.ui'
+    compileSdk 33
+    defaultConfig { minSdk 24 }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+}

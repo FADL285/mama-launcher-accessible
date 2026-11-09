@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="200dp">
+
+                <ImageView
+                    android:id="@+id/big_photo"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/photo_clip"
+                    android:scaleType="fitCenter"/>
+
+                <TextView
+                    android:id="@+id/big_photo_fallback"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:textSize="48sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:visibility="gone"
+                    android:padding="20dp"/>
+
+                <ImageButton
+                    android:id="@+id/btn_repeat_name"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="10dp"
+                    android:background="@drawable/circle_white"
+                    android:src="@drawable/ic_speaker"
+                    android:padding="14dp"
+                    android:contentDescription="@string/repeat_name"/>
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/big_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textSize="36sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_main"
+                android:maxLines="2"
+                android:padding="10dp"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <TextView
+        android:id="@+id/single_number"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textSize="24sp"
+        android:textColor="@color/back_blue"
+        android:textDirection="ltr"
+        android:visibility="gone"
+        android:paddingTop="8dp"/>
+
+    <LinearLayout
+        android:id="@+id/numbers_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:paddingTop="8dp"/>
+
+    <Button
+        android:id="@+id/btn_call"
+        android:layout_width="match_parent"
+        android:layout_height="110dp"
+        android:text="@string/call"
+        android:drawableStart="@drawable/ic_call"
+        android:drawablePadding="14dp"
+        android:textSize="38sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/btn_call"
+        android:layout_marginTop="12dp"/>
+
+    <TextView
+        android:id="@+id/speak_unavailable"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/speak_unavailable"
+        android:textSize="20sp"
+        android:textColor="@color/text_main"
+        android:gravity="center"
+        android:visibility="gone"
+        android:padding="8dp"/>
+
+    <TextView
+        android:id="@+id/call_blocked"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/call_blocked_hint"
+        android:textSize="20sp"
+        android:textColor="@color/danger_text"
+        android:gravity="center"
+        android:visibility="gone"
+        android:padding="8dp"/>
+
+    <Button
+        android:id="@+id/btn_back"
+        android:layout_width="match_parent"
+        android:layout_height="84dp"
+        android:text="@string/back"
+        android:drawableStart="@drawable/ic_back"
+        android:drawablePadding="14dp"
+        android:textSize="30sp"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/btn_back"
+        android:layout_marginTop="12dp"/>
+</LinearLayout>

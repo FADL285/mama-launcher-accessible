@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">موبايل ماما</string>
+    <string name="call">اتصال</string>
+    <string name="back">رجوع</string>
+    <string name="repeat_name">اسمع الاسم</string>
+    <string name="allow_contacts">السماح بجهات الاتصال</string>
+    <string name="contacts_setup_hint">عشان تظهر صور العيلة هنا، اللي بيجهز التليفون يضغط الزرار ده ويوافق على إذن جهات الاتصال.</string>
+    <string name="call_blocked_title">الاتصال مش متاح دلوقتي</string>
+    <string name="speak_unavailable">نطق الاسم مش متاح على الجهاز ده، لكن الاسم ظاهر كبير على الشاشة.</string>
+    <string name="call_blocked_hint">إذن الاتصال محتاج يتظبط من اللي جهز التليفون: الإعدادات > التطبيقات > موبايل ماما > الأذونات > الهاتف.</string>
+    <string name="no_name">بدون اسم</string>
+    <string name="app_not_installed">مش مثبت</string>
+    <string name="no_contacts_yet">مفيش جهات اتصال بأرقام تليفون على الجهاز لسه.</string>
+    <string name="whatsapp">واتساب</string>
+    <string name="messenger">ماسنجر</string>
+    <string name="youtube">يوتيوب</string>
+    <string name="choose_number">اختار الرقم الأول</string>
+</resources>

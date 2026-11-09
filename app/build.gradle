@@ -1,0 +1,22 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'info.fadl.mamalauncher'
+    compileSdk 33
+    defaultConfig {
+        applicationId "info.fadl.mamalauncher"
+        minSdk 24
+        targetSdk 33
+        versionCode 4
+        versionName "0.3-pilot"
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation project(':ui')
+    testImplementation 'junit:junit:4.13.2'
+}
