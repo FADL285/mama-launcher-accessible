@@ -28,7 +28,8 @@
             android:hint="@string/dial_empty_hint" android:textDirection="ltr"/>
         <ImageView android:id="@+id/btn_backspace"
             android:layout_width="48dp" android:layout_height="48dp"
-            android:src="@drawable/ic_backspace" android:padding="8dp"/>
+            android:src="@drawable/ic_backspace" android:padding="8dp"
+            android:contentDescription="@string/backspace"/>
     </LinearLayout>
 
     <LinearLayout android:id="@+id/dial_grid"

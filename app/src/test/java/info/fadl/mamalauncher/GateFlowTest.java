@@ -227,6 +227,76 @@ public class GateFlowTest {
         assertEquals(SettingsActivity.class.getName(), next.getComponent().getClassName());
     }
 
+    @Test
+    public void recoveryAppearsRightAfterTheFirstWrongAttempt() {
+        presetPin(app, "9999");
+        KeyguardManager km = (KeyguardManager) app.getSystemService(Context.KEYGUARD_SERVICE);
+        ((org.robolectric.shadows.ShadowKeyguardManager)
+                org.robolectric.shadow.api.Shadow.extract(km)).setIsDeviceSecure(true);
+        PinGateActivity a = Robolectric.buildActivity(PinGateActivity.class,
+                PinGateActivity.intentForEntry(app)).setup().get();
+        assertEquals(View.GONE, a.findViewById(R.id.btn_device_lock).getVisibility());
+        tapDigits(a, "0000"); // first wrong attempt: recovery shows NOW, same screen
+        assertEquals(View.VISIBLE, a.findViewById(R.id.btn_device_lock).getVisibility());
+    }
+
+    @Test
+    public void openSettingsReturnsToAnExistingSettingsScreen() {
+        PinGateActivity a = Robolectric.buildActivity(PinGateActivity.class,
+                PinGateActivity.intentForEntry(app)).setup().get();
+        tapDigits(a, "1234");
+        tapDigits(a, "1234");
+        ShadowActivity shadow = org.robolectric.shadow.api.Shadow.extract(a);
+        Intent next = shadow.getNextStartedActivity();
+        assertNotNull(next);
+        assertTrue((next.getFlags() & Intent.FLAG_ACTIVITY_CLEAR_TOP) != 0);
+    }
+
+    @Test
+    public void guardedPressThatSlidesOffDoesNotFire() {
+        prefs.edit().putBoolean(Prefs.TOUCH_GUARD, true).apply();
+        PinGateActivity a = Robolectric.buildActivity(PinGateActivity.class,
+                PinGateActivity.intentForEntry(app)).setup().get();
+        View key = findTagged(a.findViewById(R.id.pin_pad), "1");
+        assertNotNull(key);
+        // Hold long enough but release OFF the key: nothing entered.
+        for (int i = 0; i < 4; i++) {
+            long t = 1000 + i * 1000L;
+            key.dispatchTouchEvent(android.view.MotionEvent.obtain(
+                    t, t, android.view.MotionEvent.ACTION_DOWN, 10, 10, 0));
+            key.dispatchTouchEvent(android.view.MotionEvent.obtain(
+                    t, t + 600, android.view.MotionEvent.ACTION_UP, -30, -30, 0));
+        }
+        assertEquals(a.getString(R.string.pingate_set_new),
+                ((TextView) a.findViewById(R.id.pin_subtitle)).getText().toString());
+        // Held and released ON the key: enters digits; 4 of them advance setup.
+        for (int i = 0; i < 4; i++) {
+            long t = 10000 + i * 1000L;
+            key.dispatchTouchEvent(android.view.MotionEvent.obtain(
+                    t, t, android.view.MotionEvent.ACTION_DOWN, 10, 10, 0));
+            key.dispatchTouchEvent(android.view.MotionEvent.obtain(
+                    t, t + 600, android.view.MotionEvent.ACTION_UP, 10, 10, 0));
+        }
+        assertEquals(a.getString(R.string.pingate_confirm),
+                ((TextView) a.findViewById(R.id.pin_subtitle)).getText().toString());
+    }
+
+    @Test
+    public void fontChangeRecreateKeepsTheSessionOnce() {
+        SessionGate.unlock();
+        org.robolectric.android.controller.ActivityController<SettingsActivity> c =
+                Robolectric.buildActivity(SettingsActivity.class).setup();
+        // The real UI path: tapping a font size guards the recreation.
+        c.get().findViewById(R.id.btn_font_large).performClick();
+        assertTrue("recreation must be a sanctioned leave", SessionGate.externalInFlight());
+        c.pause().stop();
+        assertTrue(SessionGate.isValid());
+        c.restart().resume(); // exemption consumed
+        assertFalse(SessionGate.externalInFlight());
+        c.pause().stop();
+        assertFalse(SessionGate.isValid()); // the next genuine leave locks
+    }
+
     // ---- settings relock ----
 
     @Test

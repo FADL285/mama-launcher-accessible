@@ -45,6 +45,15 @@ public class SessionGateTest {
     }
 
     @Test
+    public void clearExternalCancelsTheExemptionWithoutLocking() {
+        SessionGate.unlock();
+        SessionGate.expectExternal();
+        SessionGate.clearExternal(); // e.g. the sanctioned screen failed to open
+        assertTrue(SessionGate.isValid());
+        assertFalse(SessionGate.externalInFlight());
+    }
+
+    @Test
     public void lockAlsoClearsPendingExternalExpectation() {
         SessionGate.unlock();
         SessionGate.expectExternal();

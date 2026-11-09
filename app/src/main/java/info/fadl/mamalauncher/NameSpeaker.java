@@ -56,7 +56,9 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
         if (!shouldAutoSpeak(avail)) {
             // Arabic missing on this engine: say so instead of pronouncing
             // the name wrongly in a default locale. The settings screen
-            // already offers the official Arabic data installer.
+            // already offers the official Arabic data installer. NOT ready:
+            // a later repeat-name tap must not reach the default voice either.
+            ready = false;
             if (availabilityListener != null) availabilityListener.onUnavailable();
             pending = null;
             return;

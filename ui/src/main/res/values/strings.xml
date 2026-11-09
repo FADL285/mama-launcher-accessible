@@ -17,6 +17,7 @@
     <string name="dialpad_title">لوحة الأرقام</string>
     <string name="save_number">حفظ الرقم</string>
     <string name="dial_empty_hint">اكتب رقم الأول</string>
+    <string name="backspace">مسح آخر رقم</string>
     <string name="open_settings_hint">للإعدادات: اضغط مطولًا على الساعة فوق</string>
 
     <string name="settings_title">الإعدادات</string>

@@ -19,6 +19,7 @@ import info.fadl.mamalauncher.ui.ContactPhotoLoader;
 public class PhoneActivity extends BaseActivity {
 
     private static final int REQ_CONTACTS = 41;
+    private static final String PREF_CONTACTS_ASKED = "contacts_asked";
 
     private ContactPhotoLoader photos;
     private GridView grid;
@@ -38,8 +39,23 @@ public class PhoneActivity extends BaseActivity {
         guard(findViewById(R.id.btn_back), this::finish);
         guard(findViewById(R.id.btn_dialpad),
                 () -> startActivity(new Intent(this, DialpadActivity.class)));
-        guard(findViewById(R.id.btn_allow_contacts), () ->
-                requestPermissions(new String[]{Manifest.permission.READ_CONTACTS}, REQ_CONTACTS));
+        guard(findViewById(R.id.btn_allow_contacts), () -> {
+            boolean granted = checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                    == PackageManager.PERMISSION_GRANTED;
+            boolean askedBefore = Prefs.get(this).getBoolean(PREF_CONTACTS_ASKED, false);
+            if (!granted && askedBefore
+                    && !shouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS)) {
+                // Android will never show the prompt again; the only way back
+                // is the system app-settings screen, so take the setter there
+                // instead of a tap that silently does nothing.
+                startActivity(new Intent(
+                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        android.net.Uri.parse("package:" + getPackageName())));
+            } else {
+                Prefs.get(this).edit().putBoolean(PREF_CONTACTS_ASKED, true).apply();
+                requestPermissions(new String[]{Manifest.permission.READ_CONTACTS}, REQ_CONTACTS);
+            }
+        });
 
         grid.setOnItemClickListener((AdapterView<?> parent, View view, int position, long id) -> {
             haptic(view);

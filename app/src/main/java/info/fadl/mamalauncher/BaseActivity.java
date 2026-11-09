@@ -49,10 +49,18 @@ public abstract class BaseActivity extends Activity {
                         return true;
                     case MotionEvent.ACTION_UP:
                         Long t0 = (Long) view.getTag();
-                        if (t0 != null && ev.getEventTime() - t0 >= GUARD_PRESS_MS) {
+                        // A press that slid off the control before release
+                        // must NOT fire: shaky hands drift, and an accidental
+                        // digit or toggle is worse than a swallowed tap.
+                        boolean inside = ev.getX() >= 0 && ev.getX() <= view.getWidth()
+                                && ev.getY() >= 0 && ev.getY() <= view.getHeight();
+                        if (inside && t0 != null && ev.getEventTime() - t0 >= GUARD_PRESS_MS) {
                             haptic(view);
                             action.run();
                         }
+                        view.setTag(null);
+                        return true;
+                    case MotionEvent.ACTION_CANCEL:
                         view.setTag(null);
                         return true;
                     default:

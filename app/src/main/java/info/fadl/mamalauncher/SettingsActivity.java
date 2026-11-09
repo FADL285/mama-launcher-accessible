@@ -112,6 +112,9 @@ public class SettingsActivity extends BaseActivity {
                 SessionGate.expectExternal(); // TTS installer is a sanctioned system screen
                 startActivity(new Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA));
             } catch (android.content.ActivityNotFoundException ignored) {
+                // Nothing handled the installer: the sanctioned leave never
+                // happened, so the exemption must not survive either.
+                SessionGate.clearExternal();
                 ttsStatus.setText(R.string.tts_missing);
             }
         });
@@ -141,6 +144,10 @@ public class SettingsActivity extends BaseActivity {
     private void setFontScale(int scale) {
         prefs.edit().putInt(Prefs.FONT_SCALE, scale).apply();
         markFont(scale);
+        // recreate() passes through onStop; without the exemption the setter
+        // would be bounced to the PIN gate for changing a font size. The
+        // exemption is consumed on resume, so the next genuine leave locks.
+        SessionGate.expectExternal();
         recreate(); // font scale applies through attachBaseContext
     }
 
@@ -149,7 +156,10 @@ public class SettingsActivity extends BaseActivity {
         s.setChecked(current);
         s.setOnCheckedChangeListener((b, on) -> {
             prefs.edit().putBoolean(key, on).apply();
-            if (recreateOnChange) recreate(); // theme applies before content view
+            if (recreateOnChange) {
+                SessionGate.expectExternal(); // internal recreation, not a departure
+                recreate(); // theme applies before content view
+            }
         });
     }
 
@@ -328,8 +338,11 @@ public class SettingsActivity extends BaseActivity {
         Locale ar = new Locale("ar");
         if (tts.isLanguageAvailable(ar) >= TextToSpeech.LANG_AVAILABLE) {
             tts.setLanguage(ar);
+            tts.speak(getString(R.string.app_name), TextToSpeech.QUEUE_FLUSH, null, "settings-test");
         }
-        tts.speak(getString(R.string.app_name), TextToSpeech.QUEUE_FLUSH, null, "settings-test");
+        // Arabic missing: do NOT test in the default voice. A "success" status
+        // would be misleading - automatic name speech requires Arabic - so the
+        // Arabic-missing warning stays on screen instead.
     }
 
     @Override

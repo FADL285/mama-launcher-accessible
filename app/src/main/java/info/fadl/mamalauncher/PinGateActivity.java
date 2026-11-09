@@ -68,9 +68,6 @@ public class PinGateActivity extends BaseActivity {
         });
         wirePad(findViewById(R.id.pin_pad));
 
-        View deviceBtn = findViewById(R.id.btn_device_lock);
-        KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
-        boolean deviceSecure = km != null && km.isDeviceSecure();
         // Device credential serves two deliberate roles: the family's chosen
         // unlock alternative, AND the recovery path when the PIN is forgotten
         // (offered once a wrong attempt proves the setter does not have it).
@@ -78,6 +75,18 @@ public class PinGateActivity extends BaseActivity {
         // the settings stay locked rather than opening to anyone holding the
         // phone; the last resort is clearing app data (loses configuration
         // only, never contacts), decided by the family, never advised lightly.
+        refreshDeviceButton();
+
+        subtitle.setText(mode == MODE_SETUP ? R.string.pingate_set_new : R.string.pingate_enter);
+    }
+
+    /** Recovery appears the moment the FIRST wrong attempt lands too: the
+     *  setter who just mistyped must not have to leave and reopen the gate
+     *  (mid-lockout included) to find the way back in. */
+    private void refreshDeviceButton() {
+        View deviceBtn = findViewById(R.id.btn_device_lock);
+        KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+        boolean deviceSecure = km != null && km.isDeviceSecure();
         recovery = mode == MODE_UNLOCK && !Prefs.useDeviceLock(this)
                 && Prefs.get(this).getInt(Prefs.PIN_FAILURES, 0) > 0;
         if (mode == MODE_UNLOCK && deviceSecure
@@ -92,8 +101,6 @@ public class PinGateActivity extends BaseActivity {
         } else {
             deviceBtn.setVisibility(View.GONE);
         }
-
-        subtitle.setText(mode == MODE_SETUP ? R.string.pingate_set_new : R.string.pingate_enter);
     }
 
     private void wirePad(ViewGroup group) {
@@ -170,6 +177,7 @@ public class PinGateActivity extends BaseActivity {
         entered.setLength(0);
         syncDots();
         error.setText(lock > 0 ? R.string.pingate_locked : R.string.pingate_wrong);
+        refreshDeviceButton(); // a wrong attempt is what unlocks the recovery path
     }
 
     private boolean isLockedOut() {
@@ -189,7 +197,13 @@ public class PinGateActivity extends BaseActivity {
 
     private void openSettings() {
         SessionGate.unlock();
-        startActivity(new Intent(this, SettingsActivity.class));
+        // CLEAR_TOP: after a PIN CHANGE launched from Settings, return to the
+        // Settings screen already underneath instead of stacking a second one
+        // (Back would otherwise land on the stale copy). On normal entry from
+        // the everyday screen no Settings is on the stack, so this just opens
+        // it fresh; its onResume re-checks the session either way.
+        startActivity(new Intent(this, SettingsActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
         finish();
     }
 
