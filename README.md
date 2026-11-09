@@ -8,7 +8,7 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 **نسخة تجريبية تحت تجربة مشرفة.** اختبارات الكود والواجهة ناجحة، لكن إصلاحات النسخة الجديدة ما زالت تحتاج إعادة تجربة على الهاتف الفعلي، خصوصا الصوت والمكالمات وقفل الجهاز.
 
-Supervised pilot. Current 0.12 candidate source, based on merged PR6, passes 169 app unit/flow tests (JUnit + Robolectric) and 78 UI test cases (77 rendered snapshots and one assertion-only header-fit case). Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
+Supervised pilot. Current 0.12 candidate source, based on merged PR6, passes 170 app unit/flow tests (JUnit + Robolectric) and 78 UI test cases (77 rendered snapshots and one assertion-only header-fit case). Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
 
 ## الفكرة — Design
 
@@ -29,7 +29,7 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 
 - minSdk 24 / targetSdk 33 (provisional pilot choices, not a committed support range)
 - No third-party runtime dependencies — framework APIs only
-- Tests: `gradle :app:testDebugUnitTest` (169 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
+- Tests: `gradle :app:testDebugUnitTest` (170 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
 
 ## الخصوصية والنطاق — Privacy & Scope
 
@@ -66,8 +66,7 @@ Version0.9/code11 also corrects Greptile's exact-number preview/ranking, cancels
 
 ## 0.10 handset-feedback correction
 
-The dialpad's keys now stay bottom-anchored above Call/Save. Only the results
-area scrolls, so loading, suggestions and empty results cannot shift the keys.
+The dialpad's keys stay bottom-anchored above Call/Save on windows at least600dp high; only the results area scrolls there. Below600dp, a fixed results region and an independently scrolling keypad keep loading/results from shifting key positions, but reaching lower keys can require scrolling the keypad. Call/Save remain fixed in both layouts.
 Grouped phone numbers in previews and the all-results chooser use an isolated
 LTR display run, including Arabic digits, plus and punctuation. Original phone
 values remain unchanged in contact/call intents. Key-coordinate tests dispatch

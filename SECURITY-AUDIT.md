@@ -172,10 +172,9 @@ treated as untrusted content, not instructions.
 The original 0.2 findings/tool counts above are historical, not the current
 validation totals. Current scope: Home-order persistence, shared UI, local
 speech state/retry/setup, first-use guide and failed browser-launch relock.
-No new permission, exported component, remote endpoint, analytics or model
-was added. Only READ_CONTACTS and CALL_PHONE remain in the merged manifest.
+No new permission, exported component, launcher network client, analytics or model was added. The launcher still makes no direct network request. Tapping the developer website intentionally hands https://fadl.info to an external browser, which can contact that website under its own network/cookie policies. Only READ_CONTACTS and CALL_PHONE remain in the merged manifest.
 
-- Current app suite: 169 JUnit/Robolectric tests, zero failures.
+- Current app suite: 170 JUnit/Robolectric tests, zero failures.
 - Current UI suite: 78 cases (77 snapshot images plus one assertion-only case).
 - Android Lint: zero errors; 11 warnings in five categories: seven deliberate
   portrait-lock warnings, one UnusedAttribute, one RedundantNamespace, one

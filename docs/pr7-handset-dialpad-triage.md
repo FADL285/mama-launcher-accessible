@@ -97,7 +97,7 @@ older statement that Apps/speech behavior was unchanged.
 - Confirmation body and unboxed sound/setup text use active theme colors;
   white-backed number-choice buttons keep dark labels for their own surface.
 
-Validation: 169 app tests and 78 UI test cases (77 snapshot images plus
+Validation: 170 app tests and 78 UI test cases (77 snapshot images plus
 one header-completeness assertion-only case). Full fresh verification is
 required before reporting ready. New visual fixtures use the shared header
 and speech-state renderer rather than substitute UI. They are layoutlib
@@ -126,3 +126,9 @@ Official sources:
 ### Clock period and lifecycle
 
 The prior h:mm clock had no period marker. HomeClock now owns an explicit12-hour Arabic ص/م display and date formatting from a single instant/timezone. MainActivity owns only lifecycle/timer/broadcast refresh. Six new app tests cover noon/midnight boundaries, locale independence, timezone conversion, time/timezone broadcasts and background return across midnight. Four150%renders show11:59ص,12:00م,11:59م,12:00ص; boundary renders omit the fixed renderer status bar to avoid contradictory time fixtures. Existing1PM fixtures now read1:00م, matching13:00status. No claim of200%font/landscape/all-OEM/accessibility certification.
+
+### Final CodeRabbit follow-up
+
+CodeRabbit reviewed869bb0a and reported one minor outside-diff README issue: the short-window keypad scroll was omitted. README now explicitly distinguishes>=600dp fixed keys/results scrolling from<600dp independently scrolling keypad with fixed actions. Its additional browser-handoff note is valid; the current audit now distinguishes no direct launcher network from the user's external-browser handoff.
+
+Additional unverified suggestions were evaluated: reorder invalid targets are safe in moveTo, so a broader readability refactor is deferred; the string/enum speech bridge now has an exhaustive app-level mapping contract test; NameSpeaker's sole production listener only updates UI and never calls speak/init synchronously, so no current reentrancy defect was found. That listener contract must be preserved. The reviewer docstring-coverage warning remains a documentation improvement, not a functional merge gate. Current runtime Java, layouts, resources and build settings are unchanged by this docs/test follow-up. Greptile approved869bb0a; final-head recheck is separate. Graphite and Sourcery skipped because of PR size, not approval. The full expanded source has dense legacy methods and is not claimed ideally factored or free of every edge case.

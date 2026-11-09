@@ -48,4 +48,19 @@ public class ExpandedFlowTest {
  @Test @Config(sdk=24) public void fullNameWorksOnMinimumAndroidVersion(){View tile=info.fadl.mamalauncher.ui.UiBinder.buildHomeTile(app,"اسم تطبيق طويل",null,0,false,null);assertTrue(tile.performLongClick());}
 
  @Test public void themeContrastKeepsConfirmationTextReadable(){Prefs.get(app).edit().putBoolean(Prefs.HIGH_CONTRAST,true).apply();ConfirmCallActivity a=Robolectric.buildActivity(ConfirmCallActivity.class,ConfirmCallActivity.intentFor(app,contact(1,"اختبار","01000000001"))).setup().get();assertEquals(0xFFFFD600,((TextView)a.findViewById(R.id.big_name)).getCurrentTextColor());assertEquals(0xFFFFD600,((TextView)a.findViewById(R.id.single_number)).getCurrentTextColor());}
+ @Test public void everySpeechStateMapsToAnExplicitUiContract(){
+  View root=android.view.LayoutInflater.from(new android.view.ContextThemeWrapper(app,R.style.MamaTheme)).inflate(info.fadl.mamalauncher.ui.R.layout.activity_confirm,null);
+  assertEquals(5,NameSpeaker.State.values().length);
+  for(NameSpeaker.State state:NameSpeaker.State.values()){
+   info.fadl.mamalauncher.ui.SpeechStatusUi.show(root,state.name());
+   boolean ready=state==NameSpeaker.State.READY,loading=state==NameSpeaker.State.INITIALIZING;
+   assertEquals(ready?View.VISIBLE:View.INVISIBLE,root.findViewById(R.id.btn_repeat_name).getVisibility());
+   assertEquals(ready?View.GONE:View.VISIBLE,root.findViewById(R.id.speech_support).getVisibility());
+   assertEquals(ready||loading?View.GONE:View.VISIBLE,root.findViewById(R.id.btn_speech_options).getVisibility());
+   assertEquals(loading?View.GONE:View.VISIBLE,root.findViewById(R.id.btn_speech_retry).getVisibility());
+   int message;
+   switch(state){case INITIALIZING:message=R.string.speech_loading;break;case PREPARING:message=R.string.speech_preparing;break;case NEEDS_SETUP:message=R.string.speech_setup_needed;break;case READY:case RETRYABLE:message=R.string.speech_retryable;break;default:throw new AssertionError(state);}
+   assertEquals(app.getString(message),((TextView)root.findViewById(R.id.speak_unavailable)).getText().toString());
+  }
+ }
 }
