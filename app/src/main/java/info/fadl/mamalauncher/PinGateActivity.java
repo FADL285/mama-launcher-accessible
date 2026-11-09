@@ -21,7 +21,7 @@ import java.security.SecureRandom;
  *    tapping without punishing the family setter. If the phone itself has a
  *    screen lock and the family enabled it, the device lock is accepted too.
  */
-public class PinGateActivity extends BaseActivity {
+public class PinGateActivity extends ProtectedModeActivity {
 
     private static final String EXTRA_MODE = "mode";
     private static final int MODE_SETUP = 1;
@@ -56,6 +56,11 @@ public class PinGateActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pingate);
         mode = getIntent().getIntExtra(EXTRA_MODE, MODE_UNLOCK);
+        if (mode == MODE_SETUP && Prefs.hasPin(this) && !SessionGate.isValid()) {
+            // A stale change-PIN intent must not survive process death or be
+            // reused without the authenticated settings session that created it.
+            mode = MODE_UNLOCK;
+        }
 
         subtitle = findViewById(R.id.pin_subtitle);
         error = findViewById(R.id.pin_error);
@@ -103,6 +108,28 @@ public class PinGateActivity extends BaseActivity {
         }
     }
 
+    @Override
+    protected void onStop() {
+        // A replacement flow is authenticated only while foregrounded.
+        // On any leave, discard partial replacement and return to unlocking.
+        // Initial setup (no credential yet) deliberately remains available.
+        if (!isFinishing() && mode == MODE_SETUP && Prefs.hasPin(this)) {
+            mode = MODE_UNLOCK;
+            firstEntry = null;
+            entered.setLength(0);
+            subtitle.setText(R.string.pingate_enter);
+            error.setText("");
+            syncDots();
+            refreshDeviceButton();
+        }
+        super.onStop();
+    }
+
+    @Override protected void clearProtectedInput() {
+        entered.setLength(0);firstEntry=null;recovery=false;
+        if(dots!=null)syncDots();
+    }
+
     private void wirePad(ViewGroup group) {
         for (int i = 0; i < group.getChildCount(); i++) {
             View child = group.getChildAt(i);
@@ -116,6 +143,7 @@ public class PinGateActivity extends BaseActivity {
     }
 
     private void onDigit(String digit) {
+        if (protectedModeEnded() || isFinishing()) return;
         if (mode == MODE_UNLOCK && isLockedOut()) return;
         if (entered.length() >= PIN_LEN) return;
         entered.append(digit);
@@ -210,15 +238,15 @@ public class PinGateActivity extends BaseActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_DEVICE_CRED && resultCode == RESULT_OK) {
+        if (!protectedModeEnded() && requestCode == REQ_DEVICE_CRED && resultCode == RESULT_OK) {
             Prefs.get(this).edit()
                     .putInt(Prefs.PIN_FAILURES, 0)
                     .putLong(Prefs.PIN_LOCKOUT_UNTIL, 0)
                     .apply();
             if (recovery) {
-                // Forgotten PIN: the device credential proves the setter;
-                // clear the old PIN and let them choose a new one now.
-                Prefs.get(this).edit().remove(Prefs.PIN_SALT).remove(Prefs.PIN_HASH).apply();
+                // Authentication permits replacement, not deletion. Keep the
+                // old credential until the new PIN is confirmed atomically.
+                // Back/cancel/process death must never create a no-PIN entry.
                 recovery = false;
                 mode = MODE_SETUP;
                 firstEntry = null;

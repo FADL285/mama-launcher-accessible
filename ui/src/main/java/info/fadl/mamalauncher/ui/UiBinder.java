@@ -52,7 +52,8 @@ public final class UiBinder {
             ContactEntry.PhoneNumber pn = numbers.get(i);
             Button b = new Button(root.getContext());
             b.setMinHeight(dp(root, 72));
-            b.setTextSize(19f);
+            b.setTextSize(17f);
+            b.setPadding(dp(root, 6),dp(root, 6),dp(root, 6),dp(root, 6));
             b.setTextColor(root.getResources().getColor(R.color.text_main));
             b.setTextDirection(View.TEXT_DIRECTION_LTR);
             String label = pn.label.isEmpty() ? "" : pn.label + "\n";
@@ -105,11 +106,18 @@ public final class UiBinder {
                                      android.graphics.drawable.Drawable icon,
                                      int chipBgRes, boolean contrast,
                                      View.OnClickListener onTap) {
+        // Never attach a resource-cached drawable instance to multiple views.
+        // Give each tile its own bounds/tint state (also stable in layoutlib).
+        if (icon != null && icon.getConstantState() != null) {
+            icon = icon.getConstantState().newDrawable(ctx.getResources()).mutate();
+        }
         LinearLayout tile = new LinearLayout(ctx);
         tile.setOrientation(LinearLayout.VERTICAL);
         tile.setGravity(android.view.Gravity.CENTER);
         tile.setBackgroundResource(contrast ? R.drawable.tile_bg_contrast : R.drawable.tile_bg);
         tile.setTag("card");
+        tile.setMinimumHeight(dp(tile, 170));
+        tile.setPadding(dp(tile, 8), dp(tile, 10), dp(tile, 8), dp(tile, 10));
 
         int chip = dp(tile, 68);
         if (chipBgRes != 0) {
@@ -140,7 +148,7 @@ public final class UiBinder {
         tv.setTextColor(ctx.getResources().getColor(
                 contrast ? R.color.contrast_text : R.color.text_main));
         tv.setGravity(android.view.Gravity.CENTER);
-        tv.setMaxLines(2);
+        // Natural height: long app names remain readable at enlarged text.
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         tp.setMargins(0, dp(tile, 6), 0, 0);

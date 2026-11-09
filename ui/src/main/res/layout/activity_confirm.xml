@@ -5,7 +5,7 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <ScrollView
+    <ScrollView android:id="@+id/confirm_scroll"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -16,9 +16,19 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <TextView
+                android:id="@+id/big_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textSize="30sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_main"
+                android:padding="10dp"/>
+
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="200dp">
+                android:layout_height="120dp">
 
                 <ImageView
                     android:id="@+id/big_photo"
@@ -32,38 +42,33 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:gravity="center"
-                    android:textSize="48sp"
+                    android:textSize="36sp" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="20sp" android:autoSizeMaxTextSize="36sp" android:maxLines="2"
                     android:textStyle="bold"
                     android:textColor="#FFFFFF"
                     android:visibility="gone"
                     android:padding="20dp"/>
 
+            </FrameLayout>
+
+
+
+
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                <TextView android:id="@+id/btn_favorite" android:layout_width="64dp" android:layout_height="64dp"  android:layout_margin="10dp" android:background="@drawable/circle_white" android:text="☆" android:textSize="34sp" android:textColor="@color/back_blue" android:gravity="center" android:contentDescription="@string/favorite_add" android:clickable="true" android:focusable="true" />
+        <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
                 <ImageButton
                     android:id="@+id/btn_repeat_name"
                     android:layout_width="64dp"
                     android:layout_height="64dp"
-                    android:layout_gravity="bottom|end"
+
                     android:layout_margin="10dp"
                     android:background="@drawable/circle_white"
                     android:src="@drawable/ic_speaker"
                     android:padding="14dp"
                     android:contentDescription="@string/repeat_name"/>
-            </FrameLayout>
-
-            <TextView
-                android:id="@+id/big_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:textSize="36sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_main"
-                android:maxLines="2"
-                android:padding="10dp"/>
-
-        </LinearLayout>
-    </ScrollView>
-
+    </LinearLayout>
+    <TextView android:id="@+id/favorite_hint" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/favorite_choose_number" android:textSize="15sp" android:textColor="@color/text_main" android:gravity="center" android:padding="4dp" android:visibility="gone" />
     <TextView
         android:id="@+id/single_number"
         android:layout_width="match_parent"
@@ -83,10 +88,15 @@
         android:visibility="gone"
         android:paddingTop="8dp"/>
 
+
+
+        </LinearLayout>
+    </ScrollView>
+
     <Button
         android:id="@+id/btn_call"
         android:layout_width="match_parent"
-        android:layout_height="110dp"
+        android:layout_height="wrap_content" android:minHeight="84dp"
         android:text="@string/call"
         android:drawableStart="@drawable/ic_call"
         android:drawablePadding="14dp"
@@ -118,10 +128,12 @@
         android:visibility="gone"
         android:padding="8dp"/>
 
+
+
     <Button
         android:id="@+id/btn_back"
         android:layout_width="match_parent"
-        android:layout_height="84dp"
+        android:layout_height="wrap_content" android:minHeight="72dp"
         android:text="@string/back"
         android:drawableStart="@drawable/ic_back"
         android:drawablePadding="14dp"

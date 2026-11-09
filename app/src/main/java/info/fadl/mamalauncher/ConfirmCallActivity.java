@@ -27,7 +27,7 @@ import java.util.List;
  */
 public class ConfirmCallActivity extends BaseActivity {
 
-    private static final int REQ_CALL = 42;
+
     private static final String EXTRA_ID = "id";
     private static final String EXTRA_NAME = "name";
     private static final String EXTRA_NUMBERS = "numbers";
@@ -38,11 +38,14 @@ public class ConfirmCallActivity extends BaseActivity {
     private String selectedNumber; // null until visibly chosen (multi-number)
     private NameSpeaker speaker;
     private Button callButton;
-    private long lastCallTapMs;
+    private DirectCallAction callAction;
+    private long contactId;
+    private boolean systemFavorite;
 
     public static Intent intentFor(Context ctx, ContactEntry c) {
         Intent i = new Intent(ctx, ConfirmCallActivity.class);
         i.putExtra(EXTRA_ID, c.id);
+        i.putExtra("system_favorite",c.starred);
         i.putExtra(EXTRA_NAME, c.name);
         ArrayList<String> numbers = new ArrayList<>();
         ArrayList<String> labels = new ArrayList<>();
@@ -62,6 +65,7 @@ public class ConfirmCallActivity extends BaseActivity {
         setContentView(R.layout.activity_confirm);
 
         long id = getIntent().getLongExtra(EXTRA_ID, -1);
+        contactId=id;systemFavorite=getIntent().getBooleanExtra("system_favorite",false);
         String name = getIntent().getStringExtra(EXTRA_NAME);
         String photoUri = getIntent().getStringExtra(EXTRA_PHOTO);
         if (name == null || name.trim().isEmpty()) name = getString(R.string.no_name);
@@ -95,6 +99,7 @@ public class ConfirmCallActivity extends BaseActivity {
         UiBinder.bindNumbers(findViewById(android.R.id.content), numbers, number -> {
             selectedNumber = number;
             callButton.setEnabled(true);
+            refreshFavorite();
         });
         // Restore a previously chosen number (rotation/font change recreation):
         // selection and its visible highlight survive, and the name is NOT
@@ -107,7 +112,33 @@ public class ConfirmCallActivity extends BaseActivity {
         }
         // Multi-number: nothing is callable until a number row is tapped.
         callButton.setEnabled(selectedNumber != null);
-        callButton.setOnClickListener(v -> onCallTapped());
+        guard(findViewById(R.id.btn_favorite),()-> {
+            if(selectedNumber==null)return;
+            LocalFavorites.set(this,contactId,selectedNumber,!LocalFavorites.contains(this,contactId,selectedNumber,systemFavorite));
+            refreshFavorite();
+        });
+        refreshFavorite();
+        callAction=new DirectCallAction(this,(blocked,granted) -> {
+            findViewById(R.id.call_blocked).setVisibility(blocked?View.VISIBLE:View.GONE);
+            if(granted)android.widget.Toast.makeText(this,R.string.call_permission_ready,android.widget.Toast.LENGTH_LONG).show();
+        });
+        guard(callButton, () -> callAction.tap(selectedNumber));
+        // bindNumbers keeps a click action for visible selection. Add the
+        // same physical-touch guard without changing that accessibility path.
+        android.widget.LinearLayout numberRows = findViewById(R.id.numbers_container);
+        for (int r = 0; r < numberRows.getChildCount(); r++) {
+            android.view.ViewGroup row = (android.view.ViewGroup) numberRows.getChildAt(r);
+            for (int k = 0; k < row.getChildCount(); k++) {
+                View button = row.getChildAt(k);
+                final String value = (String) button.getTag();
+                guard(button, () -> {
+                    UiBinder.selectNumber(findViewById(android.R.id.content), value);
+                    selectedNumber = value;
+                    callButton.setEnabled(true);
+            refreshFavorite();
+                });
+            }
+        }
 
         speaker = new NameSpeaker();
         speaker.setAvailabilityListener(() ->
@@ -123,59 +154,21 @@ public class ConfirmCallActivity extends BaseActivity {
         back.setOnClickListener(v -> finish());
     }
 
-    private void onCallTapped() {
-        // Debounce: a shaky double tap must not start two call attempts.
-        long now = android.os.SystemClock.elapsedRealtime();
-        if (now - lastCallTapMs < 1500) return;
-        lastCallTapMs = now;
-        if (selectedNumber == null || selectedNumber.isEmpty()) return;
-
-        CallDecision.PermissionState state;
-        if (checkSelfPermission(Manifest.permission.CALL_PHONE)
-                == PackageManager.PERMISSION_GRANTED) {
-            state = CallDecision.PermissionState.GRANTED;
-        } else if (permWasPermanentlyDenied()) {
-            state = CallDecision.PermissionState.BLOCKED;
-        } else {
-            state = CallDecision.PermissionState.CAN_REQUEST;
-        }
-
-        switch (CallDecision.decide(state)) {
-            case PLACE_CALL:
-                Intent call = new Intent(Intent.ACTION_CALL,
-                        Uri.parse("tel:" + Uri.encode(selectedNumber)));
-                startActivity(call);
-                break;
-            case REQUEST_PERMISSION:
-                requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, REQ_CALL);
-                break;
-            default:
-                findViewById(R.id.call_blocked).setVisibility(View.VISIBLE);
-        }
+    private void refreshFavorite() {
+        android.widget.TextView star=findViewById(R.id.btn_favorite);
+        boolean chosen=selectedNumber!=null;
+        boolean favorite=chosen && LocalFavorites.contains(this,contactId,selectedNumber,systemFavorite);
+        findViewById(R.id.favorite_hint).setVisibility(chosen?View.GONE:View.VISIBLE);
+        star.setText(favorite?"★":"☆");star.setEnabled(chosen);star.setAlpha(chosen?1f:0.5f);
+        star.setContentDescription(getString(!chosen?R.string.favorite_choose_number:favorite?R.string.favorite_remove:R.string.favorite_add));
     }
 
-    private boolean permWasPermanentlyDenied() {
-        return getSharedPreferences("pilot", MODE_PRIVATE)
-                .getBoolean("call_denied_once", false)
-                && !shouldShowRequestPermissionRationale(Manifest.permission.CALL_PHONE);
+    @Override protected void onResume() {
+        super.onResume();if(callAction!=null)callAction.onResume();
     }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode != REQ_CALL) return;
-        boolean granted = grantResults.length > 0
-                && grantResults[0] == PackageManager.PERMISSION_GRANTED;
-        // A grant NEVER starts a call by itself (pinned by CallDecisionTest):
-        // mama still has to tap the green button deliberately.
-        if (CallDecision.afterPermissionResult(granted)
-                == CallDecision.PostResult.WAIT_FOR_EXPLICIT_TAP) {
-            findViewById(R.id.call_blocked).setVisibility(View.GONE);
-        } else {
-            getSharedPreferences("pilot", MODE_PRIVATE)
-                    .edit().putBoolean("call_denied_once", true).apply();
-            findViewById(R.id.call_blocked).setVisibility(View.VISIBLE);
-        }
+    @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results) {
+        super.onRequestPermissionsResult(code,permissions,results);
+        callAction.permissionResult(code,results);
     }
 
     @Override

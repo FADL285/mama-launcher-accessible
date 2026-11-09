@@ -161,7 +161,8 @@ public class LauncherFlowTest {
     }
 
     @Test
-    public void dialpadComposesThenHandsToSystemDialer() {
+    public void dialpadComposesThenCallsDirectlyOnDeliberatePress() {
+        org.robolectric.Shadows.shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.CALL_PHONE);
         DialpadActivity a = Robolectric.buildActivity(DialpadActivity.class).setup().get();
         tapDial(a, "01000000000");
         assertEquals("01000000000",
@@ -172,7 +173,7 @@ public class LauncherFlowTest {
         a.findViewById(R.id.btn_call).performClick();
         Intent dial = shadow(a).getNextStartedActivity();
         assertNotNull(dial);
-        assertEquals(Intent.ACTION_DIAL, dial.getAction()); // never ACTION_CALL
+        assertEquals(Intent.ACTION_CALL, dial.getAction()); // direct call only after this deliberate press
         assertEquals("tel:0100000000", dial.getDataString());
     }
 

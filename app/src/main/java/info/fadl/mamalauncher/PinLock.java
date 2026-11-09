@@ -20,31 +20,57 @@ public final class PinLock {
 
     private PinLock() {}
 
+    private static final String SHA256 = "PBKDF2WithHmacSHA256";
+    private static final String SHA1 = "PBKDF2WithHmacSHA1";
+
     public static String hash(String salt, String pin) {
-        SecretKeyFactory skf;
+        String algorithm;
         try {
-            skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256"); // API 26+
+            SecretKeyFactory.getInstance(SHA256);
+            algorithm = SHA256;
         } catch (NoSuchAlgorithmException e) {
-            try {
-                skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1"); // API 10+
-            } catch (NoSuchAlgorithmException e2) {
-                throw new IllegalStateException(e2);
-            }
+            algorithm = SHA1;
         }
+        return algorithm + "$" + derive(salt, pin, algorithm);
+    }
+
+    static String derive(String salt, String pin, String algorithm) {
         PBEKeySpec spec = new PBEKeySpec(pin.toCharArray(),
                 salt.getBytes(java.nio.charset.StandardCharsets.UTF_8), ITERATIONS, 256);
         try {
-            byte[] d = skf.generateSecret(spec).getEncoded();
+            byte[] d = SecretKeyFactory.getInstance(algorithm).generateSecret(spec).getEncoded();
             StringBuilder sb = new StringBuilder();
             for (byte b : d) sb.append(String.format("%02x", b));
             return sb.toString();
-        } catch (InvalidKeySpecException e) {
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             throw new IllegalStateException(e);
+        } finally {
+            spec.clearPassword();
+        }
+    }
+
+    private static boolean matches(String salt, String pin, String hash, String algorithm) {
+        try {
+            return java.security.MessageDigest.isEqual(
+                    derive(salt, pin, algorithm).getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    hash.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (IllegalStateException e) {
+            return false; // unavailable provider: never unlock or crash
         }
     }
 
     public static boolean verify(String salt, String pin, String expectedHash) {
-        return expectedHash != null && hash(salt, pin).equals(expectedHash);
+        if (expectedHash == null) return false;
+        int separator = expectedHash.indexOf('$');
+        if (separator >= 0) {
+            String algorithm = expectedHash.substring(0, separator);
+            if (!SHA256.equals(algorithm) && !SHA1.equals(algorithm)) return false;
+            return matches(salt, pin, expectedHash.substring(separator + 1), algorithm);
+        }
+        // Existing pilot hashes did not store an algorithm. Try both supported
+        // legacy algorithms so an OS/provider upgrade does not lock out a PIN.
+        return matches(salt, pin, expectedHash, SHA256)
+                || matches(salt, pin, expectedHash, SHA1);
     }
 
     /** Lockout after a failure: 0ms while under the threshold, then 30s

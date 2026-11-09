@@ -26,12 +26,25 @@ import info.fadl.mamalauncher.ui.UiBinder;
 public class MainActivity extends BaseActivity {
 
     private LinearLayout tiles;
+    private boolean appliedContrast;
+    private int appliedFont;
+    private final android.content.BroadcastReceiver packageChanges = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context c, Intent i) { buildTiles(); }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         tiles = findViewById(R.id.tiles_container);
+        appliedContrast = Prefs.highContrast(this);
+        appliedFont = Prefs.fontScale(this);
+        android.content.IntentFilter changes = new android.content.IntentFilter();
+        changes.addAction(Intent.ACTION_PACKAGE_ADDED);
+        changes.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        changes.addAction(Intent.ACTION_PACKAGE_CHANGED);
+        changes.addDataScheme("package");
+        registerReceiver(packageChanges, changes);
         findViewById(R.id.home_header).setOnLongClickListener(v -> {
             haptic(v);
             startActivity(PinGateActivity.intentForEntry(this));
@@ -57,6 +70,10 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (appliedContrast != Prefs.highContrast(this) || appliedFont != Prefs.fontScale(this)) {
+            recreate();
+            return;
+        }
         updateClock();
         clock.removeCallbacks(clockTick);
         clock.postDelayed(clockTick, 30_000);
@@ -90,7 +107,10 @@ public class MainActivity extends BaseActivity {
                 icon = pm.getApplicationIcon(pkg);
             } catch (PackageManager.NameNotFoundException ignored) { }
             View tile = UiBinder.buildHomeTile(this, name, icon, 0, contrast(), null);
-            guard(tile, () -> startActivity(launch));
+            guard(tile, () -> {
+                try { startActivity(launch); }
+                catch (android.content.ActivityNotFoundException e) { buildTiles(); }
+            });
             built.add(tile);
         }
 
@@ -100,10 +120,12 @@ public class MainActivity extends BaseActivity {
         for (int i = 0; i < built.size(); i += 2) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, h, 1f);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f);
             lp.setMargins(m, m, m, m);
+            built.get(i).setMinimumHeight(h);
             row.addView(built.get(i), lp);
             if (i + 1 < built.size()) {
+                built.get(i + 1).setMinimumHeight(h);
                 row.addView(built.get(i + 1), lp);
             } else {
                 row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
@@ -111,6 +133,12 @@ public class MainActivity extends BaseActivity {
             tiles.addView(row, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         }
+    }
+
+    @Override protected void onDestroy() {
+        unregisterReceiver(packageChanges);
+        clock.removeCallbacks(clockTick);
+        super.onDestroy();
     }
 
     @Override

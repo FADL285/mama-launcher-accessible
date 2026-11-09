@@ -14,12 +14,12 @@
                 android:id="@+id/home_clock"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:gravity="center"
-                android:textSize="52sp" android:textStyle="bold" android:textColor="@color/text_main"/>
+                android:textSize="52sp" android:textStyle="bold" android:textColor="?attr/surfaceText"/>
             <TextView
                 android:id="@+id/home_date"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:gravity="center" android:textSize="20sp"
-                android:textColor="#5A5348"/>
+                android:textColor="?attr/surfaceSecondaryText"/>
         </LinearLayout>
 
         <LinearLayout
