@@ -37,6 +37,8 @@ public final class UiBinder {
             return;
         }
         single.setVisibility(View.GONE);
+        TextView target=root.findViewById(R.id.selected_call_number);
+        target.setVisibility(View.VISIBLE);target.setText(R.string.call_choose_hint);
         box.setVisibility(View.VISIBLE);
         box.removeAllViews();
 
@@ -72,6 +74,7 @@ public final class UiBinder {
                     }
                 }
                 v.setBackgroundResource(R.drawable.btn_number_selected);
+                target.setText((String)v.getTag());target.setTextDirection(View.TEXT_DIRECTION_LTR);
                 listener.onNumberSelected((String) v.getTag());
             });
             row.addView(b);
@@ -81,6 +84,8 @@ public final class UiBinder {
     /** Re-applies the visible selection highlight (e.g. after activity recreation). */
     public static void selectNumber(View root, String number) {
         LinearLayout box = root.findViewById(R.id.numbers_container);
+        TextView target=root.findViewById(R.id.selected_call_number);
+        if(number!=null && box.getVisibility()==View.VISIBLE){target.setVisibility(View.VISIBLE);target.setText(number);target.setTextDirection(View.TEXT_DIRECTION_LTR);}
         for (int r = 0; r < box.getChildCount(); r++) {
             LinearLayout rr = (LinearLayout) box.getChildAt(r);
             for (int k = 0; k < rr.getChildCount(); k++) {
@@ -143,14 +148,17 @@ public final class UiBinder {
 
         TextView tv = new TextView(ctx);
         tv.setText(label);
-        tv.setTextSize(24f);
+        // Long OEM labels remain verbatim. A modest smaller starting size
+        // avoids four oversized lines at the largest accessibility scale.
+        tv.setTextSize(label!=null && label.length()>18?20f:24f);
         tv.setTypeface(tv.getTypeface(), android.graphics.Typeface.BOLD);
         tv.setTextColor(ctx.getResources().getColor(
                 contrast ? R.color.contrast_text : R.color.text_main));
         tv.setGravity(android.view.Gravity.CENTER);
         // Natural height: long app names remain readable at enlarged text.
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        tv.setPadding(dp(tile,4),0,dp(tile,4),dp(tile,2));
         tp.setMargins(0, dp(tile, 6), 0, 0);
         tile.addView(tv, tp);
 

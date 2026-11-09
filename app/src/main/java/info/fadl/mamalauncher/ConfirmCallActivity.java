@@ -141,8 +141,10 @@ public class ConfirmCallActivity extends BaseActivity {
         }
 
         speaker = new NameSpeaker();
-        speaker.setAvailabilityListener(() ->
-                findViewById(R.id.speak_unavailable).setVisibility(View.VISIBLE));
+        speaker.setAvailabilityListener(new NameSpeaker.AvailabilityListener() {
+            @Override public void onUnavailable(){findViewById(R.id.speak_unavailable).setVisibility(View.VISIBLE);}
+            @Override public void onAvailable(){findViewById(R.id.speak_unavailable).setVisibility(View.GONE);}
+        });
         speaker.init(this);
         final String spoken = NameSpeaker.speakText(name, getString(R.string.no_name));
         if (savedInstanceState == null && Prefs.autoSpeak(this)) speaker.speak(spoken);

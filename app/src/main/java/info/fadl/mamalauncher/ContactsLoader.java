@@ -70,6 +70,13 @@ public final class ContactsLoader {
     }
 
     public static List<ContactEntry> load(ContentResolver resolver, Resources res) {
+        return load(resolver,res,false);
+    }
+    /** Saving requires a completed read, not a null cursor mistaken for zero matches. */
+    static List<ContactEntry> loadVerified(ContentResolver resolver,Resources res) {
+        return load(resolver,res,true);
+    }
+    private static List<ContactEntry> load(ContentResolver resolver, Resources res, boolean requireResult) {
         String[] projection = new String[]{
                 Phone.CONTACT_ID,
                 Phone.DISPLAY_NAME,
@@ -81,7 +88,7 @@ public final class ContactsLoader {
         };
         List<RawRow> rows = new ArrayList<>();
         try (Cursor c = resolver.query(Phone.CONTENT_URI, projection, null, null, null)) {
-            if (c == null) return new ArrayList<>();
+            if(c==null) {if(requireResult)throw new IllegalStateException("Contacts provider unavailable");return new ArrayList<>();}
             while (c.moveToNext()) {
                 CharSequence label = Phone.getTypeLabel(res, c.getInt(3), c.getString(4));
                 rows.add(new RawRow(

@@ -19,6 +19,105 @@ public class DialpadActivity extends BaseActivity {
     private View callBtn;
     private View saveBtn;
     private DirectCallAction callAction;
+    private java.util.List<info.fadl.mamalauncher.ui.ContactEntry> contacts = new java.util.ArrayList<>();
+    private final java.util.concurrent.ExecutorService lookupWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
+    private volatile int lookupGeneration;
+    private volatile int matchGeneration;
+    private boolean lookupPending;
+    private boolean checkingSave;
+    private volatile int saveGeneration;
+    private boolean resumed;
+    private android.app.AlertDialog saveChooser;
+    private boolean contactsAvailable;
+    private String country() {
+        android.telephony.TelephonyManager tm=(android.telephony.TelephonyManager)getSystemService(TELEPHONY_SERVICE);
+        String iso=tm==null?"":tm.getSimCountryIso();
+        if(iso==null || iso.isEmpty())iso=tm==null?"":tm.getNetworkCountryIso();
+        if(iso==null || iso.isEmpty())iso=java.util.Locale.getDefault().getCountry();
+        return iso.toUpperCase(java.util.Locale.US);
+    }
+    private boolean canReadContacts() {return checkSelfPermission(android.Manifest.permission.READ_CONTACTS)==android.content.pm.PackageManager.PERMISSION_GRANTED;}
+    private void refreshContacts() {
+        final int generation=++lookupGeneration;
+        if(!canReadContacts()){lookupPending=false;contactsAvailable=false;contacts.clear();renderMatches();return;}
+        lookupPending=true;renderMatches();
+        lookupWorker.execute(()-> {
+            if(generation!=lookupGeneration)return;
+            java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded;
+            boolean ok=true;
+            try {loaded=ContactsLoader.loadVerified(getContentResolver(),getResources());}catch(RuntimeException e){loaded=new java.util.ArrayList<>();ok=false;}
+            final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> result=loaded;final boolean success=ok;
+            runOnUiThread(()-> {if(isDestroyed() || generation!=lookupGeneration)return;contacts=result;lookupPending=false;contactsAvailable=success;renderMatches();});
+        });
+    }
+    private void saveOrShowExisting() {
+        if(number.length()<3 || checkingSave || !resumed)return;
+        final String typed=number.toString();final int request=++saveGeneration;final String region=country();checkingSave=true;
+        lookupWorker.execute(()-> {
+            if(request!=saveGeneration)return;
+            java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded=new java.util.ArrayList<>();boolean ok=canReadContacts();
+            try {if(ok)loaded=ContactsLoader.loadVerified(getContentResolver(),getResources());}catch(RuntimeException e){ok=false;}
+            final boolean verified=ok;final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> current=loaded;
+            final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact=DialContactMatcher.matches(current,typed,region,true);
+            runOnUiThread(()-> {
+                if(!resumed || request!=saveGeneration || isDestroyed() || isFinishing())return;
+                checkingSave=false;
+                if(!typed.equals(number.toString())){android.widget.Toast.makeText(this,R.string.dial_save_changed,android.widget.Toast.LENGTH_LONG).show();return;}
+                contacts=current;contactsAvailable=verified;renderMatches();
+                if(!verified) {android.widget.Toast.makeText(this,R.string.dial_lookup_needed,android.widget.Toast.LENGTH_LONG).show();return;}
+                if(exact.size()==1)startActivity(ConfirmCallActivity.intentFor(this,exact.get(0)));
+                else if(exact.size()>1)saveChooser=new android.app.AlertDialog.Builder(this).setTitle(R.string.dial_saved_choose)
+                    .setItems(exact.stream().map(c->c.name).toArray(String[]::new),(d,i)->{if(resumed && request==saveGeneration)startActivity(ConfirmCallActivity.intentFor(this,exact.get(i)));})
+                    .setNegativeButton(android.R.string.cancel,null).show();
+                else try {startActivity(DialIntents.saveAsContact(typed));}catch(android.content.ActivityNotFoundException e){handoffUnavailable();}
+            });
+        });
+    }
+    private void renderMatches() {
+        if(display==null)return;
+        android.widget.LinearLayout box=findViewById(R.id.dial_matches);box.removeAllViews();
+        final int generation=++matchGeneration;
+        final String typed=number.toString();
+        ((TextView)findViewById(R.id.save_number_label)).setText(R.string.save_number);
+        if(number.length()<3)return;
+        if(lookupPending || !contactsAvailable) {
+            TextView hint=new TextView(this);hint.setText(lookupPending?R.string.dial_lookup_loading:R.string.dial_lookup_needed);hint.setTextSize(16);int inset=(int)(8*getResources().getDisplayMetrics().density);hint.setPadding(inset,0,inset,0);hint.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));box.addView(hint);return;
+        }
+        final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> snapshot=new java.util.ArrayList<>(contacts);
+        final String region=country();
+        lookupWorker.execute(()-> {
+            if(generation!=matchGeneration)return;
+            java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact=DialContactMatcher.matches(snapshot,typed,region,true);
+            java.util.List<info.fadl.mamalauncher.ui.ContactEntry> found=DialContactMatcher.matches(snapshot,typed,region,false);
+            runOnUiThread(()-> {
+                if(isDestroyed() || generation!=matchGeneration || !typed.equals(number.toString()))return;
+                ((TextView)findViewById(R.id.save_number_label)).setText(exact.isEmpty()?R.string.save_number:R.string.dial_view_saved);
+                showMatches(found,exact,typed);
+            });
+        });
+    }
+    private void showMatches(java.util.List<info.fadl.mamalauncher.ui.ContactEntry> found,java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact,String typed) {
+        android.widget.LinearLayout box=findViewById(R.id.dial_matches);box.removeAllViews();
+        int shown=0;
+        for(info.fadl.mamalauncher.ui.ContactEntry c:found) {
+            if(shown++==1)break;
+            android.widget.Button row=new android.widget.Button(this);
+            boolean saved=exact.stream().anyMatch(e->e.id==c.id);
+            row.setText((saved?getString(R.string.dial_saved):getString(R.string.dial_suggestion))+" · "+c.name+"\n"+c.firstNumber());
+            row.setTextSize(18);row.setAllCaps(false);row.setMinHeight((int)(64*getResources().getDisplayMetrics().density));
+            guard(row,()->startActivity(ConfirmCallActivity.intentFor(this,c)));box.addView(row);
+        }
+        if(found.size()>1) {
+            android.widget.Button more=new android.widget.Button(this);more.setText(getString(R.string.dial_more,found.size()));more.setAllCaps(false);more.setTextSize(18);
+            guard(more,()->new android.app.AlertDialog.Builder(this).setTitle(R.string.dial_results)
+                .setItems(found.stream().map(c->c.name+" · "+c.firstNumber()).toArray(String[]::new),(d,i)->startActivity(ConfirmCallActivity.intentFor(this,found.get(i))))
+                .setNegativeButton(android.R.string.cancel,null).show());box.addView(more);
+        }
+    }
+    /** Deterministic synchronization point for isolated JVM flow tests. */
+    void awaitLookupsForTest() throws Exception {lookupWorker.submit(()->{}).get(5,java.util.concurrent.TimeUnit.SECONDS);}
+    @Override protected void onDestroy(){lookupGeneration++;matchGeneration++;lookupWorker.shutdownNow();super.onDestroy();}
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,17 +139,18 @@ public class DialpadActivity extends BaseActivity {
                 android.widget.Toast.makeText(this,blocked?R.string.call_blocked_hint:R.string.call_permission_ready,
                         android.widget.Toast.LENGTH_LONG).show());
         guard(callBtn, () -> callAction.tap(number.toString()));
-        guard(saveBtn, () -> {
-            if (number.length() == 0) return;
-            try {
-                startActivity(DialIntents.saveAsContact(number.toString()));
-            } catch (android.content.ActivityNotFoundException e) { handoffUnavailable(); }
-        });
+        guard(saveBtn, this::saveOrShowExisting);
         sync();
     }
 
     @Override protected void onResume() {
-        super.onResume(); if(callAction!=null)callAction.onResume();
+        super.onResume(); resumed=true;if(callAction!=null)callAction.onResume();refreshContacts();
+    }
+    /** Leaving the page invalidates reads and chooser actions, even if it is not destroyed. */
+    @Override protected void onPause() {
+        resumed=false;saveGeneration++;checkingSave=false;
+        if(saveChooser!=null){saveChooser.dismiss();saveChooser=null;}
+        super.onPause();
     }
     @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results) {
         super.onRequestPermissionsResult(code,permissions,results);
@@ -116,5 +216,6 @@ public class DialpadActivity extends BaseActivity {
         boolean has = number.length() >= 3;
         callBtn.setAlpha(has ? 1f : 0.45f);
         saveBtn.setAlpha(has ? 1f : 0.45f);
+        renderMatches();
     }
 }

@@ -209,6 +209,17 @@ public class UiSnapshotTest {
         paparazzi.snapshot(v, "confirm-multi-bottom");
     }
 
+    @Test public void confirmWithSyntheticPhoto() {
+        View v=paparazzi.inflate(R.layout.activity_confirm);
+        ((TextView)v.findViewById(R.id.big_name)).setText("صورة تجريبية");
+        android.graphics.Bitmap bitmap=android.graphics.Bitmap.createBitmap(240,320,android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas=new android.graphics.Canvas(bitmap);canvas.drawColor(0xFFB7D8E8);
+        android.graphics.Paint p=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);p.setColor(0xFFF5BD78);canvas.drawCircle(120,110,60,p);p.setColor(0xFF315E8A);canvas.drawOval(35,175,205,355,p);p.setColor(0xFF443322);canvas.drawCircle(100,100,5,p);canvas.drawCircle(140,100,5,p);
+        ((android.widget.ImageView)v.findViewById(R.id.big_photo)).setImageBitmap(bitmap);
+        UiBinder.bindNumbers(v,nums("01000000001","موبايل"),n->{});v.findViewById(R.id.btn_call).setEnabled(true);
+        paparazzi.snapshot(v,"confirm-synthetic-photo");
+    }
+
     @Test
     public void contactTileFallbackWithStar() {
         View v = paparazzi.inflate(R.layout.item_contact);

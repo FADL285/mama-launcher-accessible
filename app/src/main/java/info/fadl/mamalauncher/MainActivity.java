@@ -26,6 +26,7 @@ import info.fadl.mamalauncher.ui.UiBinder;
 public class MainActivity extends BaseActivity {
 
     private LinearLayout tiles;
+    protected boolean isSecondary(){return false;}
     private boolean appliedContrast;
     private int appliedFont;
     private final android.content.BroadcastReceiver packageChanges = new android.content.BroadcastReceiver() {
@@ -37,6 +38,20 @@ public class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         tiles = findViewById(R.id.tiles_container);
+        if(isSecondary()) {
+            findViewById(R.id.home_header).setVisibility(View.GONE);
+            android.widget.Button back=new android.widget.Button(this);back.setText(R.string.back);back.setTextSize(26);back.setBackgroundResource(R.drawable.btn_back);back.setTextColor(android.graphics.Color.WHITE);back.setMinHeight((int)(72*getResources().getDisplayMetrics().density));
+            guard(back,this::finish);
+            android.widget.ScrollView scroll=(android.widget.ScrollView)tiles.getParent().getParent();
+            android.view.ViewGroup host=(android.view.ViewGroup)scroll.getParent();
+            host.removeView(scroll);
+            LinearLayout fixed=new LinearLayout(this);fixed.setOrientation(LinearLayout.VERTICAL);int edge=(int)(12*getResources().getDisplayMetrics().density);fixed.setPadding(edge,edge,edge,0);
+            fixed.addView(back,new LinearLayout.LayoutParams(-1,-2));
+            TextView title=new TextView(this);title.setText(R.string.apps_page);title.setTextSize(30);title.setGravity(android.view.Gravity.CENTER);title.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));
+            fixed.addView(title,new LinearLayout.LayoutParams(-1,-2));
+            fixed.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+            host.addView(fixed,new android.view.ViewGroup.LayoutParams(-1,-1));
+        }
         appliedContrast = Prefs.highContrast(this);
         appliedFont = Prefs.fontScale(this);
         android.content.IntentFilter changes = new android.content.IntentFilter();
@@ -61,6 +76,7 @@ public class MainActivity extends BaseActivity {
     };
 
     private void updateClock() {
+        if(isSecondary())return;
         ((TextView) findViewById(R.id.home_clock)).setText(
                 new SimpleDateFormat("h:mm", Locale.US).format(new Date()));
         ((TextView) findViewById(R.id.home_date)).setText(
@@ -86,18 +102,28 @@ public class MainActivity extends BaseActivity {
         super.onPause();
     }
 
+    /** Persist selections but hide an empty folder when every app is unavailable. */
+    boolean hasLaunchableSecondary() {
+        for(String pkg:AppSelection.parse(Prefs.get(this).getString(AppSelection.SECONDARY_KEY,null)))
+            if(getPackageManager().getLaunchIntentForPackage(pkg)!=null)return true;
+        return false;
+    }
     private void buildTiles() {
         tiles.removeAllViews();
         List<View> built = new ArrayList<>();
 
-        View phone = UiBinder.buildHomeTile(this, getString(R.string.tile_phone),
-                getResources().getDrawable(R.drawable.ic_call), R.drawable.chip_green,
-                contrast(), null);
-        guard(phone, () -> startActivity(new Intent(this, PhoneActivity.class)));
-        built.add(phone);
+        if(!isSecondary()) {
+            View phone = UiBinder.buildHomeTile(this, getString(R.string.tile_phone),
+                getResources().getDrawable(R.drawable.ic_call), R.drawable.chip_green, contrast(), null);
+            guard(phone, () -> startActivity(new Intent(this, PhoneActivity.class)));built.add(phone);
+            if(hasLaunchableSecondary()) {
+                View folder=UiBinder.buildHomeTile(this,getString(R.string.apps_page),getResources().getDrawable(R.drawable.ic_apps),R.drawable.chip_green,contrast(),null);
+                guard(folder,()->startActivity(new Intent(this,AppsPageActivity.class)));built.add(folder);
+            }
+        }
 
         PackageManager pm = getPackageManager();
-        for (String pkg : AppSelection.parse(Prefs.get(this).getString(AppSelection.PREF_KEY, null))) {
+        for (String pkg : AppSelection.parse(Prefs.get(this).getString(isSecondary()?AppSelection.SECONDARY_KEY:AppSelection.PREF_KEY, null))) {
             Intent launch = pm.getLaunchIntentForPackage(pkg);
             if (launch == null) continue; // uninstalled: silently gone, no placeholder
             String name = pkg;
@@ -114,13 +140,17 @@ public class MainActivity extends BaseActivity {
             built.add(tile);
         }
 
+        if(isSecondary() && built.isEmpty()) {
+            TextView empty=new TextView(this);empty.setText(R.string.apps_empty);empty.setTextSize(24);empty.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));tiles.addView(empty);
+        }
         float d = getResources().getDisplayMetrics().density;
         int m = (int) (6 * d);
         int h = (int) (170 * d);
         for (int i = 0; i < built.size(); i += 2) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f);
+            row.setGravity(android.view.Gravity.TOP);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
             lp.setMargins(m, m, m, m);
             built.get(i).setMinimumHeight(h);
             row.addView(built.get(i), lp);
@@ -143,6 +173,7 @@ public class MainActivity extends BaseActivity {
 
     @Override
     public void onBackPressed() {
+        if(isSecondary()){finish();return;}
         // Home launcher: BACK on the everyday screen must not exit to a blank state.
     }
 }

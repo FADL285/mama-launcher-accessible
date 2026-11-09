@@ -14,12 +14,18 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
 
     /** Called when speech is unavailable (engine init failed or speak failed),
      *  so the screen can say so instead of failing silently. */
-    public interface AvailabilityListener { void onUnavailable(); }
+    public interface AvailabilityListener { void onUnavailable(); default void onAvailable(){} }
 
     private android.speech.tts.TextToSpeech tts;
     private boolean ready;
     private boolean closed;
+    private boolean initializationFinished;
     private String pending;
+    private android.content.Context context;
+    private int generation;
+    private java.util.List<String> engines;
+    private int engineIndex;
+    private String currentEngine;
     private AvailabilityListener availabilityListener;
     private final android.os.Handler main =
             new android.os.Handler(android.os.Looper.getMainLooper());
@@ -42,42 +48,71 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
     }
 
     public void init(android.content.Context context) {
-        String engine=SpeechEngineChoice.requested(context);
-        if(Prefs.get(context).contains(SpeechEngineChoice.KEY) && !SpeechEngineChoice.installed(context).containsKey(engine)) {
+        this.context=context.getApplicationContext();
+        closed=false;ready=false;initializationFinished=false;generation++;
+        engines=new java.util.ArrayList<>();engineIndex=0;
+        String requested=SpeechEngineChoice.requested(context);
+        java.util.Map<String,String> installed=SpeechEngineChoice.installed(context);
+        boolean explicit=Prefs.get(context).contains(SpeechEngineChoice.KEY);
+        if(explicit && !installed.containsKey(requested)) {
+            initializationFinished=true;
             if(availabilityListener!=null)availabilityListener.onUnavailable();return;
         }
-        tts = new android.speech.tts.TextToSpeech(context.getApplicationContext(), this, engine);
+        if(requested!=null || installed.isEmpty())engines.add(requested);
+        // A manual selection is binding. Only an unset choice may try another
+        // installed engine, and no contact text is passed until offline Arabic exists.
+        if(!explicit)for(String pkg:installed.keySet())if(!engines.contains(pkg))engines.add(pkg);
+        startEngine();
+    }
+    private void startEngine() {
+        if(tts!=null){tts.stop();tts.shutdown();}
+        final int current=++generation;
+        currentEngine=engines.get(engineIndex);
+        tts=new android.speech.tts.TextToSpeech(context,status->main.post(()-> {
+            if(!closed && current==generation)onInit(status);
+        }),currentEngine);
+        main.postDelayed(()-> {if(!closed && current==generation && !initializationFinished)onInit(android.speech.tts.TextToSpeech.ERROR);},6000);
+    }
+    private boolean nextEngine() {
+        if(engineIndex+1>=engines.size())return false;
+        engineIndex++;initializationFinished=false;startEngine();return true;
     }
 
     @Override
     public void onInit(int status) {
         if(closed)return;
+        initializationFinished=true;
         ready = status == android.speech.tts.TextToSpeech.SUCCESS;
         if (!ready) {
+            if(nextEngine())return;
             if (availabilityListener != null) availabilityListener.onUnavailable();
             return;
         }
-        Locale ar = new Locale("ar");
-        int avail = tts.setLanguage(ar);
-        if (ArabicSpeechState.from(avail,tts.getVoice())!=ArabicSpeechState.State.READY) {
+        if (ArabicVoicePolicy.prepare(tts)!=ArabicSpeechState.State.READY) {
             // Arabic missing on this engine: say so instead of pronouncing
             // the name wrongly in a default locale. The settings screen
             // already offers the official Arabic data installer. NOT ready:
             // a later repeat-name tap must not reach the default voice either.
             ready = false;
+            if(nextEngine())return;
             if (availabilityListener != null) availabilityListener.onUnavailable();
             pending = null;
             return;
         }
+        if(currentEngine!=null && !Prefs.get(context).contains(SpeechEngineChoice.KEY))
+            Prefs.get(context).edit().putString(SpeechEngineChoice.AUTO_KEY,currentEngine).apply();
+        if(availabilityListener!=null)availabilityListener.onAvailable();
         // Queued success is not proof of sound: synthesis can still fail
         // after speak() returns. Surface that so the screen can say so.
+        final int speechGeneration=generation;
         tts.setOnUtteranceProgressListener(
                 new android.speech.tts.UtteranceProgressListener() {
                     @Override public void onStart(String utteranceId) { }
                     @Override public void onDone(String utteranceId) { }
                     @Override public void onError(String utteranceId) {
                         main.post(() -> {
-                            if (!closed && availabilityListener != null) {
+                            if (!closed && generation==speechGeneration && availabilityListener != null) {
+                                ready=false;
                                 availabilityListener.onUnavailable();
                             }
                         });
@@ -91,15 +126,24 @@ public class NameSpeaker implements android.speech.tts.TextToSpeech.OnInitListen
 
     public void speak(String name) {
         if(closed)return;
-        if (!ready) { pending = name; return; }
+        if (!ready) {
+            pending=name;
+            // Retry on a deliberate Listen tap after failed initialization/data
+            // install. Queue during first init, without creating parallel engines.
+            if(context!=null && initializationFinished) {
+                if(tts!=null)tts.shutdown();initializationFinished=false;init(context);
+            }
+            return;
+        }
         int r = tts.speak(name, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "mama-name");
         if (r == android.speech.tts.TextToSpeech.ERROR && availabilityListener != null) {
+            ready=false;
             availabilityListener.onUnavailable();
         }
     }
 
     public void shutdown() {
-        closed=true;ready=false;pending=null;
+        closed=true;generation++;ready=false;pending=null;
         if (tts != null) { tts.stop(); tts.shutdown(); }
     }
 }

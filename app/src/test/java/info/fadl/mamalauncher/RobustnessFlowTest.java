@@ -117,11 +117,12 @@ public class RobustnessFlowTest {
   java.lang.reflect.Field field=SettingsActivity.class.getDeclaredField("tts");field.setAccessible(true);
   android.speech.tts.TextToSpeech tts=(android.speech.tts.TextToSpeech)field.get(c.get());
   org.robolectric.shadows.ShadowTextToSpeech st=org.robolectric.Shadows.shadowOf(tts);
-  st.getOnInitListener().onInit(android.speech.tts.TextToSpeech.SUCCESS);
+  st.getOnInitListener().onInit(android.speech.tts.TextToSpeech.SUCCESS);Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
   assertEquals(c.get().getString(R.string.tts_unsupported),((TextView)c.get().findViewById(R.id.tts_status)).getText().toString());
   assertTrue(c.get().findViewById(R.id.btn_tts_test).isEnabled());
   SessionGate.expectExternal();c.pause().stop();
   org.robolectric.shadows.ShadowTextToSpeech.addLanguageAvailability(new java.util.Locale("ar"));
+  org.robolectric.shadows.ShadowTextToSpeech.addVoice(new android.speech.tts.Voice("offline-fixture",new java.util.Locale("ar"),300,300,false,java.util.Collections.emptySet()));
   c.restart().resume();
   assertEquals(c.get().getString(R.string.tts_ready),((TextView)c.get().findViewById(R.id.tts_status)).getText().toString());
   assertTrue(c.get().findViewById(R.id.btn_tts_test).isEnabled());

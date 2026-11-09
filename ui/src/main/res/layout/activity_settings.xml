@@ -2,10 +2,10 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp">
   <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
     <Button android:id="@+id/btn_settings_back" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minHeight="48dp" android:minWidth="120dp" android:padding="8dp" android:background="@drawable/tile_bg" android:text="@string/settings_back_home" android:textSize="20sp" android:textColor="@color/back_blue" android:textAllCaps="false" />
-    <TextView android:id="@+id/settings_page_title" android:layout_width="match_parent" android:layout_weight="0" android:layout_height="wrap_content" android:gravity="start" android:text="@string/settings_title" android:textSize="24sp" android:textStyle="bold" android:textColor="@color/text_main" android:padding="8dp" />
+    <TextView android:id="@+id/settings_page_title" android:layout_width="match_parent" android:layout_weight="0" android:layout_height="wrap_content" android:gravity="start" android:text="@string/settings_title" android:textSize="24sp" android:textStyle="bold" android:textColor="?attr/surfaceText" android:padding="8dp" />
   </LinearLayout>
-  <ScrollView android:id="@+id/settings_scroll" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+  <ScrollView android:id="@+id/settings_scroll" android:paddingLeft="8dp" android:paddingRight="8dp" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingLeft="10dp" android:paddingRight="10dp">
       <LinearLayout android:id="@+id/settings_menu" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_menu_hint" android:textSize="16sp" android:padding="4dp" android:textColor="@color/text_main" />
         <LinearLayout android:id="@+id/open_section_apps" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="64dp" android:orientation="vertical" android:padding="10dp" android:layout_marginTop="6dp" android:background="@drawable/tile_bg" android:clickable="true" android:focusable="true">
@@ -30,6 +30,7 @@
         </LinearLayout>
       </LinearLayout>
       <LinearLayout android:id="@+id/settings_section_sound" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/tts_offline_only" android:textSize="16sp" android:padding="6dp" android:textColor="@color/text_main" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:orientation="vertical" android:gravity="center_vertical" android:background="@drawable/tile_bg" android:padding="12dp">
           <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/auto_speak_label" android:textSize="20sp" android:textColor="@color/text_main" />
@@ -112,7 +113,7 @@
         </LinearLayout>
       </LinearLayout>
       <LinearLayout android:id="@+id/settings_section_apps" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/apps_section_hint" android:textSize="15sp" android:textColor="#5A5348" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/apps_section_hint" android:textSize="15sp" android:textColor="?attr/surfaceSecondaryText" />
         <LinearLayout android:id="@+id/settings_apps_list" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="4dp" />
         <TextView android:id="@+id/apps_loading" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/apps_loading" android:textSize="16sp" android:gravity="center" android:padding="10dp" />
       </LinearLayout>

@@ -234,7 +234,7 @@ public class SettingsActivity extends ProtectedModeActivity {
 
     // ---- home-button picker (installed apps only, setter-ordered) ----
 
-    private void loadApps() {
+    void loadApps() {
         new Thread(() -> {
             PackageManager pm = getPackageManager();
             Intent main = new Intent(Intent.ACTION_MAIN)
@@ -263,79 +263,74 @@ public class SettingsActivity extends ProtectedModeActivity {
         for (String[] a : apps) installedPkgs.add(a[0]);
         selected.clear();
         selected.addAll(AppSelection.parse(prefs.getString(AppSelection.PREF_KEY, null)));
-        selected.retainAll(installedPkgs);
+
+        secondary.clear();secondary.addAll(AppSelection.parse(prefs.getString(AppSelection.SECONDARY_KEY,null)));
+        secondary.removeAll(selected);
         saveSelection();
         rebuildPicker();
     }
 
+    private final List<String> secondary=new ArrayList<>();
     private void rebuildPicker() {
         findViewById(R.id.apps_loading).setVisibility(View.GONE);
         LinearLayout box = findViewById(R.id.settings_apps_list);
         box.removeAllViews();
-        // Chosen apps first, in the setter's order, with up/down controls.
-        for (int i = 0; i < selected.size(); i++) {
-            String[] app = findApp(selected.get(i));
-            if (app != null) box.addView(pickerRow(app, true, i));
-        }
-        // The rest alphabetically below.
-        for (String[] app : installed) {
-            if (!selected.contains(app[0])) box.addView(pickerRow(app, false, -1));
-        }
+        TextView hint=new TextView(this);hint.setText(R.string.apps_drag_hint);hint.setTextSize(18);hint.setTextColor(info.fadl.mamalauncher.ui.SurfaceText.color(this));hint.setPadding((int)(8*getResources().getDisplayMetrics().density),8,(int)(8*getResources().getDisplayMetrics().density),16);box.addView(hint);
+        addGroup(box,selected,getString(R.string.apps_home));
+        addGroup(box,secondary,getString(R.string.apps_folder));
+        for(String[] app:installed)if(!selected.contains(app[0]) && !secondary.contains(app[0]))box.addView(pickerRow(app,null,-1));
     }
-
-    private View pickerRow(String[] app, boolean isSelected, int position) {
-        float d = getResources().getDisplayMetrics().density;
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight((int) (56 * d));
-
-        CheckBox cb = new CheckBox(this);
-        cb.setText(app[1]);
-        cb.setTextSize(20f);
-        cb.setTextColor(getResources().getColor(R.color.text_main));
-        cb.setChecked(isSelected);
-        cb.setOnCheckedChangeListener((btn, isChecked) -> {
-            if (isChecked) {
-                if (!selected.contains(app[0])) selected.add(app[0]);
-            } else {
-                selected.remove(app[0]);
-            }
-            saveSelection();
-            rebuildPicker();
-        });
-        row.addView(cb, new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        if (isSelected) {
-            row.addView(arrowButton("↑", position > 0,
-                    () -> moveSelected(position, -1)));
-            row.addView(arrowButton("↓", position < selected.size() - 1,
-                    () -> moveSelected(position, +1)));
+    private void addGroup(LinearLayout box,List<String> group,String label) {
+        TextView heading=info.fadl.mamalauncher.ui.AppPickerUi.heading(this,label,24);box.addView(heading);
+        for(int i=0;i<group.size();i++){String[] app=findApp(group.get(i));if(app!=null)box.addView(pickerRow(app,group,i));}
+    }
+    private View pickerRow(String[] app,List<String> group,int position) {
+        float d=getResources().getDisplayMetrics().density;
+        LinearLayout outer=info.fadl.mamalauncher.ui.AppPickerUi.row(this,app[1],group==selected?0:group==secondary?1:2);
+        android.widget.Button location=outer.findViewWithTag("app_place");
+        location.setOnClickListener(v->new android.app.AlertDialog.Builder(this).setTitle(app[1])
+            .setSingleChoiceItems(new String[]{getString(R.string.apps_home),getString(R.string.apps_folder),getString(R.string.apps_hidden)},group==selected?0:group==secondary?1:2,(dialog,which)-> {
+                int previous=group==selected?0:group==secondary?1:2;
+                if(which==previous){dialog.dismiss();return;}
+                selected.remove(app[0]);secondary.remove(app[0]);if(which==0)selected.add(app[0]);else if(which==1)secondary.add(app[0]);saveSelection();rebuildPicker();dialog.dismiss();
+            }).setNegativeButton(android.R.string.cancel,null).show());
+        if(group!=null) {
+            TextView handle=outer.findViewWithTag("app_handle");
+            handle.setOnLongClickListener(v->v.startDragAndDrop(android.content.ClipData.newPlainText("app",app[0]),new View.DragShadowBuilder(outer),app[0],0));
+            final float[] start={0,0};final boolean[] dragging={false};
+            handle.setOnTouchListener((v,event)->{
+                switch(event.getActionMasked()) {
+                    case android.view.MotionEvent.ACTION_DOWN:start[0]=event.getX();start[1]=event.getY();dragging[0]=false;v.getParent().requestDisallowInterceptTouchEvent(true);return true;
+                    case android.view.MotionEvent.ACTION_MOVE:
+                        if(!dragging[0] && Math.hypot(event.getX()-start[0],event.getY()-start[1])>android.view.ViewConfiguration.get(this).getScaledTouchSlop()) {
+                            dragging[0]=v.startDragAndDrop(android.content.ClipData.newPlainText("app",app[0]),new View.DragShadowBuilder(outer),app[0],0);
+                        }return true;
+                    case android.view.MotionEvent.ACTION_UP:if(!dragging[0])v.performClick();v.getParent().requestDisallowInterceptTouchEvent(false);return true;
+                    case android.view.MotionEvent.ACTION_CANCEL:v.getParent().requestDisallowInterceptTouchEvent(false);return true;
+                    default:return true;
+                }
+            });
+            handle.setOnClickListener(v->{String[] positions=new String[group.size()];for(int i=0;i<positions.length;i++)positions[i]=(i+1)+" · "+(findApp(group.get(i))==null?group.get(i):findApp(group.get(i))[1]);
+                new android.app.AlertDialog.Builder(this).setTitle(R.string.app_move_title).setSingleChoiceItems(positions,position,(dialog,target)->{reorder(group,app[0],target);dialog.dismiss();}).setNegativeButton(android.R.string.cancel,null).show();});
+            outer.setOnDragListener((v,event)->{
+                Object dragged=event.getLocalState();if(!(dragged instanceof String) || !group.contains(dragged))return false;
+                switch(event.getAction()) {
+                    case android.view.DragEvent.ACTION_DRAG_STARTED:return true;
+                    case android.view.DragEvent.ACTION_DRAG_ENTERED:v.setAlpha(0.55f);return true;
+                    case android.view.DragEvent.ACTION_DRAG_EXITED:v.setAlpha(1f);return true;
+                    case android.view.DragEvent.ACTION_DRAG_LOCATION:
+                        android.widget.ScrollView scroll=findViewById(R.id.settings_scroll);
+                        if(scroll!=null){int[] xy=new int[2];v.getLocationOnScreen(xy);int[] sy=new int[2];scroll.getLocationOnScreen(sy);float y=xy[1]+event.getY()-sy[1];if(y<80*d)scroll.smoothScrollBy(0,-(int)(28*d));else if(y>scroll.getHeight()-80*d)scroll.smoothScrollBy(0,(int)(28*d));}return true;
+                    case android.view.DragEvent.ACTION_DROP:reorder(group,(String)dragged,position);return true;
+                    case android.view.DragEvent.ACTION_DRAG_ENDED:v.setAlpha(1f);return true;
+                    default:return true;
+                }
+            });
         }
-        return row;
+        return outer;
     }
-
-    private View arrowButton(String glyph, boolean enabled, Runnable action) {
-        TextView b = new TextView(this);
-        float d = getResources().getDisplayMetrics().density;
-        b.setText(glyph);
-        b.setTextSize(24f);
-        b.setGravity(android.view.Gravity.CENTER);
-        b.setTextColor(getResources().getColor(enabled ? R.color.back_blue : R.color.text_main));
-        b.setAlpha(enabled ? 1f : 0.25f);
-        int pad = (int) (10 * d);
-        b.setPadding(pad, pad, pad, pad);
-        if (enabled) b.setOnClickListener(v -> action.run());
-        return b;
-    }
-
-    private void moveSelected(int position, int delta) {
-        List<String> moved = AppSelection.move(selected, position, delta);
-        selected.clear();
-        selected.addAll(moved);
-        saveSelection();
-        rebuildPicker();
+    void reorder(List<String> group,String pkg,int target) {
+        List<String> moved=AppSelection.moveTo(group,group.indexOf(pkg),target);group.clear();group.addAll(moved);saveSelection();rebuildPicker();
     }
 
     private String[] findApp(String pkg) {
@@ -344,7 +339,7 @@ public class SettingsActivity extends ProtectedModeActivity {
     }
 
     private void saveSelection() {
-        prefs.edit().putString(AppSelection.PREF_KEY, AppSelection.join(selected)).apply();
+        prefs.edit().putString(AppSelection.PREF_KEY, AppSelection.join(selected)).putString(AppSelection.SECONDARY_KEY,AppSelection.join(secondary)).apply();
     }
 
     // ---- TTS health ----
@@ -374,7 +369,7 @@ public class SettingsActivity extends ProtectedModeActivity {
         if(Prefs.get(this).contains(SpeechEngineChoice.KEY) && !engines.containsKey(requestedEngine)) {
             ttsStatus.setText(R.string.tts_no_engines);ttsData.setVisibility(View.GONE);return;
         }
-        tts=new TextToSpeech(getApplicationContext(),status -> runOnUiThread(()-> {
+        tts=new TextToSpeech(getApplicationContext(),status -> new android.os.Handler(android.os.Looper.getMainLooper()).post(()-> {
             if(generation!=speechGeneration || isDestroyed() || isFinishing())return;
             ttsReady=status==TextToSpeech.SUCCESS;
             if(!ttsReady) {ttsStatus.setText(R.string.tts_missing);ttsData.setVisibility(View.VISIBLE);return;}
@@ -397,8 +392,7 @@ public class SettingsActivity extends ProtectedModeActivity {
         if(!ttsReady || tts==null)return;
         // setLanguage is the official engine-supported automatic voice download
         // trigger. Never use a different-language fallback as a successful test.
-        int result=tts.setLanguage(new Locale("ar"));
-        ArabicSpeechState.State state=ArabicSpeechState.from(result,tts.getVoice());
+        ArabicSpeechState.State state=ArabicVoicePolicy.prepare(tts);
         ttsStatus.setText(state==ArabicSpeechState.State.PREPARING?R.string.tts_preparing:
             state==ArabicSpeechState.State.READY?R.string.tts_ready:
             state==ArabicSpeechState.State.UNSUPPORTED?R.string.tts_unsupported:R.string.tts_arabic_missing);
@@ -410,7 +404,7 @@ public class SettingsActivity extends ProtectedModeActivity {
     private void testSpeak() {
         if(!ttsReady)return;
         refreshTtsHealth();
-        if(ArabicSpeechState.from(tts.setLanguage(new Locale("ar")),tts.getVoice())!=ArabicSpeechState.State.READY)return;
+        if(ArabicVoicePolicy.prepare(tts)!=ArabicSpeechState.State.READY)return;
         ttsStatus.setText(R.string.tts_test_started);
         if(tts.speak(getString(R.string.app_name),TextToSpeech.QUEUE_FLUSH,null,"settings-test")==TextToSpeech.ERROR)
             ttsStatus.setText(R.string.tts_test_failed);

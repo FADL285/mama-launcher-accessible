@@ -33,9 +33,12 @@ public class SettingsFullTest {
         SettingsSections.show(v,0);
         v.findViewById(R.id.apps_loading).setVisibility(View.GONE);
         LinearLayout box = v.findViewById(R.id.settings_apps_list);
+        box.addView(AppPickerUi.heading(v.getContext(),v.getContext().getString(R.string.apps_drag_hint),18));
+        box.addView(AppPickerUi.heading(v.getContext(),v.getContext().getString(R.string.apps_home),24));
         addPickerRow(v, box, "يوتيوب", true, false, true);
         addPickerRow(v, box, "واتساب", true, true, true);
-        addPickerRow(v, box, "جوجل مابس", true, true, false);
+        box.addView(AppPickerUi.heading(v.getContext(),v.getContext().getString(R.string.apps_folder),24));
+        box.addView(AppPickerUi.row(v.getContext(),"جوجل مابس",1));
         addPickerRow(v, box, "فيسبوك", false, false, false);
         ((TextView) v.findViewById(R.id.perm_contacts_status)).setText("مسموح");
         ((TextView) v.findViewById(R.id.perm_call_status)).setText("مش مسموح");
@@ -50,9 +53,12 @@ public class SettingsFullTest {
         View v = paparazzi.inflate(R.layout.activity_settings);
         v.findViewById(R.id.apps_loading).setVisibility(View.GONE);
         LinearLayout box = v.findViewById(R.id.settings_apps_list);
+        box.addView(AppPickerUi.heading(v.getContext(),v.getContext().getString(R.string.apps_drag_hint),18));
+        box.addView(AppPickerUi.heading(v.getContext(),v.getContext().getString(R.string.apps_home),24));
         addPickerRow(v, box, "يوتيوب", true, false, true);
         addPickerRow(v, box, "واتساب", true, true, true);
-        addPickerRow(v, box, "جوجل مابس", true, true, false);
+        box.addView(AppPickerUi.heading(v.getContext(),v.getContext().getString(R.string.apps_folder),24));
+        box.addView(AppPickerUi.row(v.getContext(),"جوجل مابس",1));
         addPickerRow(v, box, "فيسبوك", false, false, false);
         ((TextView) v.findViewById(R.id.perm_contacts_status)).setText("مسموح");
         ((TextView) v.findViewById(R.id.perm_call_status)).setText("مش مسموح");
@@ -72,36 +78,6 @@ public class SettingsFullTest {
 
     private void addPickerRow(View root, LinearLayout box, String label,
                               boolean selected, boolean canUp, boolean canDown) {
-        android.content.Context ctx = root.getContext();
-        float d = root.getResources().getDisplayMetrics().density;
-        LinearLayout row = new LinearLayout(ctx);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight((int) (56 * d));
-        android.widget.CheckBox cb = new android.widget.CheckBox(ctx);
-        cb.setText(label);
-        cb.setTextSize(20f);
-        cb.setTextColor(root.getResources().getColor(R.color.text_main));
-        cb.setChecked(selected);
-        row.addView(cb, new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        if (selected) {
-            row.addView(arrow(ctx, root, "↑", canUp));
-            row.addView(arrow(ctx, root, "↓", canDown));
-        }
-        box.addView(row);
-    }
-
-    private View arrow(android.content.Context ctx, View root, String glyph, boolean enabled) {
-        TextView b = new TextView(ctx);
-        float d = root.getResources().getDisplayMetrics().density;
-        b.setText(glyph);
-        b.setTextSize(24f);
-        b.setGravity(android.view.Gravity.CENTER);
-        b.setTextColor(root.getResources().getColor(R.color.back_blue));
-        b.setAlpha(enabled ? 1f : 0.25f);
-        int pad = (int) (10 * d);
-        b.setPadding(pad, pad, pad, pad);
-        return b;
+        box.addView(AppPickerUi.row(root.getContext(),label,selected?0:2));
     }
 }

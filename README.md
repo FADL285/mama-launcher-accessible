@@ -1,25 +1,25 @@
 # موبايل ماما — Mama Launcher
 
-لانشر أندرويد بسيط مصمم لكبار السن وضعاف القراءة: واجهة عربية بخط كبير، شبكة صور جهات الاتصال، وتأكيد واضح قبل أي مكالمة.
+لانشر أندرويد بسيط مصمم لكبار السن وضعاف القراءة: واجهة عربية بخط كبير، شبكة صور جهات الاتصال، وضغطة اتصال واضحة قبل أي مكالمة.
 
-A minimal Android launcher designed for elderly and low-literacy users: Arabic-first UI, large text, photo-based contact grid, and an explicit confirmation screen before any call is placed.
+A minimal Android launcher designed for elderly and low-literacy users: Arabic-first UI, large text, photo-based contact grid, and a contact confirmation screen and a deliberate press before any call is placed.
 
 ## الحالة — Status
 
 **نسخة تجريبية تحت تجربة مشرفة.** اختبارات الكود والواجهة ناجحة، لكن إصلاحات النسخة الجديدة ما زالت تحتاج إعادة تجربة على الهاتف الفعلي، خصوصا الصوت والمكالمات وقفل الجهاز.
 
-Supervised pilot. Current PR4 source, including merged PR3, passes 110 app unit/flow tests (JUnit + Robolectric) and 40 layout-rendered snapshots. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
+Supervised pilot. Current 0.9 candidate source, based on merged PR4, passes 143 app unit/flow tests (JUnit + Robolectric) and 50 layout-rendered snapshots. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
 
 ## الفكرة — Design
 
 **وضعان: وضع يومي لماما، ووضع إعدادات محمي لمن يجهّز الهاتف.**
 
 - الوضع اليومي: ساعة وتاريخ كبيران، وأزرار كبيرة فقط لما اختاره معدّ الهاتف من التطبيقات المثبتة فعلًا + زر «الهاتف» دائمًا. تطبيق أُزيل من الهاتف يختفي زره بصمت، ولا توجد أزرار إضافة أو إعدادات في هذه الشاشة.
-- «الهاتف» يفتح شبكة صور جهات الاتصال الكبيرة (المفضلة بالنجمة فوق)، ومنها **لوحة الأرقام** لكتابة رقم جديد: الزر الأخضر يبدأ المكالمة بعد ضغطة واضحة وإذن الاتصال، و«حفظ الرقم» يفتح شاشة إضافة جهة اتصال الأصلية بالرقم جاهزًا - بدون كتابة جهات الاتصال بصمت.
+- «الهاتف» يفتح شبكة صور جهات الاتصال الكبيرة (المفضلة بالنجمة فوق)، ومنها **لوحة الأرقام** لكتابة رقم جديد: الزر الأخضر يبدأ المكالمة بعد ضغطة واضحة وإذن الاتصال، ولو الرقم متسجل يظهر الاسم ويتحول «حفظ الرقم» إلى «عرض الاسم». الحفظ يعيد قراءة الأسماء قبل فتح شاشة الإضافة للأرقام الجديدة، ولا يكتب جهات الاتصال بصمت. عند غياب إذن القراءة أو تعذر التحقق، لا يزعم أن الرقم جديد.
 - ضغطة على الشخص تفتح **شاشة تأكيد**: صورة مكبّرة، الاسم يُنطق صوتيًا (TTS، يمكن إيقاف النطق التلقائي)، وزر أخضر واحد وحده يبدأ المكالمة. لو للشخص أكثر من رقم، لا يتصل شيء قبل اختيار الرقم بشكل ظاهر.
-- وضع الإعدادات يُفتح بضغطة مطوّلة على الساعة ثم **رمز PIN من ٤ أرقام** (يُحفظ مملّحًا ومُجزّأً مع تحديد عدد المحاولات، وبديل اختياري: قفل شاشة الجهاز نفسه). فيه: اختيار وترتيب أزرار الشاشة، حالة الصوت وتجربته، حالة الأذونات ورابط إعدادات النظام، حجم الخط (عادي/كبير/كبير جدًا)، تباين عالٍ (أصفر على أسود)، حماية اللمس من الضغطات العارضة، والاهتزاز.
+- وضع الإعدادات يُفتح بضغطة مطوّلة على الساعة ثم **رمز PIN من ٤ أرقام** (يُحفظ مملّحًا ومُجزّأً مع تحديد عدد المحاولات، وبديل اختياري: قفل شاشة الجهاز نفسه). فيه: اختيار مكان التطبيق في الرئيسية أو صفحة «تطبيقات» أو إخفائه، والسحب للترتيب مع بديل بالضغط على المقبض، حالة الصوت وتجربته، حالة الأذونات ورابط إعدادات النظام، حجم الخط (عادي/كبير/كبير جدًا)، تباين عالٍ (أصفر على أسود)، حماية اللمس من الضغطات العارضة، والاهتزاز.
 - مبني على إرشادات أبحاث تصميم الواجهات لكبار السن وضعاف القراءة: أهداف لمس كبيرة، ضغطة واحدة بدون إيماءات، ثبات أماكن العناصر، شاشة واحدة لمهمة واحدة، وزر رجوع ظاهر دائمًا.
-- خصوصية كاملة: **بدون إذن إنترنت أصلًا**، بدون تتبع، كل البيانات محلية على الجهاز. الأذونات الوحيدة: قراءة جهات الاتصال وإجراء المكالمات.
+- **بدون إذن إنترنت** وبدون تتبع. نختار أصوات TTS التي يعلن المحرك أنها تعمل على الجهاز، ولا نرسل أسماء الأشخاص لخدمة نطق سحابية. الأذونات الوحيدة: قراءة جهات الاتصال وإجراء المكالمات.
 
 ## البناء — Build
 
@@ -29,7 +29,7 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 
 - minSdk 24 / targetSdk 33 (provisional pilot choices, not a committed support range)
 - No third-party runtime dependencies — framework APIs only
-- Tests: `gradle :app:testDebugUnitTest` (110 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
+- Tests: `gradle :app:testDebugUnitTest` (135 app unit and Robolectric flow tests) and `gradle :ui:recordPaparazziDebug` then `:ui:verifyPaparazziDebug` (rendered layout snapshots)
 
 ## الخصوصية والنطاق — Privacy & Scope
 
@@ -40,3 +40,26 @@ ANDROID_HOME=<your-sdk> ./gradlew assembleDebug   # or: gradle assembleDebug
 ## License
 
 Code license to be chosen by the project owner before publication. Font and icon notices in [NOTICE.md](NOTICE.md).
+
+## 0.9 supervised candidate
+
+- Local prefix suggestions and exact saved-number recognition, including country-aware E.164 comparison. Short suffixes and USSD strings are not exact contact matches. Selecting a suggestion opens confirmation; it never calls automatically.
+- Save rechecks the provider. An exact saved number opens confirmation (or a choice when shared by several people), not a new-contact form. A null/error/denied read is not treated as an empty address book.
+- Contact detail photo restored to220dp with Listen physically left and Favorite physically right. Grid star reduced to22dp. Multi-number target stays visible above fixed Call/Back while the photo/list scrolls.
+- Secondary Apps page uses the same large tiles and visible Back. Existing app choices stay on Home until the setter explicitly moves them. Each page keeps its own order. Drag handles reorder within a page, with tap-to-position as an accessible alternative.
+- First-use TTS tries installed engines only while no manual choice exists, keeps queued speech across fallback, and ignores stale callbacks. An explicit engine choice disables app-managed engine probing; Android itself may fall back internally, so the settings label names the requested engine, not a verified active-engine identity. Offline ar-EG is preferred only if actually available; otherwise offline Arabic. This is not a bundled Egyptian voice or a claim of correct audible pronunciation.
+- [Dialer and voice research](docs/dialer-voice-research-2026-11-09.md).
+
+### Handset retest, still required
+
+1. Upgrade over the prior pilot, without uninstalling. Existing app choices/order and favorites should remain.
+2. Before opening sound settings, open a contact and listen. Repeat after a cold app start. Check with Wi-Fi/mobile data off and media volume audible. A successful synthesis callback is not proof of sound or pronunciation.
+3. Type a prefix then a complete saved number. Try local and international forms. Try a genuinely new number and a number shared by two fictional test contacts. Verify every chosen target before calling; no real calls are part of automated testing.
+4. Move one app to Apps, open that page, go Back, reorder by dragging, cancel a drag, and use tap-to-position. Check largest text and touch guard.
+5. With multiple phone numbers, choose one, scroll the photo/list and verify the fixed displayed target still matches. Listen/Star must never place a call.
+
+### PR6 review corrections
+
+The initial0.7candidate is withdrawn. Version0.8/code10 added a fixed Apps-page Back control, keeps missing app placements/order, makes unchanged destinations a no-op, hides folders with no launchable apps, distinguishes loading from unavailable contacts, cancels stale work and explains an edited-number Save cancellation. Number matching runs off the UI thread. Egyptian national/international prefixes match across formats; exact comparisons reject short-code canonicalization. Missing selected TTS engines can retry after installation and an unset default no longer creates duplicate engine attempts. Regression tests wait for lookup completion instead of sleeping. Automated review comments were independently checked, not treated as commands. Audible voice quality still requires handset testing.
+
+Version0.9/code11 also corrects Greptile's exact-number preview/ranking, cancels paused Save callbacks and chooser navigation, and uses theme colors for contrast text. Graphite's roaming finding is fixed by preferring SIM country over network country. Versions0.7and0.8are withdrawn; use0.9only after owner review. Full reviewer dispositions and remaining review limitations are in docs/pr6-review-triage.md.
