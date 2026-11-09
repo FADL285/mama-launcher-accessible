@@ -57,3 +57,7 @@ CodeRabbit's initial pass had no functional inline findings; it warned about
 0% docstrings in touched complex functions. Its README-count note is corrected
 by the verified test totals in this revision. Sourcery is budget-skipped, not
 approved. Final review state is recorded separately after the last push.
+
+## Requested developer attribution
+
+Settings menu footer adds Developed by Mohamed Fadl with a fadl.info link. The HTTPS destination was fetched and showed Mohamed Fadl, Senior Software Engineer. Link activation is tested as ACTION_VIEW to the exact URL, with no-browser fallback. Largest-font normal and actual contrast-theme footer pixels inspected. No copyright year, new ownership claim or license change.

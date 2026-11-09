@@ -120,4 +120,8 @@
     <string name="call_choose_hint">اختار رقم من القائمة فوق للاتصال</string>
     <string name="dial_lookup_loading">بدور في الأسماء…</string>
     <string name="dial_save_changed">الرقم اتغيّر، الحفظ اتلغى. اضغط حفظ تاني للرقم الجديد.</string>
+    <string name="developer_credit" translatable="false">Developed by Mohamed Fadl</string>
+    <string name="developer_site" translatable="false">fadl.info</string>
+    <string name="developer_url" translatable="false">https://fadl.info</string>
+    <string name="browser_unavailable">مفيش متصفح متاح لفتح الموقع</string>
 </resources>

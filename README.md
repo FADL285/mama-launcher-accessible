@@ -8,7 +8,7 @@ A minimal Android launcher designed for elderly and low-literacy users: Arabic-f
 
 **نسخة تجريبية تحت تجربة مشرفة.** اختبارات الكود والواجهة ناجحة، لكن إصلاحات النسخة الجديدة ما زالت تحتاج إعادة تجربة على الهاتف الفعلي، خصوصا الصوت والمكالمات وقفل الجهاز.
 
-Supervised pilot. Current 0.10 candidate source, based on merged PR6, passes 147 app unit/flow tests (JUnit + Robolectric) and 59 layout-rendered snapshots. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
+Supervised pilot. Current 0.10 candidate source, based on merged PR6, passes 148 app unit/flow tests (JUnit + Robolectric) and 61 layout-rendered snapshots. Debug assemble passes. The user has tested an earlier APK on a physical phone and reported issues; these new fixes still need a supervised retest on that phone. Automated tests do not prove audible speech, carrier calls, device credential behavior or daily-use readiness.
 
 ## الفكرة — Design
 
@@ -74,3 +74,5 @@ values remain unchanged in contact/call intents. Key-coordinate tests dispatch
 an in-flight touch across a delayed provider result, then repeat at the same
 coordinates at normal and largest contrast text settings. These are isolated
 JVM tests and layout-rendered pixels, not a physical-device retest.
+
+Settings now includes the requested developer attribution and a browser link to https://fadl.info, without changing licensing or adding an ownership claim.

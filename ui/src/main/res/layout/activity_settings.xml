@@ -28,6 +28,7 @@
           <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_nav_protection_title" android:textSize="20sp" android:textColor="@color/text_main" android:textStyle="bold" />
           <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_nav_protection_hint" android:textSize="15sp" android:textColor="@color/text_main" />
         </LinearLayout>
+        <include layout="@layout/developer_footer" />
       </LinearLayout>
       <LinearLayout android:id="@+id/settings_section_sound" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/tts_offline_only" android:textSize="16sp" android:padding="6dp" android:textColor="@color/text_main" />

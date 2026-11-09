@@ -19,6 +19,11 @@ public class HandsetUxTest {
  android.app.Application app;
  @Before public void reset(){app=RuntimeEnvironment.getApplication();Prefs.get(app).edit().clear().apply();SessionGate.unlock();Shadows.shadowOf(app).denyPermissions(android.Manifest.permission.READ_CONTACTS);}
  ContactEntry contact(long id,String name,String number){return new ContactEntry(id,name,number,null,false);}
+ @Test public void settingsDeveloperLinkOpensOnlyTheVerifiedWebsite(){
+  SettingsActivity a=Robolectric.buildActivity(SettingsActivity.class).setup().get();
+  assertEquals("Developed by Mohamed Fadl",((TextView)a.findViewById(R.id.developer_credit)).getText().toString());
+  a.findViewById(R.id.developer_site).performClick();Intent link=Shadows.shadowOf(a).getNextStartedActivity();assertNotNull(link);assertEquals(Intent.ACTION_VIEW,link.getAction());assertEquals("https://fadl.info",link.getDataString());
+ }
  @Test public void exactMatchDoesNotConfusePrefixSuffixOrInternationalCountry(){
   assertTrue(DialContactMatcher.exact("٠١٠٠٠٠٠٠٠٠١","0100 000-0001","EG"));
   assertTrue(DialContactMatcher.exact("01000000001","+201000000001","EG"));

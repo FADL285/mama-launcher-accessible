@@ -68,6 +68,14 @@ public class SettingsActivity extends ProtectedModeActivity {
             startActivity(i);
         });
 
+        guard(findViewById(R.id.developer_site), () -> {
+            Intent site = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.developer_url)));
+            try { SessionGate.expectExternal(); startActivity(site); }
+            catch (android.content.ActivityNotFoundException missingBrowser) {
+                android.widget.Toast.makeText(this, R.string.browser_unavailable, android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
+
         bindSoundSection();
         bindAccessibilitySection();
         bindProtectionSection();
