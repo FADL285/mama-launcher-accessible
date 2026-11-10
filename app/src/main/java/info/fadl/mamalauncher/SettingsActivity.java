@@ -78,7 +78,10 @@ public class SettingsActivity extends ProtectedModeActivity {
             }
         });
 
-        guard(findViewById(R.id.btn_notification_access), () -> {
+        if (!BuildConfig.NOTIFICATION_ACCESS) {
+            info.fadl.mamalauncher.ui.NotificationAccessUi.unavailable(
+                    findViewById(android.R.id.content));
+        } else guard(findViewById(R.id.btn_notification_access), () -> {
             new android.app.AlertDialog.Builder(this)
                     .setTitle(R.string.notification_access_title)
                     .setMessage(R.string.notification_access_explanation)
@@ -258,6 +261,11 @@ public class SettingsActivity extends ProtectedModeActivity {
     // ---- permissions ----
 
     private void updateNotificationStatus() {
+        if (!BuildConfig.NOTIFICATION_ACCESS) {
+            info.fadl.mamalauncher.ui.NotificationAccessUi.unavailable(
+                    findViewById(android.R.id.content));
+            return;
+        }
         int label;
         switch (NotificationBadgeStore.status()) {
             case DISABLED: label = R.string.notification_access_disabled; break;

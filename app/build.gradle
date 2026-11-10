@@ -10,6 +10,19 @@ android {
         versionCode 16
         versionName "0.14-pilot-candidate"
     }
+    flavorDimensions "notificationAccess"
+    productFlavors {
+        full {
+            dimension "notificationAccess"
+            buildConfigField "boolean", "NOTIFICATION_ACCESS", "true"
+        }
+        noNotif {
+            dimension "notificationAccess"
+            versionCode 18
+            versionName "0.15-no-notif-candidate"
+            buildConfigField "boolean", "NOTIFICATION_ACCESS", "false"
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8

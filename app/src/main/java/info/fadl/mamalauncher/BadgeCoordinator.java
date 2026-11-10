@@ -74,7 +74,8 @@ final class BadgeCoordinator implements AutoCloseable {
       boolean phone = AppSelection.PHONE.equals(tile.getKey());
       UiBinder.bindHomeBadge(
           tile.getValue(),
-          phone ? missed : NotificationBadgeStore.has(tile.getKey()) ? -2 : 0,
+          phone ? missed
+              : BuildConfig.NOTIFICATION_ACCESS && NotificationBadgeStore.has(tile.getKey()) ? -2 : 0,
           phone
               ? missedDescription(context, missed)
               : context.getString(R.string.has_notifications));

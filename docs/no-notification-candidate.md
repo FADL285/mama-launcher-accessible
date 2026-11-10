@@ -1,0 +1,11 @@
+# Private notification-free candidate, 11 November 2026
+
+Source base: merged main3bc64a159a4d279a55a8ae6332708549b84182ab. Local reviewable candidate branch only; not pushed or merged.
+
+The noNotif flavor removes LauncherNotificationListener from the merged manifest entirely. No BIND_NOTIFICATION_LISTENER_SERVICE or NotificationListenerService action remains. Runtime capability guards refuse stale grants, prevent opening notification-access settings and hide both the grant control and the now-inapplicable restricted-settings instructions. A visible Arabic explanation replaces them. App dots are absent; read-only call history, its permission flow and the separate locally acknowledged missed-call count are unchanged. No stock flags are written.
+
+The full flavor preserves the original listener and behavior. Its version metadata is inherited from main; only the delivered noNotif flavor is code18 /0.15-no-notif-candidate, package info.fadl.mamalauncher, min24/target33. Same dedicated release certificate. This is an actual capability reduction, not a hidden listener or installer-source trick. READ_CALL_LOG remains declared and may still be restricted/denied by Android, installer or OEM. No claim of Play distribution eligibility or guaranteed Play Protect acceptance.
+
+Validation: release build; app lint0errors/12warnings; UI lint0errors/158warnings. NoNotif app271executed passes plus12full-listener tests intentionally skipped; full app274executed passes plus9noNotif-only cases skipped. All97UI tests/goldens pass, including two new actual-layout disclosure renders (normal and1.5font RTL contrast). New test first failed for missing test theme; theme fixed, no production fix needed. Largest-font pixels exposed obsolete notification-access enable instructions in the permission panel; those are now hidden in noNotif only and updated pixels inspected. No handset install/call, provider/OEM behavior or live TalkBack test.
+
+No new VT upload, source push/PR/merge, public APK link or install performed. Original0.15 full APK appeal was submitted separately using owner-approved exact text and email; form returned email-sent and requested email confirmation, not approval. The appeal does not apply to this new APK.
