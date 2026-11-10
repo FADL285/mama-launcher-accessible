@@ -22,6 +22,7 @@ public class PhoneActivity extends BaseActivity {
     private static final int REQ_CONTACTS = 41;
     private static final String PREF_CONTACTS_DENIED = "contacts_denial_completed";
 
+    private CallHistoryController history;
     private ContactPhotoLoader photos;
     private GridView grid;
     private View setupView;
@@ -39,6 +40,10 @@ public class PhoneActivity extends BaseActivity {
         setupView = findViewById(R.id.setup_view);
         emptyView = findViewById(R.id.empty_contacts);
 
+        history = new CallHistoryController(this, this::guard);
+        guard(findViewById(R.id.btn_tab_contacts), () -> selectHistory(false));
+        guard(findViewById(R.id.btn_tab_history), () -> selectHistory(true));
+        selectHistory(false);
         guard(findViewById(R.id.btn_back), this::finish);
         guard(findViewById(R.id.btn_dialpad),
                 () -> startActivity(new Intent(this, DialpadActivity.class)));
@@ -62,6 +67,7 @@ public class PhoneActivity extends BaseActivity {
         super.onResume();
         if(isFinishing())return;
         refresh();
+        history.resume();
     }
 
     private void refresh() {
@@ -115,9 +121,42 @@ public class PhoneActivity extends BaseActivity {
         }).start();
     }
 
+    void selectHistory(boolean selected) {
+        findViewById(R.id.phone_contacts_panel).setVisibility(selected ? View.GONE : View.VISIBLE);
+        findViewById(R.id.phone_history_panel).setVisibility(selected ? View.VISIBLE : View.GONE);
+        for (int id : new int[]{R.id.btn_tab_contacts, R.id.btn_tab_history}) {
+            boolean chosen = id == (selected ? R.id.btn_tab_history : R.id.btn_tab_contacts);
+            info.fadl.mamalauncher.ui.PhoneUi.select(findViewById(android.R.id.content), id, chosen);
+        }
+        history.select(selected);
+    }
+
+    @Override public void onWindowFocusChanged(boolean focused) {
+        super.onWindowFocusChanged(focused);
+        if (focused && history != null) history.focused();
+    }
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        selectHistory(false);
+    }
+    @Override protected void onPause() {
+        if (history != null) history.pause();
+        refreshGeneration++;
+        super.onPause();
+    }
+    @Override protected void onDestroy() {
+        if (history != null) history.close();
+        super.onDestroy();
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == CallLogAccess.REQUEST) {
+            CallLogAccess.recordResult(this, permissions, grantResults);
+            history.refresh();
+            return;
+        }
         if (requestCode != REQ_CONTACTS) return;
         // Empty results mean interruption/cancellation, not a completed denial.
         if (permissions.length > 0 && grantResults.length > 0

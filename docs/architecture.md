@@ -51,3 +51,18 @@ Pure helpers make ordering, number matching, voice policy and PIN decisions test
 Favor small seams over a rewrite: introduce a contacts repository/provider boundary and a cancellable photo loader, then move settings sections into focused controllers while retaining current activity navigation and preference keys. A ViewModel may help later if lifecycle/state work grows. A Compose/Kotlin/single-activity migration is not required to improve this app and would not be a low-risk stable-release cleanup.
 
 See [audit A01-A08](audit-014.md) for priority, evidence and validation gates. Architecture guidance is a design aid, not a mandate to replace working code.
+
+
+## Optional notification dots and read-only history (review branch)
+
+`BadgeCoordinator` owns foreground source binding without rebuilding the app grid. `BadgeView` stays inside the existing icon child, preserving HomeTile's two-child measurement contract. App dots and the special Phone count have independent sources. A mark is decorative; the parent owns its click guard, label and accessibility description. No speech is started by this feature.
+
+`LauncherNotificationListener` is system-bound and retains only key/package/group/summary metadata for configured Home/Apps packages in the current profile. It rebuilds a coalesced active snapshot on connection/post/remove/ranking events and Home resume. API26+ ranking must permit badges; missing ranking invalidates the result. Ongoing, service, media, navigation and progress records are excluded. A group summary alone can supply existence, but never an additional count. Disabled/connecting/ready/disconnected/unavailable remain separate states. No notification extras, PendingIntent execution or cancellation.
+
+`CallLogRepository` reads current system-pending missed records using TYPE=MISSED, NEW=1, IS_READ IS NOT 1, separate from the 200-row display batches. Null/error/cancelled/resource-limited reads are not empty. `CallLogWorker` supplies one executor, cancellation, generation protection and a UI timeout per foreground owner; `CallLogWatcher` debounces provider invalidation. An uncooperative provider can outlive cancellation, but cannot publish stale results.
+
+`MissedCallState` baselines the first complete pending snapshot and stores only _ID:DATE:TYPE suppression identities. Count is pending minus locally acknowledged, with obsolete identities pruned. A revision check prevents an older in-flight query from pruning newer acknowledgements. First baseline/pruning uses atomic preferences commit off the main thread; foreground acknowledgement updates preferences in memory with asynchronous atomic persistence. Process termination before that write reaches disk may resurface a badge, never silently write system flags. Confirmed permission loss resets the baseline. Backup excludes all preferences.
+
+`CallHistoryController` owns history rendering/filter/pagination independently from Contacts. It queries pending BEFORE history and only acknowledges that exact completed snapshot after successful foreground display with window focus. Pause, stale callback, failure and denial do not acknowledge. Current Contacts permission is optional for labels; ambiguous matches fall back to the exact record number. Unknown contact IDs cannot use favorites. A row opens existing confirmation with its exact number; DirectCallAction, session/PIN, speech and dialpad call boundaries are unchanged.
+
+`PhoneUi` shares control styling. `PhoneLayout` keeps the footer reachable on short, large-text windows by using an accessible icon-only Back control, rather than consuming a second full header row. Larger windows retain the normal back label.

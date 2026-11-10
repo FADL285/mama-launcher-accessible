@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Privacy (matches allowBackup=false on Android <12): nothing this app stores
-     (only the "call_denied_once" flag) may leave the device via cloud backup or
+     (configuration, favorites, permission history and local missed acknowledgements) may leave the device via cloud backup or
      device-to-device transfer. -->
 <data-extraction-rules>
     <cloud-backup>

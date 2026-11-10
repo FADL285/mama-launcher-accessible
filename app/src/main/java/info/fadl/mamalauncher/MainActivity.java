@@ -25,6 +25,7 @@ public class MainActivity extends BaseActivity {
 
     static final String GUIDE_SEEN="first_use_guide_v1";
     private LinearLayout tiles;
+    private BadgeCoordinator badges;
     private boolean returningFromApps;
     protected boolean isSecondary(){return false;}
     private boolean appliedContrast;
@@ -38,6 +39,7 @@ public class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         tiles = findViewById(R.id.tiles_container);
+        badges = new BadgeCoordinator(this);
         returningFromApps=savedInstanceState!=null && savedInstanceState.getBoolean("navigation.returning_from_apps",false);
         if(isSecondary()) {
             View header=info.fadl.mamalauncher.ui.PageHeader.apps((android.widget.ScrollView)findViewById(R.id.home_header).getParent().getParent());
@@ -93,11 +95,13 @@ public class MainActivity extends BaseActivity {
         clock.removeCallbacks(clockTick);
         clock.postDelayed(clockTick, 30_000);
         buildTiles();
+        badges.start();
         if(!isSecondary() && returningFromApps){returningFromApps=false;resetHomeScroll();}
     }
 
     @Override
     protected void onPause() {
+        if (badges != null) badges.stop();
         if(clockReceiverRegistered){unregisterReceiver(timeChanges);clockReceiverRegistered=false;}
         clock.removeCallbacks(clockTick);
         super.onPause();
@@ -111,13 +115,14 @@ public class MainActivity extends BaseActivity {
     }
     private void buildTiles() {
         tiles.removeAllViews();
+        if (badges != null) badges.clearTiles();
         List<View> built = new ArrayList<>();
 
         PackageManager pm = getPackageManager();
         List<String> chosen=AppSelection.parse(Prefs.get(this).getString(isSecondary()?AppSelection.SECONDARY_KEY:AppSelection.PREF_KEY,null));
         List<String> order=isSecondary()?chosen:AppSelection.homeOrder(Prefs.get(this).getString(AppSelection.HOME_ORDER_KEY,null),chosen);
         for (String pkg : order) {
-            if(AppSelection.PHONE.equals(pkg)){View phone=UiBinder.buildHomeTile(this,getString(R.string.tile_phone),getResources().getDrawable(R.drawable.ic_call),R.drawable.chip_green,contrast(),null);phone.setTag(AppSelection.PHONE);guardTile(phone,()->startActivity(new Intent(this,PhoneActivity.class)));built.add(phone);continue;}
+            if(AppSelection.PHONE.equals(pkg)){View phone=UiBinder.buildHomeTile(this,getString(R.string.tile_phone),getResources().getDrawable(R.drawable.ic_call),R.drawable.chip_green,contrast(),null);phone.setTag(AppSelection.PHONE);badges.tile(AppSelection.PHONE, phone);guardTile(phone,()->startActivity(new Intent(this,PhoneActivity.class)));built.add(phone);continue;}
             if(AppSelection.FOLDER.equals(pkg)){if(hasLaunchableSecondary()){View folder=UiBinder.buildHomeTile(this,getString(R.string.apps_page),getResources().getDrawable(R.drawable.ic_apps),R.drawable.chip_green,contrast(),null);folder.setTag(AppSelection.FOLDER);guardTile(folder,()->{returningFromApps=true;startActivity(new Intent(this,AppsPageActivity.class));});built.add(folder);}continue;}
 
             Intent launch = pm.getLaunchIntentForPackage(pkg);
@@ -129,6 +134,7 @@ public class MainActivity extends BaseActivity {
                 icon = pm.getApplicationIcon(pkg);
             } catch (PackageManager.NameNotFoundException ignored) { }
             View tile = UiBinder.buildHomeTile(this, name, icon, 0, contrast(), null);
+            badges.tile(pkg, tile);
             guardTile(tile, () -> {
                 try { startActivity(launch); }
                 catch (android.content.ActivityNotFoundException e) { buildTiles(); }
@@ -180,6 +186,7 @@ public class MainActivity extends BaseActivity {
     }
 
     @Override protected void onDestroy() {
+        if (badges != null) badges.close();
         if(clockReceiverRegistered){unregisterReceiver(timeChanges);clockReceiverRegistered=false;}
         unregisterReceiver(packageChanges);
         clock.removeCallbacks(clockTick);

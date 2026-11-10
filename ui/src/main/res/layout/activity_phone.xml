@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<info.fadl.mamalauncher.ui.PhoneLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:padding="12dp">
 
     <include layout="@layout/page_header" />
 
     <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+      <FrameLayout android:id="@+id/phone_contacts_panel" android:layout_width="match_parent" android:layout_height="match_parent">
         <GridView
             android:id="@+id/contacts_grid"
             android:layout_width="match_parent" android:layout_height="match_parent"
@@ -18,7 +19,7 @@
             android:layout_width="match_parent" android:layout_height="match_parent"
             android:fillViewport="true" android:visibility="gone">
           <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:gravity="center" android:padding="20dp">
+            android:orientation="vertical" android:gravity="center" android:padding="12dp">
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="@string/contacts_setup_hint" android:textSize="20sp"
@@ -37,8 +38,8 @@
                 android:textColor="?attr/surfaceText" android:visibility="gone" android:accessibilityLiveRegion="polite"/>
             <Button android:id="@+id/btn_contacts_settings"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:minHeight="64dp" android:padding="16dp" android:layout_marginTop="8dp"
-                android:text="@string/contacts_open_settings" android:textSize="22sp" android:visibility="gone"/>
+                android:minHeight="64dp" android:padding="12dp" android:layout_marginTop="8dp"
+                android:text="@string/phone_app_settings" android:textSize="22sp" android:visibility="gone"/>
           </LinearLayout>
         </ScrollView>
         <ScrollView android:id="@+id/contacts_read_error" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:visibility="gone">
@@ -53,6 +54,8 @@
             android:layout_gravity="center"
             android:textColor="?attr/surfaceText" android:text="@string/no_contacts_yet" android:textSize="22sp"
             android:gravity="center" android:visibility="gone" android:padding="24dp"/>
+      </FrameLayout>
+      <include layout="@layout/panel_call_history" />
     </FrameLayout>
 
     <LinearLayout android:id="@+id/btn_dialpad"
@@ -62,4 +65,9 @@
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp"
             android:text="@string/dialpad_title" android:textSize="24sp" android:textStyle="bold" android:textColor="#FFFFFF"/>
     </LinearLayout>
-</LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="6dp">
+        <Button android:id="@+id/btn_tab_contacts" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="64dp" android:textSize="24sp" android:text="@string/tab_contacts" android:textColor="#FFFFFF" android:background="@drawable/btn_back" />
+        <Space android:layout_width="10dp" android:layout_height="1dp" />
+        <Button android:id="@+id/btn_tab_history" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="64dp" android:textSize="24sp" android:text="@string/tab_history" android:background="@drawable/btn_number" />
+    </LinearLayout>
+</info.fadl.mamalauncher.ui.PhoneLayout>

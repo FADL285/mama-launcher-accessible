@@ -121,30 +121,31 @@ public final class UiBinder {
         tile.setGravity(android.view.Gravity.CENTER);
         tile.setBackgroundResource(contrast ? R.drawable.tile_bg_contrast : R.drawable.tile_bg);
         tile.setTag("card");
+        tile.setClipChildren(false);
+        tile.setClipToPadding(false);
         tile.setMinimumHeight(dp(tile, 170));
         tile.setPadding(dp(tile, 8), dp(tile, 10), dp(tile, 8), dp(tile, 10));
 
         int chip = dp(tile, 68);
-        if (chipBgRes != 0) {
-            android.widget.FrameLayout frame = new android.widget.FrameLayout(ctx);
-            frame.setBackgroundResource(chipBgRes);
-            android.widget.ImageView iv = new android.widget.ImageView(ctx);
-            int s = dp(tile, 34);
-            android.widget.FrameLayout.LayoutParams ip =
-                    new android.widget.FrameLayout.LayoutParams(s, s);
-            ip.gravity = android.view.Gravity.CENTER;
-            iv.setLayoutParams(ip);
-            if (icon != null) iv.setImageDrawable(icon);
-            frame.addView(iv);
-            LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(chip, chip);
-            tile.addView(frame, fp);
-        } else {
-            android.widget.ImageView iv = new android.widget.ImageView(ctx);
-            LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(chip, chip);
-            iv.setLayoutParams(ip);
-            if (icon != null) iv.setImageDrawable(icon);
-            tile.addView(iv);
-        }
+        android.widget.FrameLayout iconBox = new android.widget.FrameLayout(ctx);
+        iconBox.setClipChildren(false);
+        iconBox.setClipToPadding(false);
+        android.widget.FrameLayout imageBox = new android.widget.FrameLayout(ctx);
+        if (chipBgRes != 0) imageBox.setBackgroundResource(chipBgRes);
+        android.widget.ImageView image = new android.widget.ImageView(ctx);
+        int size = chipBgRes != 0 ? dp(tile, 34) : chip;
+        android.widget.FrameLayout.LayoutParams imageParams =
+                new android.widget.FrameLayout.LayoutParams(size, size, android.view.Gravity.CENTER);
+        if (icon != null) image.setImageDrawable(icon);
+        imageBox.addView(image, imageParams);
+        iconBox.addView(imageBox, new android.widget.FrameLayout.LayoutParams(chip, chip));
+        BadgeView badge = new BadgeView(ctx);
+        android.widget.FrameLayout.LayoutParams badgeParams = new android.widget.FrameLayout.LayoutParams(
+                dp(tile, 28), dp(tile, 28), android.view.Gravity.TOP | android.view.Gravity.RIGHT);
+        badgeParams.topMargin = -dp(tile, 8);
+        badgeParams.rightMargin = -dp(tile, 8);
+        iconBox.addView(badge, badgeParams);
+        tile.addView(iconBox, new LinearLayout.LayoutParams(chip, chip));
 
         TextView tv = new HomeLabel(ctx);
         tv.setText(label);
@@ -168,6 +169,15 @@ public final class UiBinder {
         if (onTap != null) tile.setOnClickListener(onTap);
         return tile;
     }
+    /** -2 is an app dot; positive values are missed calls; zero/unknown is hidden. */
+    public static void bindHomeBadge(View tile, int count, String description) {
+        BadgeView badge = tile.findViewWithTag(BadgeView.TAG);
+        if (badge == null) return;
+        badge.bind(count);
+        CharSequence label = ((TextView)((LinearLayout)tile).getChildAt(1)).getText();
+        tile.setContentDescription(count > 0 || count == -2 ? label + "، " + description : label);
+    }
+
     private static final class HomeLabel extends TextView {
         boolean reserveHeight;
         HomeLabel(android.content.Context context) {

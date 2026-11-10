@@ -114,6 +114,7 @@ public class ConfirmCallActivity extends BaseActivity {
         // Multi-number: nothing is callable until a number row is tapped.
         callButton.setEnabled(selectedNumber != null);
         guard(findViewById(R.id.btn_favorite),()-> {
+            if (contactId < 0) return;
             if(selectedNumber==null)return;
             LocalFavorites.set(this,contactId,selectedNumber,!LocalFavorites.contains(this,contactId,selectedNumber,systemFavorite));
             refreshFavorite();
@@ -161,6 +162,12 @@ public class ConfirmCallActivity extends BaseActivity {
 
     private void refreshFavorite() {
         android.widget.TextView star=findViewById(R.id.btn_favorite);
+        if (contactId < 0) {
+            star.setEnabled(false);
+            star.setVisibility(View.GONE);
+            findViewById(R.id.favorite_hint).setVisibility(View.GONE);
+            return;
+        }
         boolean chosen=selectedNumber!=null;
         boolean favorite=chosen && LocalFavorites.contains(this,contactId,selectedNumber,systemFavorite);
         findViewById(R.id.favorite_hint).setVisibility(chosen?View.GONE:View.VISIBLE);

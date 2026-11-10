@@ -2,9 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- READ_CONTACTS: contacts grid is the agreed core (F1). CALL_PHONE: direct call
-         from the green confirmation button only (D1). No SMS, no call log, no internet. -->
+         from the green confirmation button only (D1). Read-only history is optional; no SMS or internet. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
+
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
 
     <!-- Android 11+ package visibility: without these declarations the app cannot
          see the TTS engine (names would never be spoken) nor tell whether
@@ -31,6 +33,12 @@
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules">
+
+        <service android:name=".LauncherNotificationListener" android:exported="false"
+            android:label="@string/notification_access_title"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
+        </service>
 
         <activity
             android:name=".MainActivity"
