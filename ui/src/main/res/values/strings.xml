@@ -148,4 +148,7 @@
     <string name="contacts_retry">إعادة تحميل جهات الاتصال</string>
     <string name="home_after_lock_label">الرجوع للرئيسية بعد قفل الشاشة</string>
     <string name="home_after_lock_hint">يبدأ من الرئيسية بعد فتح الشاشة بدل صفحة التطبيقات أو الهاتف أو لوحة الأرقام. لا يغيّر سلوك تأكيد الاتصال أو قفل الإعدادات المحمية.</string>
+    <string name="contacts_permission_retry">طلب الإذن تاني</string>
+    <string name="contacts_permission_help">تقدر تطلب الإذن تاني. لو نافذة السماح ما ظهرتش، ممكن تفتح إعدادات التطبيق وتسمح بجهات الاتصال. لوحة الأرقام شغالة من غير الإذن.</string>
+    <string name="contacts_open_settings">فتح إعدادات التطبيق</string>
 </resources>

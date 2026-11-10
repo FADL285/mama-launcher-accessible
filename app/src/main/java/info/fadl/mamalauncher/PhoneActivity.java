@@ -20,7 +20,7 @@ public class PhoneActivity extends BaseActivity {
  @Override protected boolean homeAfterLockApplies(){return true;}
 
     private static final int REQ_CONTACTS = 41;
-    private static final String PREF_CONTACTS_ASKED = "contacts_asked";
+    private static final String PREF_CONTACTS_DENIED = "contacts_denial_completed";
 
     private ContactPhotoLoader photos;
     private GridView grid;
@@ -43,22 +43,16 @@ public class PhoneActivity extends BaseActivity {
         guard(findViewById(R.id.btn_dialpad),
                 () -> startActivity(new Intent(this, DialpadActivity.class)));
         guard(findViewById(R.id.btn_allow_contacts), () -> {
-            boolean granted = checkSelfPermission(Manifest.permission.READ_CONTACTS)
-                    == PackageManager.PERMISSION_GRANTED;
-            boolean askedBefore = Prefs.get(this).getBoolean(PREF_CONTACTS_ASKED, false);
-            if (!granted && askedBefore
-                    && !shouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS)) {
-                // Android will never show the prompt again; the only way back
-                // is the system app-settings screen, so take the setter there
-                // instead of a tap that silently does nothing.
-                startActivity(new Intent(
-                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        android.net.Uri.parse("package:" + getPackageName())));
-            } else {
-                Prefs.get(this).edit().putBoolean(PREF_CONTACTS_ASKED, true).apply();
-                requestPermissions(new String[]{Manifest.permission.READ_CONTACTS}, REQ_CONTACTS);
-            }
+            if (checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                    == PackageManager.PERMISSION_GRANTED) { refresh(); return; }
+            // A previous launch or a false rationale is NOT proof of permanent
+            // denial. Always let an explicit tap ask Android again. USER_FIXED
+            // may suppress the dialog; never replace this tap with Settings.
+            requestPermissions(new String[]{Manifest.permission.READ_CONTACTS}, REQ_CONTACTS);
         });
+        guard(findViewById(R.id.btn_contacts_settings), () -> startActivity(new Intent(
+                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                android.net.Uri.parse("package:" + getPackageName()))));
 
 
     }
@@ -75,11 +69,18 @@ public class PhoneActivity extends BaseActivity {
         findViewById(R.id.contacts_read_error).setVisibility(View.GONE);
         if (checkSelfPermission(Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
+            boolean denied = Prefs.get(this).getBoolean(PREF_CONTACTS_DENIED, false);
+            boolean recovery = denied && !shouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS);
+            ((android.widget.TextView)findViewById(R.id.btn_allow_contacts)).setText(
+                    denied ? R.string.contacts_permission_retry : R.string.allow_contacts);
+            findViewById(R.id.contacts_permission_help).setVisibility(recovery ? View.VISIBLE : View.GONE);
+            findViewById(R.id.btn_contacts_settings).setVisibility(recovery ? View.VISIBLE : View.GONE);
             setupView.setVisibility(View.VISIBLE);
             grid.setVisibility(View.GONE);
             emptyView.setVisibility(View.GONE);
             return;
         }
+        Prefs.get(this).edit().remove(PREF_CONTACTS_DENIED).apply();
         setupView.setVisibility(View.GONE);
         grid.setVisibility(View.VISIBLE);
         new Thread(() -> {
@@ -117,6 +118,13 @@ public class PhoneActivity extends BaseActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQ_CONTACTS) return;
+        // Empty results mean interruption/cancellation, not a completed denial.
+        if (permissions.length > 0 && grantResults.length > 0
+                && Manifest.permission.READ_CONTACTS.equals(permissions[0])) {
+            Prefs.get(this).edit().putBoolean(PREF_CONTACTS_DENIED,
+                    grantResults[0] != PackageManager.PERMISSION_GRANTED).apply();
+        }
         refresh();
     }
 }

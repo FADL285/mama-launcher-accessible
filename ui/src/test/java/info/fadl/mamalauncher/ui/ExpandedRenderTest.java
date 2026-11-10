@@ -23,4 +23,34 @@ public class ExpandedRenderTest {
  @Test public void speechOptionsHiddenForReadyAndLoading(){for(String state:new String[]{"READY","INITIALIZING"})assertEquals(View.GONE,confirm(state,false).findViewById(R.id.btn_speech_options).getVisibility());}
  @Test public void contactsFailureContrastKeepsRetryAndDialpad(){android.content.Context c=new ContextThemeWrapper(paparazzi.getContext(),R.style.MamaTheme_Contrast);View v=LayoutInflater.from(c).inflate(R.layout.activity_phone,null);v.setBackgroundColor(0xFF000000);PageHeader.title(v,R.string.tile_phone);v.findViewById(R.id.contacts_grid).setVisibility(View.GONE);v.findViewById(R.id.contacts_read_error).setVisibility(View.VISIBLE);measure(v);android.graphics.Rect r=new android.graphics.Rect();assertTrue(v.findViewById(R.id.btn_retry_contacts).getGlobalVisibleRect(r));assertEquals(v.findViewById(R.id.btn_retry_contacts).getHeight(),r.height());snap(v,"contacts-failure-contrast");}
  @Test public void everySettingsHeaderTitleRemainsComplete(){for(int section=-1;section<5;section++){View v=paparazzi.inflate(R.layout.activity_settings);SettingsSections.show(v,section);measure(v);TextView title=v.findViewById(R.id.page_title);android.text.Layout l=title.getLayout();assertEquals(title.getText().length(),l.getLineEnd(l.getLineCount()-1));assertTrue(title.getHeight()>=l.getLineBottom(l.getLineCount()-1));}}
+
+ @Test public void shortHomeLabelGroupIsVerticallyCentered(){
+  LinearLayout tile=(LinearLayout)UiBinder.buildHomeTile(paparazzi.getContext(),"الهاتف",paparazzi.getContext().getDrawable(R.drawable.ic_call),R.drawable.chip_green,false,null);
+  tile.measure(View.MeasureSpec.makeMeasureSpec(320,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(600,View.MeasureSpec.AT_MOST));tile.layout(0,0,320,tile.getMeasuredHeight());
+  TextView label=(TextView)tile.getChildAt(1);assertEquals(1,label.getLayout().getLineCount());
+  float top=tile.getChildAt(0).getTop(),bottom=label.getBottom();assertEquals(tile.getHeight()/2f,(top+bottom)/2f,2f);
+ }
+ @Test public void contactsAllowLabelFitsLargestText(){
+  View v=paparazzi.inflate(R.layout.activity_phone);v.findViewById(R.id.setup_view).setVisibility(View.VISIBLE);v.findViewById(R.id.contacts_grid).setVisibility(View.GONE);v.measure(View.MeasureSpec.makeMeasureSpec(400,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(650,View.MeasureSpec.EXACTLY));v.layout(0,0,400,650);
+  TextView allow=v.findViewById(R.id.btn_allow_contacts);android.text.Layout l=allow.getLayout();
+  assertTrue("Full wrapped label needs vertical space",allow.getHeight()-allow.getCompoundPaddingTop()-allow.getCompoundPaddingBottom()>=l.getHeight());
+  assertEquals(allow.getText().length(),l.getLineEnd(l.getLineCount()-1));snap(v,"contacts-permission-largest");
+ }
+
+ @Test public void contactsRecoveryCanScrollAndDialpadStaysReachable(){
+  View v=paparazzi.inflate(R.layout.activity_phone);v.findViewById(R.id.setup_view).setVisibility(View.VISIBLE);v.findViewById(R.id.contacts_grid).setVisibility(View.GONE);
+  ((TextView)v.findViewById(R.id.btn_allow_contacts)).setText(R.string.contacts_permission_retry);
+  v.findViewById(R.id.contacts_permission_help).setVisibility(View.VISIBLE);v.findViewById(R.id.btn_contacts_settings).setVisibility(View.VISIBLE);
+  v.measure(View.MeasureSpec.makeMeasureSpec(560,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(800,View.MeasureSpec.EXACTLY));v.layout(0,0,560,800);
+  ScrollView scroll=v.findViewById(R.id.setup_view);scroll.setSmoothScrollingEnabled(false);scroll.fullScroll(View.FOCUS_DOWN);
+  android.graphics.Rect visible=new android.graphics.Rect();View settings=v.findViewById(R.id.btn_contacts_settings);assertTrue(settings.getGlobalVisibleRect(visible));assertEquals(settings.getHeight(),visible.height());
+  View dial=v.findViewById(R.id.btn_dialpad);assertTrue(dial.getGlobalVisibleRect(visible));assertEquals(dial.getHeight(),visible.height());assertTrue(scroll.getScrollY()>0);snap(v,"contacts-recovery-scroll");
+ }
+
+ @Test public void studioNeverSplitsAnArabicWordAtLargestText(){
+  LinearLayout tile=(LinearLayout)UiBinder.buildHomeTile(paparazzi.getContext(),"الاستوديو",paparazzi.getContext().getDrawable(R.drawable.ic_call),R.drawable.chip_green,false,null);
+  tile.measure(View.MeasureSpec.makeMeasureSpec(300,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(600,View.MeasureSpec.AT_MOST));tile.layout(0,0,300,tile.getMeasuredHeight());TextView text=(TextView)tile.getChildAt(1);
+  assertEquals(1,text.getLayout().getLineCount());assertEquals(0,text.getLayout().getEllipsisCount(0));assertTrue(text.getTextSize()>=18f*text.getResources().getDisplayMetrics().scaledDensity);
+  assertEquals(tile.getHeight()/2f,(tile.getChildAt(0).getTop()+text.getBottom())/2f,2f);snap(tile,"studio-one-word");
+ }
 }

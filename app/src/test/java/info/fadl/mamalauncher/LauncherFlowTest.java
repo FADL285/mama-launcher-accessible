@@ -117,19 +117,6 @@ public class LauncherFlowTest {
     }
 
     @Test
-    public void permanentlyDeniedContactsPermissionOpensAppSettings() {
-        PhoneActivity a = Robolectric.buildActivity(PhoneActivity.class).setup().get();
-        ShadowActivity shadow = shadow(a);
-        // Robolectric's default: no rationale shown, matching a permanent denial.
-        prefs.edit().putBoolean("contacts_asked", true).apply();
-        a.findViewById(R.id.btn_allow_contacts).performClick();
-        Intent recovery = shadow.getNextStartedActivity();
-        assertNotNull(recovery);
-        assertEquals(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                recovery.getAction());
-    }
-
-    @Test
     public void firstContactsAskStillRequestsThePermission() {
         PhoneActivity a = Robolectric.buildActivity(PhoneActivity.class).setup().get();
         a.findViewById(R.id.btn_allow_contacts).performClick();
