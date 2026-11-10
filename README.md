@@ -21,7 +21,7 @@ An Arabic-first Android home screen for older adults and people who find reading
 | Phone tile with photo contacts and favorites first | Choose Home, Apps page or hidden placement; reorder items |
 | Contact confirmation with spoken name and explicit Call | Text size, high contrast, touch guard, vibration and speech settings |
 | Dialpad with local saved-number suggestions | Permission and installed TTS-engine setup |
-| Visible Back actions and optional Home after screen lock | Optional device-credential recovery when configured |
+| Visible Back actions and optional Home after screen lock | Device-credential entry/recovery when a secure device lock is available |
 
 A contact with several numbers needs a visible number choice before calling. A direct dialpad call needs a deliberate green-button press. Granting call permission alone never places a call. Save Number opens the system contacts form or shows an existing match; the launcher does not silently write contacts.
 
@@ -31,7 +31,7 @@ In 0.14, Home centers the visible icon/name group inside equal-height cards. Lon
 
 - The manifest requests only `READ_CONTACTS` and `CALL_PHONE`. No internet permission, analytics SDK, accounts, SMS or call-log access.
 - Speech chooses Arabic voices the installed TTS engine reports as offline. The engine is a separate app; this is not an independent guarantee about its implementation. No Egyptian speech model is bundled.
-- Favorites and setup preferences are app-local. Backup is disabled in the manifest and backup rules exclude app data. Uninstalling or clearing storage loses that configuration.
+- Favorite overrides and setup preferences are app-local. System-starred contacts are read from the contacts provider; clearing launcher data removes only the overrides, so system favorites remain and can reappear. Backup is disabled in the manifest and backup rules exclude app data. Uninstalling or clearing storage loses that configuration.
 - The settings PIN discourages accidental or casual changes. It is not device security, kiosk enforcement or protection against a rooted/compromised device.
 - The system phone app owns the in-call screen and End Call. This launcher does not replace it.
 - Portrait phone layouts are the current baseline. Tablet, landscape, foldable and calling support need a separate evaluation.

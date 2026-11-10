@@ -36,7 +36,7 @@ The classes above live under `app/src/main/java/info/fadl/mamalauncher/` or `ui/
 - Provider failure/null cursor or denied access must not claim a number is new or contacts are empty.
 - A stale callback must not navigate or replace newer data. Recycled photo views must never receive another person's delayed image in a future async implementation.
 - A manual TTS-engine choice is binding on app-managed fallback. Do not silently install an engine/model or send names to a cloud voice.
-- The settings session is memory-only; protected screens recheck it and lock on ordinary departure/screen-off. Sanctioned system-screen excursions are narrow exceptions, not a general unlock period.
+- The settings session is memory-only; protected screens recheck it and lock on ordinary departure/screen-off. Sanctioned app-info/TTS-system-screen excursions preserve the session. Opening the developer website in a browser also sets this external-session exception: it remains until Settings resumes and clears the flag, screen-off locks protected mode, or the process ends. Leaving that browser for another app can therefore leave the in-memory settings session unlocked. This is a current limitation, not a general guarantee that every departure locks immediately.
 - Home-after-lock defaults ON for Phone/Apps/Dialpad. Confirmation is intentionally excluded. Protected settings have their own screen-off lock.
 - Touch guard changes physical touch timing, not the availability of a keyboard/accessibility click action.
 - Full app names remain available through accessibility/long press even when visible text is fitted or ellipsized.
