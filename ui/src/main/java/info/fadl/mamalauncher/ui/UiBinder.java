@@ -180,6 +180,9 @@ public final class UiBinder {
 
     private static final class HomeLabel extends TextView {
         boolean reserveHeight;
+        // API 33 stubs name LineBreaker constants, but that class starts at API 29.
+        // Layout supplies the same inlined value on our API 24+ baseline.
+        @android.annotation.SuppressLint("WrongConstant")
         HomeLabel(android.content.Context context) {
             super(context);
             setBreakStrategy(android.text.Layout.BREAK_STRATEGY_SIMPLE);
