@@ -13,7 +13,7 @@ This is a bounded source/static review and regression pass, not a security certi
 | Android Lint debug | 0 errors, 11 warnings |
 | Semgrep CE 1.184.0, `p/java` + `p/security-audit` | 88 rules, 113 source targets, 0 findings, 0 scan errors, approximately 100% parsed |
 | Tracked-source credential-pattern scan | No private keys, GitHub tokens or AWS access-key patterns found |
-| Debug build and APK signing verification | Build succeeds; valid debug signature, but different signer from the installed pilot |
+| Debug build and APK signing verification | Debug and release builds succeed; dedicated release signature verifies, with a different signer from the old installed pilot |
 | Whitespace/error check | `git diff --check` clean |
 
 Semgrep ran locally with metrics/version checking disabled; registry rules were downloaded. No source was uploaded to a hosted scanner. Source, fixtures, manifest, backups, intent handoffs, settings gate, photo loading, worker callbacks and the feedback diff were inspected. No live endpoint, call or handset was exercised.
@@ -62,8 +62,10 @@ These warnings were not suppressed to make the report clean.
 
 ## Release and supply-chain limits
 
-The build still uses pinned but old Gradle/AGP/Paparazzi versions; this pass did not run a complete dependency advisory check or upgrade toolchains. The debug APK is debuggable by design and is not a production release build. Never describe it as hardened release output.
+The build still uses pinned but old Gradle/AGP/Paparazzi versions; this pass did not run a complete dependency advisory check or upgrade toolchains. The debug APK is debuggable by design and is not the delivery artifact. The held candidate uses the release build variant without a debuggable attribute; this alone does not make it a hardened or device-validated release.
 
-The recovered project does not include the existing pilot signing key. A new local debug signer cannot update that installed app. No APK was distributed and no uninstall performed. Release/update-signing continuity must be resolved before delivery.
+The existing pilot signing key could not be recovered. The owner approved reinstall and a private backup of a dedicated key. The held 0.13 release APK uses that dedicated RSA-3072 key with valid v2/v3 signatures. Its encrypted keystore was backed up privately, permissions checked owner-only, re-downloaded byte-identical, and the downloaded key certificate matched the APK. No private backup link or password is stored in this repository. No APK was distributed or handset uninstall performed during this review.
+
+Dedicated release certificate SHA-256: `5c77e65030a4d8c0a69398a3e56ec2e5be529ef54f25adada442f2a6154582d8`. Future updates must use that same key; the old pilot signer is different.
 
 The owner chose F06 default ON on 2026-11-10. The switch remains configurable; tests pin the default and both saved choices.

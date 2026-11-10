@@ -29,8 +29,8 @@ These are local JVM/layout tests, not an Android emulator or Samsung handset run
 
 1. F06 default ON is confirmed. Review the setting and test both choices on the handset.
 2. Review the PR and merge manually. No automatic merge.
-3. Recover the existing pilot signing key before issuing an update APK. The local debug signer differs from the installed pilot. The new APK is not distributed.
-4. If the original signer cannot be recovered, obtain explicit agreement before any uninstall/reinstall. That loses launcher preferences, selected apps/order, favorites, PIN and TTS/UI choices; contacts and the separate TTS engine are not launcher app storage.
+3. The old pilot key could not be recovered. The owner approved a fresh install. A dedicated key now signs the 0.13 release candidate, with a private, download-verified backup; the APK remains held for delivery.
+4. Before the approved reinstall, record launcher preferences, selected apps/order, favorites and TTS/UI choices on the handset, then set a new PIN after reinstall. Contacts and the separate TTS engine are not launcher app storage.
 5. Supervised handset checklist: Home reselect from a scrolled page; Apps Back and Home; screen off/unlock on Apps, Phone and Dialpad with the switch both ways; permission/system-screen and call-confirmation flows; PIN/settings screen-off lock; largest text; TalkBack clock/header; and existing contact/TTS flows. Verify no auto-call after granting permission.
 
 ## Reproduce locally
