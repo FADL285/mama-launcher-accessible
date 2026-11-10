@@ -192,4 +192,5 @@
     <string name="history_not_now">مش دلوقتي، رجوع للأسماء</string>
     <string name="notification_access_disconnected">الاتصال بالنظام انقطع، النقطة غير مؤكدة</string>
     <string name="phone_app_settings">إعدادات التطبيق</string>
+    <string name="history_retry">إعادة تحميل السجل</string>
 </resources>

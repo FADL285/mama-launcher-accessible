@@ -74,3 +74,6 @@ CodeRabbit's overall check passed but its optional documentation-coverage heuris
 
 
 Second review round on b1eeb76: Greptile approved, Graphite/Greptile/CodeRabbit checks succeeded and Sourcery skipped. Two further CodeRabbit findings were valid and fixed: an unscrolled history now clears its anchor/state so a refreshed newest record remains at the top; the Arabic-only badge description uses an Arabic resource configuration for plural selection even on an English device. Regressions cover both, while scrolled-position retention tests continue to pass. Full automated checks now274 app tests /95 UI tests, zero failures; app lint0 errors /12 warnings. These are local full-suite results; reviewer/check freshness is still evaluated against each pushed head.
+
+
+Final audit of review bodies (including outside-diff comments) found a valid history Retry label that still named Contacts. It now says «إعادة تحميل السجل». The unobserved-permission test now explicitly establishes a nonempty baseline, contrasts an unobserved revoke/regrant with an observed-loss reset, and retains the documented limitation. Build-instruction spacing was corrected. Latest CodeRabbit run was neutral due free OSS review limit, not a fresh approval; Sourcery's latest skip was PR-size limit. No paid or repeated review was requested.

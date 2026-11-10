@@ -191,11 +191,14 @@ public class HistoryReviewRegressionTest {
   @Test
   public void revokeAndRegrantWhileUnobservedCannotBeInferredFromCurrentGrant() {
     Set<String> first = new HashSet<>(Arrays.asList("1:1:3"));
-    MissedCallState.reconcile(app, first);
+    MissedCallState.permissionLost(app);
+    assertEquals(0, MissedCallState.reconcile(app, first));
     Shadows.shadowOf(app).denyPermissions(Manifest.permission.READ_CALL_LOG);
     Shadows.shadowOf(app).grantPermissions(Manifest.permission.READ_CALL_LOG);
     first.add("2:2:3");
-    assertEquals(2, MissedCallState.reconcile(app, first));
+    assertEquals(1, MissedCallState.reconcile(app, first));
+    MissedCallState.permissionLost(app);
+    assertEquals(0, MissedCallState.reconcile(app, first));
   }
 
   @Test
