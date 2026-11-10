@@ -78,6 +78,22 @@ public class SettingsActivity extends ProtectedModeActivity {
             }
         });
 
+        guard(findViewById(R.id.btn_notification_access), () -> {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle(R.string.notification_access_title)
+                    .setMessage(R.string.notification_access_explanation)
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                        try {
+                            SessionGate.expectExternal();
+                            startActivity(NotificationAccess.settings(this));
+                        } catch (android.content.ActivityNotFoundException | SecurityException unavailable) {
+                            SessionGate.clearExternal();
+                            android.widget.Toast.makeText(this, R.string.settings_unavailable,
+                                    android.widget.Toast.LENGTH_LONG).show();
+                        }
+                    }).show();
+        });
         bindSoundSection();
         bindAccessibilitySection();
         bindProtectionSection();
@@ -118,9 +134,17 @@ public class SettingsActivity extends ProtectedModeActivity {
             return;
         }
         SessionGate.clearExternal(); // the sanctioned leave was consumed; next leave locks
+        NotificationBadgeStore.listen(notificationStatusChanged);
         updatePermissionRows();
         if (refreshSpeechOnReturn) { refreshSpeechOnReturn=false; initTts(); }
         else if (tts != null) refreshTtsHealth();
+    }
+
+    private final Runnable notificationStatusChanged = () -> runOnUiThread(this::updateNotificationStatus);
+
+    @Override protected void onPause() {
+        NotificationBadgeStore.unlisten(notificationStatusChanged);
+        super.onPause();
     }
 
     @Override
@@ -233,7 +257,23 @@ public class SettingsActivity extends ProtectedModeActivity {
 
     // ---- permissions ----
 
+    private void updateNotificationStatus() {
+        int label;
+        switch (NotificationBadgeStore.status()) {
+            case DISABLED: label = R.string.notification_access_disabled; break;
+            case READY: label = R.string.notification_access_ready; break;
+            case CONNECTING: label = R.string.notification_access_connecting; break;
+            case DISCONNECTED: label = R.string.notification_access_disconnected; break;
+            default: label = R.string.notification_access_unavailable;
+        }
+        ((TextView)findViewById(R.id.perm_notification_status)).setText(label);
+    }
+
     private void updatePermissionRows() {
+        NotificationAccess.refresh(this);
+        ((TextView)findViewById(R.id.perm_call_log_status)).setText(
+                CallLogAccess.granted(this) ? R.string.perm_allowed : R.string.perm_denied);
+        updateNotificationStatus();
         boolean contacts = checkSelfPermission(Manifest.permission.READ_CONTACTS)
                 == PackageManager.PERMISSION_GRANTED;
         boolean call = checkSelfPermission(Manifest.permission.CALL_PHONE)

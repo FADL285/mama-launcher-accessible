@@ -30,13 +30,7 @@ public class DialpadActivity extends BaseActivity {
     private boolean resumed;
     private android.app.AlertDialog saveChooser;
     private boolean contactsAvailable;
-    private String country() {
-        android.telephony.TelephonyManager tm=(android.telephony.TelephonyManager)getSystemService(TELEPHONY_SERVICE);
-        String iso=tm==null?"":tm.getSimCountryIso();
-        if(iso==null || iso.isEmpty())iso=tm==null?"":tm.getNetworkCountryIso();
-        if(iso==null || iso.isEmpty())iso=java.util.Locale.getDefault().getCountry();
-        return iso.toUpperCase(java.util.Locale.US);
-    }
+    private String country() { return NumberRegion.current(this); }
     private boolean canReadContacts() {return checkSelfPermission(android.Manifest.permission.READ_CONTACTS)==android.content.pm.PackageManager.PERMISSION_GRANTED;}
     private void refreshContacts() {
         final int generation=++lookupGeneration;

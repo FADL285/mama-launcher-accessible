@@ -84,3 +84,18 @@ Tablet/landscape testing is a separate matrix, including whether the device can 
 ## Proposed tooling work, not applied
 
 No committed CI workflow, dependency verification metadata or wrapper distribution checksum exists in the audited baseline. A future PR can add CI/test gates, verify the wrapper/distribution checksums against official Gradle publications, and review dependency verification. Verify checksums independently; never paste a guessed value. Toolchain/target upgrades belong in their own tested branch, not a docs patch.
+
+
+## Notification/history feature review (no APK)
+
+This review step deliberately keeps versionCode 16 / versionName `0.14-pilot-candidate` and does not package or install a candidate. Run compilation, JVM/layout tests and lint without assemble/package application tasks:
+
+```sh
+./gradlew :app:compileDebugJavaWithJavac :ui:compileDebugJavaWithJavac
+./gradlew :app:testDebugUnitTest --max-workers=1
+./gradlew :ui:verifyPaparazziDebug --max-workers=1
+./gradlew :app:lintDebug --max-workers=1
+./gradlew :ui:lintDebug --max-workers=1
+```
+
+On a 2GB runner, running lint and Robolectric concurrently exhausted memory once (exit 137); sequential, single-worker runs completed. The unchanged UI HomeLabel break-strategy constant fails standalone UI lint on this SDK/toolchain, also reproduced on main. Do not suppress it or claim standalone UI lint is green. The feature validation record separates that existing error, new warnings, tests and handset gaps. Release/signing/install remains a separately approved stage.
