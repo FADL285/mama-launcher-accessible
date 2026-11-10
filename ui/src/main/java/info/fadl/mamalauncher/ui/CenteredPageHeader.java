@@ -19,7 +19,7 @@ public final class CenteredPageHeader extends LinearLayout {
             boolean stack=available-2*side < (int)(160*getResources().getDisplayMetrics().density);
             setOrientation(stack?VERTICAL:HORIZONTAL);
             LayoutParams backParams=(LayoutParams)back.getLayoutParams();
-            backParams.gravity=Gravity.START;
+            backParams.gravity=stack?Gravity.START:(Gravity.START|Gravity.CENTER_VERTICAL);
             LayoutParams titleParams=(LayoutParams)title.getLayoutParams();
             titleParams.width=stack?LayoutParams.MATCH_PARENT:0;
             titleParams.weight=stack?0:1;
