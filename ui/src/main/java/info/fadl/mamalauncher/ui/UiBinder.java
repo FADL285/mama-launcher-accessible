@@ -156,7 +156,9 @@ public final class UiBinder {
         tv.setTypeface(tv.getTypeface(), android.graphics.Typeface.BOLD);
         tv.setTextColor(ctx.getResources().getColor(
                 contrast ? R.color.contrast_text : R.color.text_main));
-        tv.setGravity(android.view.Gravity.CENTER);
+        // Short labels hug the icon (the pre-0.12 look); the reserved second
+        // line stays BELOW the text so equal card heights do not open a gap.
+        tv.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL);
         // Two equal text lines keep peer app cards equal; long-press and accessibility expose the full label.
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);

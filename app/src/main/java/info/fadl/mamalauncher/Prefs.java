@@ -16,6 +16,7 @@ public final class Prefs {
     public static final String PIN_FAILURES = "pin_failures";
     public static final String PIN_LOCKOUT_UNTIL = "pin_lockout_until";
     public static final String USE_DEVICE_LOCK = "use_device_lock";
+    public static final String HOME_AFTER_LOCK = "home_after_lock";
 
     private Prefs() {}
 
@@ -30,6 +31,8 @@ public final class Prefs {
     public static boolean vibrate(Context c) { return get(c).getBoolean(VIBRATE, true); }
     public static boolean hasPin(Context c) { return get(c).getString(PIN_HASH, null) != null; }
     public static boolean useDeviceLock(Context c) { return get(c).getBoolean(USE_DEVICE_LOCK, false); }
+    // Default ON chosen by the owner; the family setter can turn it off.
+    public static boolean homeAfterLock(Context c) { return get(c).getBoolean(HOME_AFTER_LOCK, true); }
 
     /** Maps the stored scale choice to a Configuration fontScale multiplier. */
     public static float fontScaleValue(int scale) {

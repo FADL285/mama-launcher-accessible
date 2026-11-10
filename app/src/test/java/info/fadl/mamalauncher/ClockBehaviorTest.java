@@ -7,7 +7,7 @@ public class ClockBehaviorTest {
  @After public void after(){TimeZone.setDefault(oldZone);Locale.setDefault(oldLocale);}
  static Date at(int hour,int minute){Calendar c=Calendar.getInstance(TimeZone.getTimeZone("Africa/Cairo"),Locale.US);c.clear();c.set(2026,Calendar.NOVEMBER,9,hour,minute);return c.getTime();}
  public static class ClockFixture extends MainActivity {static Date instant;@Override protected Date clockNow(){return instant;}}
- String text(MainActivity a){return ((TextView)a.findViewById(R.id.home_clock)).getText().toString();}
+ String text(MainActivity a){return a.findViewById(R.id.clock_row).getContentDescription().toString();}
  @Test public void noonAndMidnightBoundariesUseArabicMarkers(){for(int[] t:new int[][]{{0,0},{0,1},{11,59},{12,0},{12,1},{23,59}}){String expected=t[0]==0?"12":t[0]>12?""+(t[0]-12):""+t[0];expected+=String.format(Locale.US,":%02d %s",t[1],t[0]<12?"ص":"م");assertEquals(expected,HomeClock.time(at(t[0],t[1]),TimeZone.getDefault()));}}
  @Test public void languageCannotChangeMarkersOrTwelveHourPolicy(){for(Locale locale:new Locale[]{Locale.US,Locale.FRANCE,new Locale("ar","EG")}){Locale.setDefault(locale);assertEquals("1:00 م",HomeClock.time(at(13,0),TimeZone.getDefault()));}}
  @Test public void sameInstantUsesSpecifiedTimezone(){Date now=at(13,0);assertEquals("1:00 م",HomeClock.time(now,TimeZone.getTimeZone("Africa/Cairo")));assertEquals("11:00 ص",HomeClock.time(now,TimeZone.getTimeZone("UTC")));}
