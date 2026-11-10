@@ -171,7 +171,14 @@
     <string name="history_private">رقم خاص أو غير متاح</string>
     <string name="history_unknown_number">رقم غير صالح للاتصال</string>
     <string name="has_notifications">فيه إشعارات</string>
-    <string name="missed_badge_description">%1$d مكالمات فائتة لم تُراجع</string>
+    <plurals name="missed_badge_description">
+        <item quantity="zero">لا توجد مكالمات فائتة لم تُراجع</item>
+        <item quantity="one">مكالمة فائتة واحدة لم تُراجع</item>
+        <item quantity="two">مكالمتان فائتتان لم تُراجعا</item>
+        <item quantity="few">%1$d مكالمات فائتة لم تُراجع</item>
+        <item quantity="many">%1$d مكالمة فائتة لم تُراجع</item>
+        <item quantity="other">%1$d مكالمة فائتة لم تُراجع</item>
+    </plurals>
     <string name="notification_access_title">نقطة إشعارات التطبيقات</string>
     <string name="notification_access_explanation">اختياري: أندرويد بيدي وصول واسع للإشعارات. إحنا بنستخدم وجود الإشعار فقط علشان النقطة، من غير قراءة أو حفظ نص الرسائل، ومن غير مسح إشعارات التطبيقات. النقطة مش عدد الرسائل.</string>
     <string name="notification_access_open">إعداد وصول الإشعارات</string>

@@ -73,4 +73,20 @@ public class HistoryTallRenderTest {
         });
     paparazzi.snapshot(v, "history-normal-records");
   }
+
+  @Test
+  public void internationalNumberThenRecycledArabicName() {
+    android.widget.LinearLayout column = new android.widget.LinearLayout(paparazzi.getContext());
+    column.setOrientation(1);
+    column.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+    column.setBackgroundColor(0xFFF9F8F5);
+    CallLogRow numeric = new CallLogRow(column.getContext());
+    numeric.bind("+201012345678", "", "مكالمة فائتة · ١٠/١١/٢٠٢٦", true);
+    column.addView(numeric);
+    CallLogRow recycled = new CallLogRow(column.getContext());
+    recycled.bind("+201012345678", "", "", true);
+    recycled.bind("اسم تجريبي", "+201012345678", "مكالمة واردة · ١٠/١١/٢٠٢٦", false);
+    column.addView(recycled);
+    paparazzi.snapshot(column, "history-international-and-recycled-name");
+  }
 }

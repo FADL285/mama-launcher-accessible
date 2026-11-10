@@ -19,12 +19,12 @@ JDK11, platform33, Build Tools30.0.3, existing Gradle7.6.4/AGP7.4.2/Paparazzi1.2
 | Check | Result |
 | --- | --- |
 | App/UI Java + resources compilation | Pass |
-| Full app JVM/Robolectric suite | 260 tests, 0 failures (206 existing +54 new executions) |
-| UI/Paparazzi verification | 94 tests, 0 failures (88 existing +6 new) |
+| Full app JVM/Robolectric suite | 272 tests, 0 failures (206 existing +66 new executions) |
+| UI/Paparazzi verification | 95 tests, 0 failures (88 existing +7 new) |
 | App Android Lint | 0 errors,12 warnings |
 | Standalone UI Android Lint | Fails:1 existing WrongConstant error,158 warnings |
 | Same standalone UI lint on unchanged main | Same WrongConstant error,136 warnings |
-| Semgrep public Java rules, metrics disabled | 52 production Java files,60 rules,0 findings,0 parse errors |
+| Semgrep public Java rules, metrics disabled | 53 production Java files,60 rules,0 findings,0 parse errors |
 | Whitespace / privacy boundary source review | Pass, details below |
 
 UI lint's error is the unchanged HomeLabel `Layout.BREAK_STRATEGY_SIMPLE` line. It was reproduced on main using the same SDK/JDK/toolchain, not suppressed or changed here. The22 additional warnings are20 library-only unused-resource reports (resources used by the app module) and2 ButtonStyle suggestions; lint is not claimed fully green. Existing min-API attribute warnings remain. App lint's warnings are not a proof of handset behavior.
@@ -41,7 +41,7 @@ One combined lint/Robolectric invocation exhausted the2GB runner (exit137). Sequ
 
 ### Visual review
 
-Inspected actual layout-renderer pixels, not HTML concepts: normal/high-contrast dots on synthetic real-icon/chip forms, dot absent/present, Phone1/9/10/99+, long Arabic labels, ordinary history record number/type/date, permission/error states, short320dp large-text footer and recovery scrolling, LTR/RTL header. Only8 affected old golden images were updated after review;6 new images are synthetic. The no-badge Home/App renders remained unchanged. On the most constrained windows, long history rows and explanations scroll within bounded content; fixed controls remain reachable. This does not certify touch target feel, actual OEM font shaping or a screen reader.
+Inspected actual layout-renderer pixels, not HTML concepts: normal/high-contrast dots on synthetic real-icon/chip forms, dot absent/present, Phone1/9/10/99+, long Arabic labels, ordinary history record number/type/date, permission/error states, short320dp large-text footer and recovery scrolling, LTR/RTL header. Only8 affected old golden images were updated after review;7 new images are synthetic. The no-badge Home/App renders remained unchanged. On the most constrained windows, long history rows and explanations scroll within bounded content; fixed controls remain reachable. This does not certify touch target feel, actual OEM font shaping or a screen reader.
 
 ### Privacy / safety review
 
@@ -57,3 +57,17 @@ Manifest adds READ_CALL_LOG and a non-exported system-bound listener protected b
 - No automatic bidirectional stock-badge clearing, exact unread-message count or universal OEM support is promised. No carrier calls or contact edits were performed.
 
 Next gate: owner reviews/merges the feature PR if satisfied. Any candidate version bump, APK creation/distribution or device installation needs a separate decision and the established same-key release checks. The installed0.14 baseline stays untouched.
+
+
+## PR12 review follow-up
+
+Reviewed the live inline findings on the initial91c34d4 head, not merely the check badges. Code fixes cover history position retention (identity plus pixel offset, saved list state and pre-draw restoration), country-aware exact contact matching with ambiguity refusal, explicit LTR number-only titles with recycled-name reset, Arabic plural forms for the Phone badge and exact versionName in build instructions. A shared NumberRegion helper preserves the existing dialpad region policy rather than duplicating it. No raw number is replaced for call confirmation.
+
+Twelve new regression tests exercise focused draw acknowledgement, absent focus and later focus, tab/pause before posted acknowledgement, new call after snapshot, ordinary-return/load-more/provider-insertion scroll retention and filter reset, full national/international contact equivalence and ambiguity, recycled text direction, Arabic quantity categories and an unobserved revoke/regrant limitation.
+
+Two findings are dispositioned without changing the approved behavior:
+
+- Graphite discussion4528139022 asks to acknowledge only pending records within the displayed200-row page. The approved v5 plan explicitly says to query the COMPLETE CURRENT pending set independently of200-row display batches and acknowledge the completed corresponding pending snapshot on successful foreground history display, in either filter. Applying page-only acknowledgement would change that product decision. A draw/focus flow test now verifies240 pending records acknowledged after a200-row successful display and leaves a later concurrent call pending. This action is local only, not a claim that each record was individually read.
+- Greptile discussion4528146895 correctly identifies a limit of current-state permissions: revoke and regrant while the app process is absent cannot be inferred from the later granted state. Baseline reset is guaranteed only after CONFIRMED/observed permission loss, as the approved plan specifies. A regression documents the unobserved path. No unsupported permission-history API, constant background service or broader reset-on-every-restart rule was added. If the family revokes and regrants entirely while Mama is not running, calls from that period can appear in its badge. A later process restart alone does not mean permission was revoked.
+
+CodeRabbit's overall check passed but its optional documentation-coverage heuristic warned (5.06% against80% on79 touched functions, including tests). This is not a failed compile/test/security check; critical boundaries have class/method documentation and this record. No automated bulk docstring generation, paid review or CI/config change was run to satisfy a percentage. Sourcery initially skipped due review-budget limits; that skip is not an approval. Subsequent reviewer/check state is reported separately for the actual pushed head.

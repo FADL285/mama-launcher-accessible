@@ -40,6 +40,11 @@ public final class CallLogRow extends LinearLayout {
   }
 
   public void bind(String title, String phone, String description) {
+    bind(title, phone, description, false);
+  }
+
+  public void bind(String title, String phone, String description, boolean numberTitle) {
+    name.setTextDirection(numberTitle ? View.TEXT_DIRECTION_LTR : View.TEXT_DIRECTION_FIRST_STRONG);
     name.setText(title);
     number.setText(phone);
     number.setVisibility(phone.isEmpty() ? GONE : VISIBLE);

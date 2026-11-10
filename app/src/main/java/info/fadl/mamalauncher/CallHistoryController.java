@@ -14,7 +14,6 @@ import info.fadl.mamalauncher.ui.CallLogRow;
 import info.fadl.mamalauncher.ui.ContactEntry;
 import java.text.DateFormat;
 import java.util.Date;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
@@ -29,6 +28,56 @@ final class CallHistoryController implements AutoCloseable {
   private int displayGeneration;
   private HistorySnapshot displayed;
   private int displayedGeneration;
+  private CallLogRepository.Result boundPage;
+  private String anchor;
+  private int anchorOffset, anchorPosition;
+  private android.os.Parcelable scrollState;
+
+  private void rememberPosition() {
+    ListView list = activity.findViewById(R.id.history_list);
+    if (boundPage == null || list.getChildCount() == 0) return;
+    int position = list.getFirstVisiblePosition();
+    if (position >= boundPage.entries.size()) return;
+    scrollState = list.onSaveInstanceState();
+    anchor = boundPage.entries.get(position).identity();
+    anchorPosition = position;
+    anchorOffset = list.getChildAt(0).getTop() - list.getPaddingTop();
+  }
+
+  private void restorePosition(ListView list, CallLogRepository.Result page) {
+    if (anchor == null || page.entries.isEmpty()) return;
+    int position = Math.min(anchorPosition, page.entries.size() - 1);
+    for (int i = 0; i < page.entries.size(); i++)
+      if (anchor.equals(page.entries.get(i).identity())) {
+        position = i;
+        break;
+      }
+    if (scrollState != null) list.onRestoreInstanceState(scrollState);
+    final int target = position, offset = anchorOffset, generation = displayGeneration;
+    list.setSelectionFromTop(target, offset);
+    list.getViewTreeObserver()
+        .addOnPreDrawListener(
+            new android.view.ViewTreeObserver.OnPreDrawListener() {
+              private boolean positioned;
+
+              public boolean onPreDraw() {
+                if (!valid(generation) || list.getChildCount() == 0) {
+                  list.getViewTreeObserver().removeOnPreDrawListener(this);
+                  return true;
+                }
+                if (!positioned) {
+                  positioned = true;
+                  list.setSelectionFromTop(target, offset);
+                  return false;
+                }
+                list.getViewTreeObserver().removeOnPreDrawListener(this);
+                if (list.getFirstVisiblePosition() == target)
+                  list.scrollListBy(list.getChildAt(0).getTop() - list.getPaddingTop() - offset);
+                return true;
+              }
+            });
+  }
+
   private boolean rendered;
   private android.view.ViewTreeObserver drawObserver;
   private final Runnable afterDraw =
@@ -97,12 +146,20 @@ final class CallHistoryController implements AutoCloseable {
   }
 
   private void filter(boolean missed) {
+    rememberPosition();
+    boundPage = null;
+    scrollState = null;
+    anchor = null;
+    anchorPosition = anchorOffset = 0;
     missedOnly = missed;
     limit = CallLogRepository.PAGE_SIZE;
     refresh();
   }
 
   void select(boolean value) {
+    rememberPosition();
+    clearDrawWatch();
+    displayed = null;
     selected = value;
     displayGeneration++;
     worker.cancel();
@@ -122,6 +179,7 @@ final class CallHistoryController implements AutoCloseable {
   }
 
   void pause() {
+    rememberPosition();
     active = false;
     clearDrawWatch();
     displayGeneration++;
@@ -129,6 +187,7 @@ final class CallHistoryController implements AutoCloseable {
     watcher.close();
     displayed = null;
     ((ListView) activity.findViewById(R.id.history_list)).setAdapter(null);
+    boundPage = null;
   }
 
   void focused() {
@@ -144,6 +203,7 @@ final class CallHistoryController implements AutoCloseable {
 
   void refresh() {
     if (!active || !selected) return;
+    rememberPosition();
     clearDrawWatch();
     displayed = null;
     final int current = ++displayGeneration;
@@ -163,7 +223,7 @@ final class CallHistoryController implements AutoCloseable {
           Set<String> pending = MissedCallState.read(activity, signal).pending;
           CallLogRepository.Result page =
               CallLogRepository.load(activity.getContentResolver(), filter, pageLimit, signal);
-          Map<String, ContactEntry> contacts = HistorySnapshot.contacts(activity, signal);
+          HistorySnapshot.ContactIndex contacts = HistorySnapshot.contacts(activity, signal);
           signal.throwIfCanceled();
           return new HistorySnapshot(page, pending, contacts);
         },
@@ -229,6 +289,10 @@ final class CallHistoryController implements AutoCloseable {
             return snapshot.page.entries.get(p);
           }
 
+          public boolean hasStableIds() {
+            return true;
+          }
+
           public long getItemId(int p) {
             return snapshot.page.entries.get(p).id;
           }
@@ -245,11 +309,14 @@ final class CallHistoryController implements AutoCloseable {
             view.bind(
                 title(row, contact),
                 row.callable() && contact != null ? row.number : "",
-                detail(row));
+                detail(row),
+                row.callable() && (contact == null || contact.name.isEmpty()));
             guard.accept(view, () -> open(row));
             return view;
           }
         });
+    restorePosition(list, snapshot.page);
+    boundPage = snapshot.page;
     // Wait for a real window draw, then validate again after the frame.
     displayed = snapshot;
     displayedGeneration = generation;
@@ -260,6 +327,7 @@ final class CallHistoryController implements AutoCloseable {
 
   private void show(int message, boolean permission, boolean retry) {
     ((ListView) activity.findViewById(R.id.history_list)).setAdapter(null);
+    boundPage = null;
     activity.findViewById(R.id.history_filters).setVisibility(View.GONE);
     activity.findViewById(R.id.history_list).setVisibility(View.GONE);
     activity.findViewById(R.id.history_state).setVisibility(View.VISIBLE);
@@ -325,7 +393,11 @@ final class CallHistoryController implements AutoCloseable {
         signal -> HistorySnapshot.contacts(activity, signal),
         contacts -> {
           if (!valid(current)) return;
-          ContactEntry contact = contacts.get(DialContactMatcher.digits(row.number));
+          ContactEntry contact =
+              activity.checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                      == PackageManager.PERMISSION_GRANTED
+                  ? contacts.find(row.number)
+                  : null;
           String label = title(row, contact);
           ContactEntry exact =
               new ContactEntry(

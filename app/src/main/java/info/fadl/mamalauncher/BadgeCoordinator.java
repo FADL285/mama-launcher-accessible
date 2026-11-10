@@ -76,7 +76,10 @@ final class BadgeCoordinator implements AutoCloseable {
           tile.getValue(),
           phone ? missed : NotificationBadgeStore.has(tile.getKey()) ? -2 : 0,
           phone
-              ? context.getString(R.string.missed_badge_description, missed)
+              ? context
+                  .getResources()
+                  .getQuantityString(
+                      R.plurals.missed_badge_description, Math.max(0, missed), missed)
               : context.getString(R.string.has_notifications));
     }
   }

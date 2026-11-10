@@ -88,7 +88,7 @@ No committed CI workflow, dependency verification metadata or wrapper distributi
 
 ## Notification/history feature review (no APK)
 
-This review step deliberately keeps versionCode16/versionName0.14 and does not package or install a candidate. Run compilation, JVM/layout tests and lint without assemble/package application tasks:
+This review step deliberately keeps versionCode16/versionName`0.14-pilot-candidate` and does not package or install a candidate. Run compilation, JVM/layout tests and lint without assemble/package application tasks:
 
 ```sh
 ./gradlew :app:compileDebugJavaWithJavac :ui:compileDebugJavaWithJavac
