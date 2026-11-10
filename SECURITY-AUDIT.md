@@ -1,3 +1,5 @@
+> Historical audit of an earlier pilot. For the current 0.14 baseline, executed checks and remaining proposals, see [the stable audit](docs/audit-014.md) and [documentation index](docs/README.md).
+
 # Security Audit — 0.2-pilot (pre-publication, 2026-11-09)
 
 ## Scope and method

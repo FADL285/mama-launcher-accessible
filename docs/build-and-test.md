@@ -1,0 +1,86 @@
+# Build, test and release continuity
+
+Baseline: 0.14/code 16. This guide documents the existing build; it does not upgrade tools or create a new release.
+
+## Toolchain
+
+| Part | Repository setting / verified environment |
+| --- | --- |
+| Gradle Wrapper | 7.6.4 |
+| Android Gradle Plugin | 7.4.2 |
+| JDK | 11 used for baseline checks |
+| Android SDK | Platform 33; Build Tools 30.0.3 for AGP's default |
+| Android API | min24, compile33, target33 |
+| Source language | Java8 source/target compatibility |
+| UI test tool | Paparazzi 1.2.0 |
+| App test tools | JUnit 4.13.2, Robolectric 4.11.1 |
+
+AGP 7.4's documented minimums include Gradle 7.5 and JDK 11. Newer build tools/JDKs are not automatically drop-in upgrades for this pinned test stack. Use the wrapper, not an unrelated globally installed Gradle.
+
+Install the SDK platform/build tools, set `ANDROID_HOME` or a local untracked `local.properties`, and set `JAVA_HOME` to JDK 11. First builds need network access to obtain build/test dependencies; the app itself has no internet permission.
+
+```bash
+export JAVA_HOME=/path/to/jdk-11
+export ANDROID_HOME=/path/to/android-sdk
+./gradlew --version
+./gradlew :app:assembleDebug
+./gradlew :app:testDebugUnitTest :ui:verifyPaparazziDebug :app:lintDebug
+```
+
+Expected debug output: `app/build/outputs/apk/debug/app-debug.apk`. `local.properties`, build output and signing material must not be committed.
+
+## What the checks cover
+
+- `:app:testDebugUnitTest`: pure JUnit and JVM Android/Robolectric flows. Calls are inspected as intents, not delivered to a carrier.
+- `:ui:verifyPaparazziDebug`: renders layouts and compares with committed synthetic golden images. Includes RTL, long names, A10s-like configurations, high contrast and large text cases.
+- `:app:lintDebug`: static Android checks. Read warnings; passing with warnings is not a clean accessibility certification.
+- Optional SAST: `semgrep scan --config p/java --config p/security-audit --metrics=off app/src/main/java ui/src/main/java`. Fetching rules requires network. No source upload/remote analysis is needed for this scan; assess any added service separately.
+
+Fresh 2026-11-10 baseline run: 206 app tests + 88 UI tests, no failures/errors/skips; lint 0 errors / 11 warnings; Semgrep 88 applicable rules across 36 production Java files, 0 findings/errors. Test counts change when tests are intentionally added; do not make the count a substitute for reading failures.
+
+Reports are under each module's `build/reports/tests/testDebugUnitTest/`; lint XML/HTML is under `app/build/reports/`. Failure images/diffs are local evidence under generated test output, not golden fixtures.
+
+### Changing a visual baseline
+
+Only after an approved UI change:
+
+1. Run verification first and understand every failing image.
+2. Record the intended change: `./gradlew :ui:recordPaparazziDebug` (or select the affected tests).
+3. Inspect actual before/after pixels, not only filenames or a passing task. Check RTL/LTR, largest text, contrast and short-window states affected by the change.
+4. Confirm fixtures contain no real contact names, numbers or photos.
+5. Run `:ui:verifyPaparazziDebug` separately and commit the intended goldens with the source change.
+
+Do not record all goldens merely to make an unexplained failure pass.
+
+## Release continuity
+
+`./gradlew :app:assembleRelease` produces `app/build/outputs/apk/release/app-release-unsigned.apk`. There is no release-signing configuration in the repository. The distributed 0.14 was separately aligned and signed with the project's dedicated release key; do not commit that key or its password.
+
+- A debug APK has a different signer and is not an update to the release installation.
+- An ordinary update needs the same application ID and signing identity, with an appropriate version code. Confirm the existing installation before planning an update.
+- Preserve the dedicated key through the owner's private backup process. Do not put keys, passwords, vault links or private download links in issues, commits, docs or CI logs.
+- Uninstall/clear storage removes app-local preferences, PIN and local favorites. It is destructive recovery, not the first troubleshooting step.
+- Before delivery: verify the exact source commit/tree, package/version, final APK hash and signing certificate; install/update only with owner authorization. A build success alone is not release approval.
+
+Example verification commands (Android SDK build tools on PATH):
+
+```bash
+apksigner verify --verbose --print-certs approved-release.apk
+sha256sum approved-release.apk
+# On an authorized test device only, after checking installed identity/version:
+adb install -r approved-release.apk
+```
+
+No APK is produced for the docs-only audit follow-up. These commands document a future authorized release workflow, not a request to replace the stable installation.
+
+## Device validation that local tests cannot replace
+
+On a separate authorized test handset with synthetic contacts, capture cold/warm startup, contact-grid fling, repeated confirmation visits, large photos and slow-provider behavior. Record frame timing and memory with device/OS/build/workload details. Test empty/denied/granted permissions and interrupted requests, process death and screen lock.
+
+Run TalkBack/Switch Access and hardware-keyboard traversal. Check speech audibly with network off and chosen engine/volume recorded. Real carrier calls, emergency/special numbers and contact edits have real effects: do not execute them automatically as a test.
+
+Tablet/landscape testing is a separate matrix, including whether the device can place calls at all. See [audit measurement plan](audit-014.md#measurement-plan-before-performance-work).
+
+## Proposed tooling work, not applied
+
+No committed CI workflow, dependency verification metadata or wrapper distribution checksum exists in the audited baseline. A future PR can add CI/test gates, verify the wrapper/distribution checksums against official Gradle publications, and review dependency verification. Verify checksums independently; never paste a guessed value. Toolchain/target upgrades belong in their own tested branch, not a docs patch.
