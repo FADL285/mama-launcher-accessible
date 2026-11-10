@@ -38,6 +38,12 @@ final class CallHistoryController implements AutoCloseable {
     if (boundPage == null || list.getChildCount() == 0) return;
     int position = list.getFirstVisiblePosition();
     if (position >= boundPage.entries.size()) return;
+    if (position == 0 && list.getChildAt(0).getTop() >= list.getPaddingTop()) {
+      scrollState = null;
+      anchor = null;
+      anchorPosition = anchorOffset = 0;
+      return;
+    }
     scrollState = list.onSaveInstanceState();
     anchor = boundPage.entries.get(position).identity();
     anchorPosition = position;

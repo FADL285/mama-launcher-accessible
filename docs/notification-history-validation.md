@@ -19,7 +19,7 @@ JDK11, platform33, Build Tools30.0.3, existing Gradle7.6.4/AGP7.4.2/Paparazzi1.2
 | Check | Result |
 | --- | --- |
 | App/UI Java + resources compilation | Pass |
-| Full app JVM/Robolectric suite | 272 tests, 0 failures (206 existing +66 new executions) |
+| Full app JVM/Robolectric suite | 274 tests, 0 failures (206 existing +68 new executions) |
 | UI/Paparazzi verification | 95 tests, 0 failures (88 existing +7 new) |
 | App Android Lint | 0 errors,12 warnings |
 | Standalone UI Android Lint | Fails:1 existing WrongConstant error,158 warnings |
@@ -71,3 +71,6 @@ Two findings are dispositioned without changing the approved behavior:
 - Greptile discussion4528146895 correctly identifies a limit of current-state permissions: revoke and regrant while the app process is absent cannot be inferred from the later granted state. Baseline reset is guaranteed only after CONFIRMED/observed permission loss, as the approved plan specifies. A regression documents the unobserved path. No unsupported permission-history API, constant background service or broader reset-on-every-restart rule was added. If the family revokes and regrants entirely while Mama is not running, calls from that period can appear in its badge. A later process restart alone does not mean permission was revoked.
 
 CodeRabbit's overall check passed but its optional documentation-coverage heuristic warned (5.06% against80% on79 touched functions, including tests). This is not a failed compile/test/security check; critical boundaries have class/method documentation and this record. No automated bulk docstring generation, paid review or CI/config change was run to satisfy a percentage. Sourcery initially skipped due review-budget limits; that skip is not an approval. Subsequent reviewer/check state is reported separately for the actual pushed head.
+
+
+Second review round on b1eeb76: Greptile approved, Graphite/Greptile/CodeRabbit checks succeeded and Sourcery skipped. Two further CodeRabbit findings were valid and fixed: an unscrolled history now clears its anchor/state so a refreshed newest record remains at the top; the Arabic-only badge description uses an Arabic resource configuration for plural selection even on an English device. Regressions cover both, while scrolled-position retention tests continue to pass. Full automated checks now274 app tests /95 UI tests, zero failures; app lint0 errors /12 warnings. These are local full-suite results; reviewer/check freshness is still evaluated against each pushed head.

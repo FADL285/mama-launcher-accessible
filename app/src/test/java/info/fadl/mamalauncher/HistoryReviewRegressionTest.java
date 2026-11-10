@@ -288,4 +288,34 @@ public class HistoryReviewRegressionTest {
     assertEquals(0, list.getFirstVisiblePosition());
     c.pause().stop().destroy();
   }
+
+  @Test
+  @Config(qualifiers = "en-rUS")
+  public void arabicBadgeUsesArabicDualEvenOnEnglishDevice() {
+    assertEquals("مكالمتان فائتتان لم تُراجعا", BadgeCoordinator.missedDescription(app, 2));
+    assertTrue(BadgeCoordinator.missedDescription(app, 3).contains("مكالمات"));
+  }
+
+  @Test
+  public void newestPositionDoesNotAnchorOldFirstRecordOnRefresh() throws Exception {
+    ActivityController<PhoneActivity> c = history();
+    PhoneActivity a = c.get();
+    ListView list = a.findViewById(R.id.history_list);
+    list.setSelectionFromTop(0, 0);
+    settle();
+    java.lang.reflect.Field f = PhoneActivity.class.getDeclaredField("history");
+    f.setAccessible(true);
+    CallHistoryController history = (CallHistoryController) f.get(a);
+    c.pause();
+    java.lang.reflect.Field anchor = CallHistoryController.class.getDeclaredField("anchor");
+    anchor.setAccessible(true);
+    java.lang.reflect.Field state = CallHistoryController.class.getDeclaredField("scrollState");
+    state.setAccessible(true);
+    assertNull(anchor.get(history));
+    assertNull(state.get(history));
+    c.resume();
+    settle();
+    assertEquals(0, list.getFirstVisiblePosition());
+    c.pause().stop().destroy();
+  }
 }
