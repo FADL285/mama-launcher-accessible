@@ -116,7 +116,7 @@ public final class UiBinder {
         if (icon != null && icon.getConstantState() != null) {
             icon = icon.getConstantState().newDrawable(ctx.getResources()).mutate();
         }
-        LinearLayout tile = new LinearLayout(ctx);
+        LinearLayout tile = new HomeTile(ctx);
         tile.setOrientation(LinearLayout.VERTICAL);
         tile.setGravity(android.view.Gravity.CENTER);
         tile.setBackgroundResource(contrast ? R.drawable.tile_bg_contrast : R.drawable.tile_bg);
@@ -146,20 +146,19 @@ public final class UiBinder {
             tile.addView(iv);
         }
 
-        TextView tv = new TextView(ctx);
+        TextView tv = new HomeLabel(ctx);
         tv.setText(label);
-        // Equal two-line label areas. Keep full names for accessibility and long press.
+        // Measure only the visible lines. Keep full names for accessibility and long press.
         tv.setTextSize(24f);
-        tv.setMaxLines(2);tv.setMinLines(2);tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        tv.setMaxLines(2);tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
         tile.setContentDescription(label);if(android.os.Build.VERSION.SDK_INT>=26)tile.setTooltipText(label);
         tile.setOnLongClickListener(v->{new android.app.AlertDialog.Builder(ctx).setMessage(label).setPositiveButton(android.R.string.ok,null).show();return true;});
         tv.setTypeface(tv.getTypeface(), android.graphics.Typeface.BOLD);
         tv.setTextColor(ctx.getResources().getColor(
                 contrast ? R.color.contrast_text : R.color.text_main));
-        // Short labels hug the icon (the pre-0.12 look); the reserved second
-        // line stays BELOW the text so equal card heights do not open a gap.
-        tv.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL);
-        // Two equal text lines keep peer app cards equal; long-press and accessibility expose the full label.
+        tv.setGravity(android.view.Gravity.CENTER);
+        // Reserve equal card height, not an empty line INSIDE a one-line label.
+        // Then the tile gravity centers the real icon+label group with a tight gap.
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         tv.setPadding(dp(tile,4),0,dp(tile,4),dp(tile,2));
@@ -168,5 +167,45 @@ public final class UiBinder {
 
         if (onTap != null) tile.setOnClickListener(onTap);
         return tile;
+    }
+    private static final class HomeLabel extends TextView {
+        boolean reserveHeight;
+        HomeLabel(android.content.Context context) {
+            super(context);
+            setBreakStrategy(android.text.Layout.BREAK_STRATEGY_SIMPLE);
+            setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NONE);
+        }
+        @Override protected void onMeasure(int widthSpec, int heightSpec) {
+            int width = View.MeasureSpec.getSize(widthSpec) - getCompoundPaddingLeft() - getCompoundPaddingRight();
+            if (reserveHeight) {
+                setTextSize(24f);setMaxLines(2);
+            } else if (width > 0 && View.MeasureSpec.getMode(widthSpec) != View.MeasureSpec.UNSPECIFIED) {
+                float scale = getResources().getDisplayMetrics().scaledDensity;
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,24f*scale);
+                float longest = 0;
+                for (String word : getText().toString().split("\\s+"))
+                    longest = Math.max(longest,getPaint().measureText(word));
+                float size = longest > width ? Math.max(18f*scale,24f*scale*width/longest*0.98f) : 24f*scale;
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,size);
+                // If the word cannot fit at the readable floor, ellipsize a
+                // single line instead of Android's emergency mid-word wrap.
+                setMaxLines(longest*(size/(24f*scale)) > width ? 1 : 2);
+            }
+            super.onMeasure(widthSpec,heightSpec);
+        }
+    }
+    private static final class HomeTile extends LinearLayout {
+        HomeTile(android.content.Context context) { super(context); }
+        @Override protected void onMeasure(int widthSpec, int heightSpec) {
+            // Two-pass measurement retains equal two-line card heights, including
+            // Arabic fallback-font metrics. The final layout has only visible lines.
+            HomeLabel label = (HomeLabel)getChildAt(1);
+            label.reserveHeight=true;label.setMinLines(2);
+            super.onMeasure(widthSpec, heightSpec);
+            int reservedHeight = getMeasuredHeight();
+            label.reserveHeight=false;label.setMinLines(1);
+            super.onMeasure(widthSpec, View.MeasureSpec.makeMeasureSpec(
+                    reservedHeight, View.MeasureSpec.EXACTLY));
+        }
     }
 }
