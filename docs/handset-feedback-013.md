@@ -18,7 +18,7 @@ No speakerphone feature, Egyptian TTS integration, new external service, real ca
 ## Validation
 
 - 186 app tests pass, including 16 new feedback-navigation/preference cases.
-- 83 UI test cases pass. New coverage includes physical clock ordering in LTR/RTL, button padding and minimum action heights, viewport title centering in both directions, and the settings switch.
+- 84 UI test cases pass. New coverage includes physical clock ordering in LTR/RTL, button padding and minimum action heights, viewport title centering in both directions, and the settings switch.
 - Paparazzi snapshot recording followed by a separate verification pass. Synthetic screenshots inspected: the new cases, all 66 changed baseline renders, large text, high contrast, short dialpad windows, selected/unselected multi-number calls and setup/error paths.
 - Debug build and Android Lint pass. Lint: 0 errors, 11 warnings. See `audit-013.md` for the warning breakdown and limits.
 - `git diff --check` passes.
