@@ -19,6 +19,7 @@ public class NotificationListenerFlowTest {
 
   @Before
   public void setup() {
+    org.junit.Assume.assumeTrue(BuildConfig.NOTIFICATION_ACCESS);
     service = Robolectric.buildService(LauncherNotificationListener.class).create().get();
     Settings.Secure.putString(
         service.getContentResolver(),
@@ -34,7 +35,7 @@ public class NotificationListenerFlowTest {
 
   @After
   public void cleanup() {
-    service.onDestroy();
+    if (service != null) service.onDestroy();
   }
 
   void add(String pkg, Notification n) {

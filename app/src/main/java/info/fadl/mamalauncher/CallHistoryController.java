@@ -316,7 +316,8 @@ final class CallHistoryController implements AutoCloseable {
                 title(row, contact),
                 row.callable() && contact != null ? row.number : "",
                 detail(row),
-                row.callable() && (contact == null || contact.name.isEmpty()));
+                row.callable() && (contact == null || contact.name.isEmpty()),
+                typeDirection(row.type));
             guard.accept(view, () -> open(row));
             return view;
           }
@@ -367,6 +368,23 @@ final class CallHistoryController implements AutoCloseable {
         + " · "
         + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
             .format(new Date(row.date));
+  }
+
+  static info.fadl.mamalauncher.ui.CallDirectionView.Direction typeDirection(int type) {
+    switch (type) {
+      case CallLog.Calls.INCOMING_TYPE:
+        return info.fadl.mamalauncher.ui.CallDirectionView.Direction.INCOMING;
+      case CallLog.Calls.OUTGOING_TYPE:
+        return info.fadl.mamalauncher.ui.CallDirectionView.Direction.OUTGOING;
+      case CallLog.Calls.MISSED_TYPE:
+        return info.fadl.mamalauncher.ui.CallDirectionView.Direction.MISSED;
+      case CallLog.Calls.REJECTED_TYPE:
+        return info.fadl.mamalauncher.ui.CallDirectionView.Direction.REJECTED;
+      case CallLog.Calls.BLOCKED_TYPE:
+        return info.fadl.mamalauncher.ui.CallDirectionView.Direction.BLOCKED;
+      default:
+        return info.fadl.mamalauncher.ui.CallDirectionView.Direction.UNKNOWN;
+    }
   }
 
   static int typeLabel(int type) {

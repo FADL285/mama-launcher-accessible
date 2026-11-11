@@ -9,6 +9,7 @@ import android.provider.Settings;
 
 final class NotificationAccess {
   static boolean allowed(Context context) {
+    if (!BuildConfig.NOTIFICATION_ACCESS) return false;
     String enabled =
         Settings.Secure.getString(context.getContentResolver(), "enabled_notification_listeners");
     ComponentName ours = new ComponentName(context, LauncherNotificationListener.class);
@@ -24,6 +25,8 @@ final class NotificationAccess {
   }
 
   static Intent settings(Context c) {
+    if (!BuildConfig.NOTIFICATION_ACCESS)
+      throw new IllegalStateException("Notification access is not included in this build");
     Intent detail =
         new Intent("android.settings.NOTIFICATION_LISTENER_DETAIL_SETTINGS")
             .putExtra(

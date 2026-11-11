@@ -2,10 +2,11 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/phone_history_panel" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:visibility="gone">
     <LinearLayout android:id="@+id/history_filters" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
         <Button android:id="@+id/btn_history_all" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/history_all" android:textSize="21sp" />
+        <Space android:layout_width="10dp" android:layout_height="1dp" />
         <Button android:id="@+id/btn_history_missed" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/history_missed" android:textSize="21sp" />
     </LinearLayout>
     <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-        <ListView android:id="@+id/history_list" android:layout_width="match_parent" android:layout_height="match_parent" android:dividerHeight="8dp" android:visibility="gone" />
+        <ListView android:id="@+id/history_list" android:layout_width="match_parent" android:layout_height="match_parent" android:divider="@android:color/transparent" android:dividerHeight="10dp" android:paddingTop="12dp" android:paddingBottom="12dp" android:clipToPadding="false" android:cacheColorHint="@android:color/transparent" android:visibility="gone" />
         <ScrollView android:id="@+id/history_state" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center" android:padding="12dp">
                 <TextView android:id="@+id/history_message" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/history_permission" android:textSize="22sp" android:textColor="?attr/surfaceText" android:padding="8dp" android:gravity="center" android:accessibilityLiveRegion="polite" />

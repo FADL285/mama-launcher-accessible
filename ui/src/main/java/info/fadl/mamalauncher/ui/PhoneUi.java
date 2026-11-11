@@ -16,8 +16,9 @@ public final class PhoneUi {
         SurfaceText.color(root.getContext()) == root.getResources().getColor(R.color.contrast_text);
     button.setBackgroundResource(
         selected
-            ? R.drawable.btn_back
-            : contrast ? R.drawable.tile_bg_contrast : R.drawable.btn_number);
+            ? R.drawable.phone_primary
+            : contrast ? R.drawable.tile_bg_contrast : R.drawable.phone_secondary);
+    button.setElevation(contrast ? 0 : 2 * root.getResources().getDisplayMetrics().density);
     button.setTextColor(
         selected ? android.graphics.Color.WHITE : SurfaceText.color(root.getContext()));
   }

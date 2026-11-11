@@ -1,6 +1,6 @@
 # Build, test and release continuity
 
-Baseline: 0.14/code 16. This guide documents the existing build; it does not upgrade tools or create a new release.
+Toolchain baseline:0.14/code16. The app now has `full` and `noNotif` flavors. This guide documents the existing build; it does not upgrade tools or authorize a new release. The delivered noNotif19 candidate is documented in [candidate validation](no-notification-candidate.md).
 
 ## Toolchain
 
@@ -23,22 +23,30 @@ Install the SDK platform/build tools, set `ANDROID_HOME` or a local untracked `l
 export JAVA_HOME=/path/to/jdk-11
 export ANDROID_HOME=/path/to/android-sdk
 ./gradlew --version
-./gradlew :app:assembleDebug
-./gradlew :app:testDebugUnitTest :ui:verifyPaparazziDebug :app:lintDebug
+./gradlew :app:assembleNoNotifDebug
+./gradlew :app:testNoNotifDebugUnitTest :app:testFullDebugUnitTest
+./gradlew :ui:verifyPaparazziDebug :app:lintNoNotifDebug :app:lintFullDebug
 ```
 
-Expected debug output: `app/build/outputs/apk/debug/app-debug.apk`. `local.properties`, build output and signing material must not be committed.
+Choose the intended capability explicitly:
+
+| Flavor | Debug task | Debug APK |
+| --- | --- | --- |
+| noNotif (no notification listener) | `:app:assembleNoNotifDebug` | `app/build/outputs/apk/noNotif/debug/app-noNotif-debug.apk` |
+| full (notification listener included) | `:app:assembleFullDebug` | `app/build/outputs/apk/full/debug/app-full-debug.apk` |
+
+Generic aggregate assembly can build both flavors; it does not choose the safe distribution target for you. `local.properties`, build output and signing material must not be committed.
 
 ## What the checks cover
 
-- `:app:testDebugUnitTest`: pure JUnit and JVM Android/Robolectric flows. Calls are inspected as intents, not delivered to a carrier.
+- `:app:testNoNotifDebugUnitTest` / `:app:testFullDebugUnitTest`: pure JUnit and JVM Android/Robolectric flows. Calls are inspected as intents, not delivered to a carrier.
 - `:ui:verifyPaparazziDebug`: renders layouts and compares with committed synthetic golden images. Includes RTL, long names, A10s-like configurations, high contrast and large text cases.
-- `:app:lintDebug`: static Android checks. Read warnings; passing with warnings is not a clean accessibility certification.
+- `:app:lintNoNotifDebug` / `:app:lintFullDebug`: static Android checks. Read warnings; passing with warnings is not a clean accessibility certification.
 - Optional SAST: `semgrep scan --config p/java --config p/security-audit --metrics=off app/src/main/java ui/src/main/java`. Fetching rules requires network. No source upload/remote analysis is needed for this scan; assess any added service separately.
 
 Fresh 2026-11-10 baseline run: 206 app tests + 88 UI tests, no failures/errors/skips; lint 0 errors / 11 warnings; Semgrep 88 applicable rules across 36 production Java files, 0 findings/errors. Test counts change when tests are intentionally added; do not make the count a substitute for reading failures.
 
-Reports are under each module's `build/reports/tests/testDebugUnitTest/`; lint XML/HTML is under `app/build/reports/`. Failure images/diffs are local evidence under generated test output, not golden fixtures.
+App reports are under `app/build/reports/tests/testNoNotifDebugUnitTest/` and `testFullDebugUnitTest/`; UI reports are under `ui/build/reports/tests/testDebugUnitTest/`; lint XML/HTML is under `app/build/reports/`. Failure images/diffs are local evidence under generated test output, not golden fixtures.
 
 ### Changing a visual baseline
 
@@ -54,7 +62,14 @@ Do not record all goldens merely to make an unexplained failure pass.
 
 ## Release continuity
 
-`./gradlew :app:assembleRelease` produces `app/build/outputs/apk/release/app-release-unsigned.apk`. There is no release-signing configuration in the repository. The distributed 0.14 was separately aligned and signed with the project's dedicated release key; do not commit that key or its password.
+Use a flavor-specific release task:
+
+| Flavor | Release task | Unsigned APK |
+| --- | --- | --- |
+| noNotif | `:app:assembleNoNotifRelease` | `app/build/outputs/apk/noNotif/release/app-noNotif-release-unsigned.apk` |
+| full | `:app:assembleFullRelease` | `app/build/outputs/apk/full/release/app-full-release-unsigned.apk` |
+
+The noNotif flavor is the source of the delivered19 APK. Full currently inherits code16 from main, so do not use it as an update over19 without a separately authorized version/capability decision. There is no release-signing configuration in the repository. The distributed 0.14 was separately aligned and signed with the project's dedicated release key; do not commit that key or its password.
 
 - A debug APK has a different signer and is not an update to the release installation.
 - An ordinary update needs the same application ID and signing identity, with an appropriate version code. Confirm the existing installation before planning an update.
@@ -86,9 +101,9 @@ Tablet/landscape testing is a separate matrix, including whether the device can 
 No committed CI workflow, dependency verification metadata or wrapper distribution checksum exists in the audited baseline. A future PR can add CI/test gates, verify the wrapper/distribution checksums against official Gradle publications, and review dependency verification. Verify checksums independently; never paste a guessed value. Toolchain/target upgrades belong in their own tested branch, not a docs patch.
 
 
-## Notification/history feature review (no APK)
+## Historical notification/history feature review (before flavors, no APK)
 
-This review step deliberately keeps versionCode 16 / versionName `0.14-pilot-candidate` and does not package or install a candidate. Run compilation, JVM/layout tests and lint without assemble/package application tasks:
+This historical record predates the flavor split and the subsequent HomeLabel lint fix. Its task names are not current build instructions; use the flavor-specific tasks above. At the time, the review deliberately kept versionCode 16 / versionName `0.14-pilot-candidate` and does not package or install a candidate. Run compilation, JVM/layout tests and lint without assemble/package application tasks:
 
 ```sh
 ./gradlew :app:compileDebugJavaWithJavac :ui:compileDebugJavaWithJavac

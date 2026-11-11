@@ -60,7 +60,7 @@
 
     <LinearLayout android:id="@+id/btn_dialpad"
         android:layout_width="match_parent" android:layout_height="64dp" android:layout_margin="6dp"
-        android:orientation="horizontal" android:gravity="center" android:background="@drawable/btn_back">
+        android:orientation="horizontal" android:gravity="center" android:background="@drawable/phone_primary">
         <ImageView android:layout_width="30dp" android:layout_height="30dp" android:src="@drawable/ic_dialpad"/>
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp"
             android:text="@string/dialpad_title" android:textSize="24sp" android:textStyle="bold" android:textColor="#FFFFFF"/>
