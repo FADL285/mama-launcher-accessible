@@ -18,8 +18,8 @@ android {
         }
         noNotif {
             dimension "notificationAccess"
-            versionCode 18
-            versionName "0.15-no-notif-candidate"
+            versionCode 19
+            versionName "0.15-no-notif-arrows-candidate"
             buildConfigField "boolean", "NOTIFICATION_ACCESS", "false"
         }
     }
