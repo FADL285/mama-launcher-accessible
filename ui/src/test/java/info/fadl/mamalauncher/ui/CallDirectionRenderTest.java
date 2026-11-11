@@ -34,6 +34,13 @@ public class CallDirectionRenderTest {
     paparazzi.snapshot(screen(paparazzi), "history-arrows-spacing-normal");
   }
 
+  @Test public void contactsTabInactiveHistoryBottomEdge() {
+    View root = screen(paparazzi);
+    PhoneUi.select(root, R.id.btn_tab_contacts, true);
+    PhoneUi.select(root, R.id.btn_tab_history, false);
+    paparazzi.snapshot(root, "phone-tabs-contacts-selected");
+  }
+
   static View screen(Paparazzi renderer) {
     View root = renderer.inflate(R.layout.activity_phone);
     root.findViewById(R.id.phone_contacts_panel).setVisibility(View.GONE);

@@ -18,7 +18,11 @@ public final class PhoneUi {
         selected
             ? R.drawable.phone_primary
             : contrast ? R.drawable.tile_bg_contrast : R.drawable.phone_secondary);
-    button.setElevation(contrast ? 0 : 2 * root.getResources().getDisplayMetrics().density);
+    // Material's default Button animator restores a larger elevation at rest/press.
+    // These inset controls use fill/focus feedback, not shadows clipped by their row.
+    button.setStateListAnimator(null);
+    button.setElevation(0);
+    button.setTranslationZ(0);
     button.setTextColor(
         selected ? android.graphics.Color.WHITE : SurfaceText.color(root.getContext()));
   }
