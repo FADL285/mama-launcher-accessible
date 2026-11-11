@@ -6,11 +6,11 @@
 
 No confirmed Critical/High application defect or release-blocking security defect was established. This is **not release approval**, a penetration-test pass, an accessibility certification, or evidence that candidate20 works on Samsung A10s. The main Android build/test/manifest verification could not run in this environment. In particular, absence of a confirmed blocker is weaker evidence than a successful device acceptance run.
 
-Seven actionable findings: **0 Critical, 0 High, 4 Medium, 3 Low**. Two have narrow isolated Java reproductions, five are source-verified risks/gaps. The important issues are a cancelled call-permission request becoming a persistent denial hint, synchronous photo I/O/decode, contacts work without effective cancellation/bounds, and missing reproducible build-assurance gates. Three lower-priority issues concern stale photo caching, misleading short-number Call appearance, and current-documentation drift. Several are previously documented, not new discoveries.
+Seven actionable findings: **0 Critical, 0 High, 4 Medium, 3 Low**. Two have narrow isolated Java reproductions, five are source-verified risks/gaps. The important issues are a cancelled call-permission request becoming a persistent denial hint, synchronous photo I/O/decode, contacts work without effective cancellation/bounds, and missing reproducible build-assurance gates. Three lower-priority issues concern stale photo caching, misleading short-number Call appearance, and current-documentation drift. `GPT-01/02/03/05` revalidate debt recorded in `docs/audit-014.md` (A02/A01/A03/A05 respectively); `GPT-04` is the related photo-cache issue already noted under A01. These are not newly discovered defects. `GPT-06` demonstrates a UI/action mismatch; the short-input policy remains open for the owner’s decision.
 
 The small framework-Views runtime, deliberate call boundary, permission rechecks, explicit multi-number selection, provider-failure handling, read-only history, notification capability guards, and targeted regression suites are worth preserving. A rewrite is not justified by this audit. Profile and validate before optimizing.
 
-New official Gradle advisories published on November 10 include this project's pinned Gradle version in affected ranges. Their specific attack inputs were **not found in the audited build configuration**; no exploitation or compromised APK is asserted. See section 9 for applicability, independent of upstream severity.
+Gradle's current release notes list three advisories published on November 10 that affect the pinned7.6.4 tooling. Repository inspection did not establish the catalog/project-supplied-registry triggers, but cannot exclude the third advisory's stale-daemon/local-attacker prerequisites on a build host. No exploitation or installed-APK vulnerability is asserted. See section9 for applicability and mitigations, independent of upstream severity.
 
 ## 2. Audit identity, method and exclusions
 
@@ -73,7 +73,7 @@ Severity reflects this application's evidenced impact and prerequisites, not an 
 | GPT-06 | Low | High / reproduced handoff + source-verified UI | Dim short-number Call remains actionable | Newly reported here; not established as regression |
 | GPT-07 | Low | High / source-verified gap | Current entry-point documents contradict current flavors/candidate | Newly reported drift; historical records are not defects merely for being old |
 
-No unverified hypothesis or subjective recommendation is counted as a confirmed actionable finding. Device validation gaps are separate from this count.
+No unverified hypothesis or subjective recommendation is counted as a confirmed actionable finding. Device validation gaps are separate from this count. The source-copy Java probes are not Android/OEM tests. In particular, GPT-06 establishes an availability/action inconsistency, not a requirement to prohibit short numbers; only the owner can decide that policy.
 
 ## 5. Detailed findings
 
@@ -133,7 +133,7 @@ Evidence: [gradle-wrapper.properties:1-7](https://github.com/FADL285/mama-launch
 
 Pinned dependencies and official repository URLs are positive. Local wrapper SHA256 `14dfa961b6704bb3decdea06502781edaa796a82e6da41cd2e1962b14fbe21a3` **matches Gradle's official 7.6.4 Wrapper JAR checksum** [E6]. This corrects the weaker claim that nothing was verified. The distribution lacks `distributionSha256Sum`; transitive resolved versions/artifact integrity are unverified because resolution was blocked. Source pinning is not a full reproducibility/integrity policy.
 
-Impact: clean check badges or historical counts cannot establish both flavors still build/test/lint on a clean runner. Fresh retrieval is less strongly verified. New upstream advisories make controlled toolchain planning more important, but their currently absent attack inputs do not justify calling this a compromised project.
+Impact: clean check badges or historical counts cannot establish both flavors still build/test/lint on a clean runner. Fresh retrieval is less strongly verified. The three upstream advisories in section9 require controlled toolchain planning. The stale-daemon port-squatting prerequisites cannot be excluded from repository contents; build-host exposure is unresolved, not evidence of exploitation or an installed-APK vulnerability.
 
 Minimal direction: separate PR for CI running both suites, Paparazzi verify, app/UI lint and local debug assembly without release keys; verify and add official distribution checksum, review dependency verification and action pinning. Plan toolchain security upgrades with AGP/Paparazzi/JDK compatibility checks, not an untested automatic bump. Small-to-medium initial effort/medium build-maintenance risk. Regression gates must fail on golden mismatch, relevant lint errors and checksum tampering; record intentional flavor skips. Previously documented A05, still open.
 
@@ -147,7 +147,7 @@ Reasoning: `sync()` treats length<3 as unavailable-looking via alpha only; Call 
 
 Impact: visible availability and activation disagree for the intended low-literacy audience. This still requires a deliberate action and permission; it does **not** establish silent calling, carrier acceptance, emergency bypass, or a product requirement to ban all short codes.
 
-Minimal direction: decide the intended short-number policy, then make visual state, accessibility enabled state and handler agree; if short numbers are supported, avoid disabled-looking Call. Do not blindly impose a three-digit safety rule on all call sources. Small effort/low-to-medium behavior risk. Tests: empty, one/two digits, accepted short inputs, ordinary number, touch guard/accessibility activation and Save consistency. Newly reported, no regression origin asserted.
+Minimal direction: leave the short-input policy open for the owner’s decision, then make visual state, accessibility enabled state and handler agree; if short numbers are supported, avoid disabled-looking Call. Do not blindly impose a three-digit safety rule on all call sources. Small effort/low-to-medium behavior risk. Tests: empty, one/two digits, accepted short inputs, ordinary number, touch guard/accessibility activation and Save consistency. Newly reported, no regression origin asserted.
 
 ### GPT-07 — Current documentation exposes conflicting release/capability state
 
@@ -265,7 +265,7 @@ Backup is disabled and cloud/device-transfer rules exclude preference/file/datab
 
 ### Update and distribution distinctions
 
-Both flavors share the application ID. full16 cannot normally update an installed noNotif20; this is the **documented version-policy boundary**, not a newly found exploit. Any future chosen full candidate must use a higher appropriate version code, the correct signing certificate and compatible preferences, with owner-approved migration testing. No keys/certificates from private storage were accessed; historical certificate/APK hashes in docs are not newly verified artifacts. Debug signing is not interchangeable with the dedicated release certificate. Neither flavor was packaged/installed here.
+Both flavors share the application ID. full16 cannot normally update an installed noNotif20; this is the **documented version-policy boundary**, not a newly found exploit. If the owner later requests a full candidate that updates noNotif20, it will need a higher appropriate version code, the correct signing certificate and compatible preferences, with owner-approved migration testing. This accepted limitation is not a reason to change full16’s version now. No keys/certificates from private storage were accessed; historical certificate/APK hashes in docs are not newly verified artifacts. Debug signing is not interchangeable with the dedicated release certificate. Neither flavor was packaged/installed here.
 
 READ_CALL_LOG is dangerous and hard-restricted on modern Android: installer allowlisting and actual runtime grant are separate conditions [E2]. Home role is not default Phone/Assistant. Google Play restricts call-log access to qualifying handlers or approved exceptions [E3]; this source's convenience history does not itself establish eligibility. Optional use/read-only behavior/boolean dots do not waive those requirements. noNotif reduces notification capability but retains call-log permission. No bypass, fake role, accessibility workaround, hidden API, root or installer-source trick is recommended.
 
@@ -287,14 +287,17 @@ Notification listener guidance [E8] confirms low-RAM devices on AndroidQ/API29 a
 
 Official AGP7.4 requirements include JDK11/Gradle7.5 minimum and Build Tools30.0.3 [E9]. Java8 source compatibility does not imply Gradle7.6.4 supports running on Java21. No dependencies/SDK/JDK were upgraded or checks disabled.
 
-Current primary advisory applicability, checked 2026-11-11:
+Current primary advisory applicability, checked 2026-11-11 and supplemented in this report-only follow-up: Gradle9.9.1 release notes list **three**, not two, security advisories [E15].
 
 | Advisory | Upstream range / prerequisite | Project-specific conclusion |
 | --- | --- | --- |
 | GHSA-3cfg-jpcr-gfp3 (upstream Critical) [E10] | Gradle7.0–8.14.6,9.0–9.9.0; malicious version-catalog value compiled into accessors; fixed8.14.7/9.9.1 | Pinned7.6.4 is in range. No version catalog/import/settings catalog block in audited tree; triggering path not established. Build-time concern, no Android runtime exposure proven |
 | GHSA-gqrr-4j89-5267 (upstream High) [E11] | Gradle≤8.14.6 or9.0–9.9.0; crafted daemon registry/redirected registry path; fixed8.14.7/9.9.1 | Version in range, but no `org.gradle.daemon.registry.base` or committed registry.bin found. `daemon=false` is not asserted as a security fix. No malicious endpoint/registry or exploit tested |
+| GHSA-pcp8-98xm-c6pr (upstream High), published2026-11-10 [E14] | Gradle≤8.14.6 or9.0–9.9.0; stale daemon entry plus a co-located local attacker binding its freed loopback port; fixed8.14.7/9.9.1 | Pinned7.6.4 is affected tooling. Prerequisites depend on build-host state, not catalog files or a project-supplied registry; repository absence cannot exclude them. Host conditions/exploitation unverified; not an installed-APK vulnerability |
 
-These are conditional upstream vulnerabilities, not two confirmed app exploits and not included as Critical/High project findings. No CVE identifier is invented where these sources provide GHSA identifiers. Gradle7.6.4 release notes describe older fixes [E12], not proof that current7.6.4 is free of advisories. The full Gradle/AGP/test-transitive advisory set remains unresolved; do not claim a comprehensive dependency-vulnerability pass. Plan a compatible tested upgrade separately; absence of observed attack inputs is not forensic proof of no past attack.
+For GHSA-pcp8-98xm-c6pr, an abnormal daemon exit can leave its port in the registry. A local attacker binding that port can receive build requests and return hostile replies. Shared/multi-user build hosts are especially exposed; no build-host forensic test was performed here. Mitigation pending upgrade: trusted local access and isolated, single-tenant ephemeral runners with fresh daemon state, avoiding shared hosts. These are proposed safeguards, not changes made in this audit. `org.gradle.daemon=false` is not treated as a verified mitigation. Any upgrade requires a separate reviewable PR and AGP/Paparazzi/JDK compatibility validation [E14].
+
+These are three conditional upstream vulnerabilities in affected build tooling, not three confirmed project exploits, and are not counted as Critical/High application findings. No CVE identifier is invented where sources provide GHSA identifiers. Gradle7.6.4 release notes describe older fixes [E12], not current security clearance. The full Gradle/AGP/test-transitive advisory set and actual build-host exposure remain unresolved. Neither absent repository triggers for the first two cases nor an uninspected daemon registry establishes absence of past exploitation.
 
 ### License/provenance status
 
@@ -318,7 +321,7 @@ No startup time, frame/jank percentage, CPU, battery draw, retained/peak heap, A
 | Pending missed snapshot | Source max10,000 distinct identities,5s read budget; UI timeout6s | Time checks between cursor moves and after read cannot preempt an uncooperative provider |
 | Event coalescing | Call-log invalidation200ms; notification snapshots120ms | Source settings, not observed power numbers |
 
-Historical candidate document reports a257,829-byte signed noNotif20 APK. **Not independently rebuilt/measured here**; do not compare this with source resource bytes or a nonexistent current debug APK. Composition, ZIP compression/duplicates, DEX methods/classes, debug/release difference, stripping/unused resources and installed footprint remain blocked. No ImgBot16 changes were inspected/incorporated; recompression savings would not prove runtime speedup.
+Historical candidate document reports a257,829-byte signed noNotif20 APK. **Not independently rebuilt/measured here**; do not compare this with source resource bytes or a nonexistent current debug APK. Composition, ZIP compression/duplicates, DEX methods/classes, debug/release difference, stripping/unused resources and installed footprint remain blocked. Follow-up: ImgBot PR16 is now merged at `f1a6ff9059863725df2fa50a656c6355c94954a1`. Compared with the audit base, only16 test snapshot PNGs changed; this follow-up independently compared decoded RGBA dimensions/pixels and found them identical. No production source changed. The audit remains pinned to564f455; the merge was not incorporated into this report branch. These fixture-file savings are neither APK-size savings nor runtime-performance improvements.
 
 ### Source-supported risks and safeguards
 
@@ -438,14 +441,14 @@ Pixel ledger: inspected exact committed snapshot basenames below, under `ui/src/
 | --- | --- | --- | --- |
 | Immediate small fix proposal | F01 interrupted call-permission handling | Small / low-to-medium | Actual activity regressions API24/30/33, no callback call, reviewed separately |
 | Immediate validation | Restore capable isolated runner; run all section11 tasks/merged manifests | Small-to-medium / low app risk | Fresh outputs/counts, intended flavor skips, no changed goldens |
-| Build follow-up | F05 CI/checksum/verification; evaluate compatible security-toolchain upgrade | Medium / medium | Official checksum, clean runner, controlled dependency/toolchain diff; no secrets |
+| Build follow-up | F05 CI/checksum/verification; assess shared-host stale-daemon risk, propose isolated ephemeral runners and a compatible security-toolchain upgrade | Medium / medium | Official checksum, AGP/Paparazzi/JDK compatibility, controlled separate PR; no host/toolchain change authorized here |
 | Small follow-ups | F06 clarify short input action; F07 reconcile entry-point docs | Small / low-to-medium | Owner product decision for short codes, enabled/visual/a11y consistency; source/flavor table review |
 | Measurement first | F02/F03 workload traces, large photos/provider stalls/repeated navigation | Medium / low evidence risk | Record source/API/build/workload, then choose targeted change |
 | Targeted implementation later | Bounded contacts ownership; cancellable image pipeline with F04 invalidation | Medium / medium concurrency risk | Latch-driven stale/revoke tests, correct identity, optional-history degradation, repeat measurements |
 | Acceptance evidence | Section8 accessibility/audio/device matrix | Medium / device-dependent | Separately authorized synthetic device; no production permission/default/storage changes |
 | Optional later | Extract contacts/provider and settings sound controller seams; investigate full listener energy/deep pagination if measured | Medium / medium | Preserve preference/session/safety/RTL behavior; no rewrite for style |
 
-No recommendation is implemented by this report. Release version/signing/distribution is a separate owner decision after validation, not a consequence of merging documentation.
+No recommendation is implemented by this report. Proposed fixes belong in separate reviewable PRs. noNotif20 remains listener-free; full16’s update limitation remains accepted without a version change now. Call callbacks never place calls and call-log access stays read-only. No rewrite, targetSdk bump, signing/distribution change or Drive upload is authorized by this audit. Real handset/TalkBack/audio and any test-device permission remain separate decisions. Release/Drive work begins only after the owner asks, not as a consequence of merging documentation.
 
 ## 14. Accepted boundaries, open questions and limits
 
@@ -459,9 +462,11 @@ Highest-impact untested paths: Android permission interruption/revoke under real
 
 Final pre-commit main freshness: fetched again at 2026-11-11T18:41:06+02:00; origin/main remains `564f4556841032ba95f29c6fb3fca0e1fd5fce71`. No intervening main changes required re-audit. Conclusions remain pinned to this SHA; later changes are outside this report.
 
+Report-only follow-up, 2026-11-11: fetched main is now `f1a6ff9059863725df2fa50a656c6355c94954a1` after ImgBot16. Tree comparison found only16 recompressed test PNGs and independently verified identical decoded pixels, with no production-source change. This is a bounded fixture comparison, not a re-audit/rebase or a new Android/OEM/performance result. Original dated audit results above and older audit documents remain unchanged; the follow-up only supplements advisory applicability, clarifies finding provenance/policy and records this main movement.
+
 ## 15. Source ledger
 
-Repository evidence is [commit-pinned tree](https://github.com/FADL285/mama-launcher-accessible/tree/564f4556841032ba95f29c6fb3fca0e1fd5fce71), exact finding links above, tests/resources listed in sections6/11, and historical guides listed in section2. No other model's new audit, unmerged ImgBot changes or paid bot review was used. GitHub live workflow/status queries support only the limited CI observation stated above.
+Repository evidence is [commit-pinned tree](https://github.com/FADL285/mama-launcher-accessible/tree/564f4556841032ba95f29c6fb3fca0e1fd5fce71), exact finding links above, tests/resources listed in sections6/11, and historical guides listed in section2. No other model's new audit or paid bot review was used. The follow-up's separate ImgBot fixture-only comparison is recorded in sections10/14; audit conclusions remain pinned to564f455. GitHub live workflow/status queries support only the limited CI observation stated above.
 
 Primary external sources fetched2026-11-11; paraphrased for the stated applicability, not OEM or legal certification:
 
@@ -480,5 +485,7 @@ Primary external sources fetched2026-11-11; paraphrased for the stated applicabi
 | E11 | [Gradle daemon-registry advisory](https://github.com/gradle/gradle/security/advisories/GHSA-gqrr-4j89-5267) | Affected range/attack inputs/fixed releases; no supplied registry trigger found here |
 | E12 | [Gradle7.6.4 release notes](https://docs.gradle.org/7.6.4/release-notes.html) | Historical fixes, not comprehensive current security clearance |
 | E13 | [TextToSpeech API](https://developer.android.com/reference/android/speech/tts/TextToSpeech) | Asynchronous synthesis, engine/locale semantics; installed engine/offline metadata is not audible or independent privacy proof |
+| E14 | [Gradle stale-daemon port-squatting advisory](https://github.com/gradle/gradle/security/advisories/GHSA-pcp8-98xm-c6pr) | Follow-up checked2026-11-11: affected tooling, host prerequisites, shared-host risk, isolation mitigation and fixed versions; no project exploitation established |
+| E15 | [Gradle9.9.1 release notes](https://docs.gradle.org/9.9.1/release-notes.html) | Follow-up checked2026-11-11: all three current advisories; not a recommendation to adopt9.9.1 without compatibility validation |
 
 This report's only repository change is this file. It does not certify an APK or apply any recommendation.
