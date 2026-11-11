@@ -48,11 +48,12 @@ In 0.14, Home centers the visible icon/name group inside equal-height cards. Lon
 ```bash
 # JDK 11, Android SDK platform 33 and Build Tools 30.0.3 installed
 export ANDROID_HOME=/path/to/android-sdk
-./gradlew :app:assembleDebug
-./gradlew :app:testDebugUnitTest :ui:verifyPaparazziDebug :app:lintDebug
+./gradlew :app:assembleNoNotifDebug
+./gradlew :app:testNoNotifDebugUnitTest :app:testFullDebugUnitTest
+./gradlew :ui:verifyPaparazziDebug :app:lintNoNotifDebug :app:lintFullDebug
 ```
 
-`verifyPaparazziDebug` checks committed golden images. Do not regenerate them just to hide a failure. `assembleRelease` produces an **unsigned** APK in this repository; a debug APK is not an update for the dedicated-key release installation. Read [release continuity](docs/build-and-test.md#release-continuity) before installing anything over a stable build.
+`verifyPaparazziDebug` checks committed golden images. Do not regenerate them just to hide a failure. `assembleNoNotifRelease` produces the listener-free **unsigned** APK at `app/build/outputs/apk/noNotif/release/app-noNotif-release-unsigned.apk`; `assembleFullRelease` produces the listener-including APK at `app/build/outputs/apk/full/release/app-full-release-unsigned.apk`. Debug output is likewise flavor-specific (`apk/noNotif/debug/app-noNotif-debug.apk` or `apk/full/debug/app-full-debug.apk`). Use full only when its capability and version are intended; a debug APK is not an update for the dedicated-key release installation. Read [release continuity](docs/build-and-test.md#release-continuity) before installing anything over a stable build.
 
 ## Project shape
 
