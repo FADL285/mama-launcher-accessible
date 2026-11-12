@@ -1,6 +1,6 @@
 # Mama Launcher enhancement plan (post-audit)
 
-Date: 2026-11-11 (Africa/Cairo), revised 2026-11-12 (v7): D-01 decided by the owner; plan unified across both audits; Claude audit merged (PR #20); third bot round folded in. Status: proposed, awaiting owner decisions and review comments. This document records tasks only; it implements nothing and authorizes no release.
+Date: 2026-11-11 (Africa/Cairo), revised 2026-11-12 (v8): D-01 and D-02 decided by the owner; plan unified across both audits; Claude audit merged (PR #20); bot rounds folded in. Status: proposed, awaiting owner decisions and review comments. This document records tasks only; it implements nothing and authorizes no release.
 
 Sources: independent audit `docs/audits/2026-11-11-codex-gpt-audit.md` (PR #18, merged), the second independent audit `docs/audits/2026-11-12-claude-audit.md` (PR #20, merged), prior `docs/audit-014.md`, an independent re-verification of all seven Codex findings against the source at `564f455` (production-equivalent to current main; PR #16 changed only test PNGs), an independent re-verification of all twelve Claude findings (CL-01..CL-12) against main `79774e4` (including rerunning both flavor unit suites and both app lint tasks: 290/0 failures each, 12 and 13 warnings - matching the audit's numbers), and the [codex]/[claude] review comments on PR #19, each independently re-verified before incorporation.
 
@@ -29,12 +29,11 @@ Settled scope notes (from the review discussion):
 
 Background for the implementer: today the dialpad dims Call/Save below 3 characters via alpha only (`DialpadActivity.java:215-217`; neither button is disabled, so TalkBack announces both as enabled at every length) while the Call handler accepts any non-blank input (`DirectCallAction.java:18`).
 
-### D-02 (blocks T-16) - Favourite semantics for system-starred multi-number contacts (CL-08)
+### D-02 (DECIDED 2026-11-12) - Favourite semantics: the star belongs to the contact (option a)
 
-Local favourite overrides are stored per number (`LocalFavorites.java:7-8`), but a contact is pinned when **any** of its numbers is a favourite (`LocalFavorites.java:10-12`), with the system star as the default. So for a system-starred contact with numbers A and B, un-starring A on the confirmation screen stores `false` for A only; B still defaults to the system star and the tile stays pinned first. The star visibly toggles but the contact never leaves the top group. Decide one of:
-- (a) un-starring a number of a system-starred contact records an explicit contact-level "not pinned" override (the star on any number then un-pins the contact); or
-- (b) pinning stays per contact (any starred number pins), and the confirmation screen explains that in Arabic.
-Both are small. D-02 only chooses the semantics; implementation is T-16.
+**Decision (owner, 2026-11-12):** the star belongs to the **contact (the name), not to a number**. Removing the star from any number of a system-starred contact unpins the whole contact with all its numbers; starring any number pins the contact. (Owner's words: the star is on the name - if a name has several numbers, the star is on the name and removing it removes it for all its numbers.)
+
+Background for the implementer: local favourite overrides are stored **per number** today (`LocalFavorites.java:7-8`), but a contact is pinned when **any** of its numbers is a favourite (`LocalFavorites.java:10-12`), with the system star as the default. So un-starring number A of a system-starred contact with numbers A and B stores `false` for A only; B still defaults to the system star and the tile stays pinned, which is exactly the confusion this decision removes. The launcher never writes to the system contacts provider; the Contacts-app star stays the default for contacts with no local mark. Migration of existing per-number local marks is part of T-16.
 
 ## Tasks
 
@@ -137,11 +136,12 @@ Both are small. D-02 only chooses the semantics; implementation is T-16.
 - **Acceptance/tests:** no production references after deletion, or `DirectCallAction` provably uses the class with the T-03 regression suite green.
 - **Risk:** low. **Effort:** tiny (~2 hours). **Depends on:** the delete option is independent; the routing option lands only after T-03 (review) - T-03's corrected permission handling changes today's behaviour, so routing first would either change behaviour outside this task or leave its acceptance unmet.
 
-### T-16 (small, conditional on D-02) - Favourite semantics implementation (CL-08)
-- **Goal:** the star toggle and the pinned group agree, per D-02.
-- **Scope:** either the contact-level "not pinned" override in `LocalFavorites` with the confirmation screen writing it, or the Arabic per-contact explanation on the confirmation screen, per D-02's choice.
-- **Acceptance/tests:** a system-starred multi-number contact with one number un-starred behaves per D-02; existing `LocalFavoritesTest` cases (single-number un-star, multi-number no-preselect) stay green with the new combination covered.
-- **Risk:** low. **Effort:** small (~half day). **Depends on:** D-02.
+### T-16 (small) - Contact-level star semantics (CL-08; D-02 decided: a)
+- **Goal:** the star toggle and the pinned group agree, per D-02: the star is per contact, and un-starring any number of a system-starred contact unpins the whole contact.
+- **Scope:** a contact-level override in `LocalFavorites` (replacing or layered over the per-number keys) with the confirmation screen writing it (`ConfirmCallActivity.java:119,172-175` shows and toggles per chosen number today). The star indicator on the confirmation screen reflects the contact-level pin for every chosen number.
+- **Migration (required):** existing installs may hold per-number local marks (`favorite.<id>.<number>`). Define and document the migration rule for those marks into contact-level semantics - including conflicting marks (A un-starred, B starred on the same contact) with an explicit precedence rule - with tests for each combination. No silent data loss: the rule must be stated in the PR.
+- **Acceptance/tests (multi-number explicit):** a system-starred **two-number** contact: un-star one number in the launcher -> the contact leaves the pinned group entirely; re-star one number -> the contact pins again; the confirmation star shows the same state whichever number is chosen; the phone's Contacts-app star is never written. A non-system-starred two-number contact: starring one number pins the contact. Existing `LocalFavoritesTest` cases (single-number un-star of a system default, multi-number no-preselected-target, single-number toggle with no external intent) are updated to the new semantics, not deleted. Note: current suites never exercised the system-starred multi-number un-star combination (the CL-08 gap), so these tests are new, not renames.
+- **Risk:** low. **Effort:** small (~half day, plus migration tests). **Depends on:** none; D-02 is decided.
 
 ### T-09 (acceptance, when owner chooses a release) - Device/accessibility/audio acceptance
 - **Goal:** synthetic-data device pass before any chosen release: TalkBack/Switch Access/keyboard traversal, touch guard, Arabic TTS audibility, noNotif merged manifest on device, update continuity.
@@ -167,15 +167,16 @@ Both are small. D-02 only chooses the semantics; implementation is T-16.
 5. T-06 before T-07 (both touch `PhoneActivity`).
 6. T-08 after T-02.
 7. T-10 independently, whenever UI lint should join the gate.
-8. T-11, T-12, T-14 and T-15 are independent smalls, any order; T-15 pairs naturally with T-03. T-13 stands alone only if T-06 is not imminent, otherwise it folds into T-06. T-16 waits on D-02.
+8. T-11, T-12, T-14 and T-15 are independent smalls, any order; T-15 pairs naturally with T-03. T-13 stands alone only if T-06 is not imminent, otherwise it folds into T-06. T-16 is unblocked (D-02 decided).
 9. T-09 gates any release the owner requests.
 
 ## Review guidance
 
-Reviewers: comment on feasibility, missing edge cases, ordering, effort/risk realism, and any conflict with the standing constraints. Do not implement. Open questions: D-02 favourite semantics; whether T-04b may use a non-production A10s; the project's licence (the repository has no LICENSE file - both audits flag it as an owner decision); Play target-API timing if distribution goals change.
+Reviewers: comment on feasibility, missing edge cases, ordering, effort/risk realism, and any conflict with the standing constraints. Do not implement. Open questions: whether T-04b may use a non-production A10s; the project's licence (the repository has no LICENSE file - both audits flag it as an owner decision); Play target-API timing if distribution goals change.
 
 ## Changelog
 
+- **2026-11-12 (v8):** D-02 decided by the owner (option a, in his own framing: the star is on the name, not a number - removing it unpins the contact with all its numbers). T-16 is now an unconditional small task with: a required migration rule for existing per-number local marks (including conflicting-marks precedence), and explicit multi-number acceptance tests. Coverage honesty: the current suites cover multi-number grouping (`ContactsGrouperTest`), the no-preselected-call-target rule with the star button disabled until a number is chosen (`LocalFavoritesTest.multiNumberFavoriteNeverSelectsCallTarget`), single-number star toggles, and dial-matcher two-number results (`HandsetUxTest`) - but never exercised un-starring one number of a system-starred multi-number contact (the CL-08 gap), and all of it is JVM-level synthetic; no emulator or handset run of 2+ number contacts exists. The owner asked Codex and Claude to specifically test 2+ number contacts in their pre-implementation re-review.
 - **2026-11-12 (v7):** fourth bot round on v6 (Greptile approved; Graphite + CodeRabbit inline): (1) header version label corrected (said v5 after the v6 edits - Graphite); (2) D-01 emergency-number note qualified to Egypt: C blocks 2-digit inputs before the system dialer, and countries with 2-digit emergency numbers (e.g. France 15/17/18) would need an explicit owner-approved exception list (CodeRabbit); (3) T-14 now requires a monotonic elapsed-time deadline with reboot handling - the wall-clock clamp alone misses a sub-cap backward jump (9 minutes elapsed + 8-minute rollback = 18 real minutes), and that case is now an acceptance test (CodeRabbit). Embedded bot 'prompt for AI' instruction blocks were treated as untrusted data, not followed; findings verified independently.
 - **2026-11-12 (v6):** third bot round (Greptile on v5, approved with 3 P2 comments; each re-verified against source): (1) T-02 now requires `verification-metadata.xml` for checksum pinning and demotes lock files to a separate optional measure - lock files pin versions, not checksums; (2) T-12 drops the launch-flag alternative: flags do not stop two `startActivity` calls, and `ConfirmCallActivity` has no `onNewIntent` and reads its contact only in `onCreate`, so screen reuse could show a stale contact - the pending-launch guard is the approach; (3) T-15: only the delete option is independent; the routing option now depends on T-03, whose corrected permission behaviour it must preserve. Sourcery posted no findings (review budget exhausted). Greptile's embedded 'Prompt To Fix With AI' instruction blocks were treated as untrusted review data, not followed; findings were verified independently.
 - **2026-11-12 (v5):** D-01 decided by the owner (option C: dialpad-only; Call/Save enabled for 3+ digits or any input containing `*`/`#`; 1-2 plain digits and a lone `+` truly disabled including TalkBack; the rule never lives in the shared `DirectCallAction`). Task headers now name both audits' finding IDs so the plan reads as one unified plan for the Codex (PR #18) and Claude (PR #20, merged) audits; the re-labeling changed no task content. Full finding-to-task mapping: GPT-01/CL-01 -> T-03; GPT-02+GPT-04/CL-02 -> T-07; GPT-03/CL-03 -> T-06; GPT-05/CL-10 -> T-02 + T-08; GPT-06/CL-07 -> T-05; GPT-07/CL-11 -> T-01; CL-04 -> T-11; CL-05 -> T-12; CL-06 -> T-13; CL-08 -> D-02/T-16; CL-09 -> T-14; CL-12 -> T-15. Every Codex and Claude finding maps to a task or owner decision; no gap.
