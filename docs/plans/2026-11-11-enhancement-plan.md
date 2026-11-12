@@ -1,8 +1,8 @@
 # Mama Launcher enhancement plan (post-audit)
 
-Date: 2026-11-11 (Africa/Cairo), revised 2026-11-12 after Codex + Claude review of PR #19. Status: proposed, awaiting owner decisions and review comments. This document records tasks only; it implements nothing and authorizes no release.
+Date: 2026-11-11 (Africa/Cairo), revised 2026-11-12 (v4) after the Claude independent audit (PR #20). Status: proposed, awaiting owner decisions and review comments. This document records tasks only; it implements nothing and authorizes no release.
 
-Sources: independent audit `docs/audits/2026-11-11-codex-gpt-audit.md` (PR #18, merged), prior `docs/audit-014.md`, an independent re-verification of all seven audit findings against the source at `564f455` (production-equivalent to current main; PR #16 changed only test PNGs), and the [codex]/[claude] review comments on PR #19, each independently re-verified against main `79774e4` before incorporation.
+Sources: independent audit `docs/audits/2026-11-11-codex-gpt-audit.md` (PR #18, merged), the second independent audit `docs/audits/2026-11-12-claude-audit.md` (PR #20), prior `docs/audit-014.md`, an independent re-verification of all seven Codex findings against the source at `564f455` (production-equivalent to current main; PR #16 changed only test PNGs), an independent re-verification of all twelve Claude findings (CL-01..CL-12) against main `79774e4` (including rerunning both flavor unit suites and both app lint tasks: 290/0 failures each, 12 and 13 warnings - matching the audit's numbers), and the [codex]/[claude] review comments on PR #19, each independently re-verified before incorporation.
 
 ## Standing constraints (apply to every task)
 
@@ -15,7 +15,9 @@ Sources: independent audit `docs/audits/2026-11-11-codex-gpt-audit.md` (PR #18, 
 - Each task ships as its own small reviewable PR. No task below is started until the owner selects it.
 - Real handset, TalkBack, audio, and any test-device use are separately authorized decisions. Nothing here touches the production handset.
 
-## Open decision (owner, blocks T-05)
+## Open decisions (owner)
+
+### D-01 (blocks T-05)
 
 **D-01 Short-number policy.** The dialpad currently dims Call/Save for input shorter than 3 digits (alpha only, `DialpadActivity.java:215-217`; neither button is disabled, so TalkBack announces both as enabled at every length) but the Call handler still accepts any non-blank input (`DirectCallAction.java:18`), so a typed "7" dispatches when permission is granted. Save is already gated in its handler (`DialpadActivity.java:49`), so only its accessibility state disagrees with its visuals. Decide one of:
 - (a) short numbers are supported: make Call/Save look and announce enabled for supported input; or
@@ -29,6 +31,13 @@ The decision must also cover (reviewer-verified gaps):
 
 Empty input stays non-callable in all cases. Do not silently impose a universal 3-digit rule on all call sources; any rule lands in the dialpad only (see T-05).
 
+### D-02 (blocks T-16) - Favourite semantics for system-starred multi-number contacts (CL-08)
+
+Local favourite overrides are stored per number (`LocalFavorites.java:7-8`), but a contact is pinned when **any** of its numbers is a favourite (`LocalFavorites.java:10-12`), with the system star as the default. So for a system-starred contact with numbers A and B, un-starring A on the confirmation screen stores `false` for A only; B still defaults to the system star and the tile stays pinned first. The star visibly toggles but the contact never leaves the top group. Decide one of:
+- (a) un-starring a number of a system-starred contact records an explicit contact-level "not pinned" override (the star on any number then un-pins the contact); or
+- (b) pinning stays per contact (any starred number pins), and the confirmation screen explains that in Arabic.
+Both are small. D-02 only chooses the semantics; implementation is T-16.
+
 ## Tasks
 
 ### T-01 (P0) - Docs: canonical current-state table
@@ -40,7 +49,7 @@ Empty input stays non-callable in all cases. Do not silently impose a universal 
 
 ### T-02 (P0) - Build gates: CI + distribution checksum
 - **Goal:** every PR runs both flavor unit suites, UI golden verification, app lint for both flavors, and merged-manifest checks; debug packaging runs only after those checks pass.
-- **Scope:** GitHub Actions workflow(s) (`.github/` does not exist on main; this sets the runner baseline: JDK 11, SDK platform 33, Build Tools 30.0.3); add official `distributionSha256Sum` for the Gradle wrapper distribution after independent verification, plus `gradle/actions/wrapper-validation` pinned by SHA; pin the runner image and JDK distribution to match the golden-recording host; record intentional flavor-specific skips (appends to `docs/build-and-test.md`).
+- **Scope:** GitHub Actions workflow(s) (`.github/` does not exist on main; this sets the runner baseline: JDK 11, SDK platform 33, Build Tools 30.0.3); add official `distributionSha256Sum` for the Gradle wrapper distribution after independent verification, plus `gradle/actions/wrapper-validation` pinned by SHA; add Gradle dependency verification (`gradle/verification-metadata.xml`) or lock files so dependency payloads are pinned (gap noted in both audits); pin the runner image and JDK distribution to match the golden-recording host; record intentional flavor-specific skips (appends to `docs/build-and-test.md`).
 - **Non-goals:** release/signing jobs, secrets, Drive, dependency or toolchain version bumps (see T-08), golden updates, APK artifact upload from CI, suppressing lint.
 - **Lint gate (review blocker, resolved then corrected on newer evidence):** gate on `:app:lintNoNotifDebug` + `:app:lintFullDebug`, **plus a fresh `:ui:lintDebug` run**. The older record of a standalone UI lint `WrongConstant` failure (`docs/build-and-test.md:116`, `docs/notification-history-validation.md:26,30`) predates PR #14, which added a documented `@SuppressLint("WrongConstant")` with an inlined compatible constant (`ui/src/main/java/info/fadl/mamalauncher/ui/UiBinder.java:185-188`); the candidate20 validation recorded UI lint **0 errors / 156 warnings**, and the independent audit does not assert the old failure is still present. So the plan does **not** pre-declare UI lint a known red: the first CI run establishes the fresh result. If it fails, that failure is real and handled under T-10; do not suppress anything new and do not claim green without the fresh run.
 - **Acceptance/tests:** clean run on a docs-only PR and on a code PR; gates fail on golden mismatch, app lint errors, checksum tampering (demonstrate on a throwaway branch with a wrong `distributionSha256Sum` and an uncached distribution so the negative control is not vacuous); merged-manifest output inspection (`processNoNotifDebugMainManifest` output) proves the listener service/binding is absent in the actual noNotif artifact inputs - the Robolectric-level `NoNotificationBuildTest` does not prove what goes into the APK. Run lint and Robolectric in separate/sequential jobs (a combined run hit exit 137 on a 2GB runner). If goldens fail on first CI run for host-parity reasons, pin the runner to the recording host; do not re-record goldens under this task.
@@ -91,8 +100,50 @@ Empty input stays non-callable in all cases. Do not silently impose a universal 
 - **Explicit stop-and-ask (review):** if Gradle 8.14.7 requires AGP/JDK/Paparazzi changes, **stop and return to the owner with the compatibility findings**; the blocked/no-safe-move outcome is a compatibility report plus an owner decision on any expanded toolchain scope, not pressure to change JDK/AGP/Paparazzi or goldens to make the task pass. Interim mitigation stays isolated single-tenant ephemeral build hosts.
 - **Scope:** compatibility research, then - only if a safe move exists - one separate reviewable PR with the smallest safe version move and a full T-02 gate run.
 - **Non-goals:** blind jump to Gradle 9.x, bundling the bump into any other task, claiming the installed APK is affected (it is not; this is build tooling).
+- **Advisory precision (v4, Claude audit):** GHSA-3cfg-jpcr-gfp3's trigger is a version catalog, which this repository does not have, so it cannot fire here. The two High daemon advisories (GHSA-gqrr-4j89-5267, GHSA-pcp8-98xm-c6pr) are build-host dependent. A paid 7.6.8 exists under the Gradle Security Subscription; that is a spend decision for the owner alongside the major move or the interim mitigation, not a default.
 - **Acceptance/tests:** full T-02 gate green on the upgraded toolchain; goldens unchanged; wrapper and distribution checksums verified against official sources.
 - **Risk:** medium. **Effort:** ~1 day research; 2-4 days implementation only if AGP must move (mostly golden parity and lint differences). **Depends on:** T-02.
+
+### T-11 (small) - High-contrast readability: PIN gate and Settings hint (CL-04)
+- **Goal:** every PIN gate and Settings-menu string is readable in the high-contrast theme (WCAG AA 4.5:1).
+- **Scope:** `activity_pingate.xml` and `activity_settings.xml` replace fixed light-theme colours with the existing theme attributes: `pin_title` (`@color/text_main`, 1.21:1 on the black window), `pin_subtitle` (`#5A5348`, 2.77:1), `pin_error` (`@color/danger_text`, 2.30:1), the Back label and device-credential button (`@color/back_blue`, 3.05:1), and the Settings menu hint (`@color/text_main`, 1.21:1). Use `?attr/surfaceText` / `?attr/surfaceSecondaryText` / `?attr/surfaceAction` (`themes.xml:14-16,26-28` define them for both themes) plus a contrast-safe error colour for both themes. The normal theme's current look must be pixel-preserved (the attrs resolve to the same colours there).
+- **Non-goals:** redesigning the PIN gate or Settings; changing the contrast palette; touching section cards (they keep their white card background and are already readable).
+- **Acceptance/tests:** new Paparazzi renders of the PIN gate and the Settings menu top under `MamaTheme.Contrast` (new goldens allowed **in this PR only, reviewed image by image**); normal-theme goldens unchanged; WCAG arithmetic for each changed colour recorded in the PR.
+- **Risk:** low. **Effort:** small (~half day). **Depends on:** none.
+
+### T-12 (small) - Navigation double-tap debounce (CL-05)
+- **Goal:** a fast double tap on a contact tile (or dialpad match row) opens exactly one confirmation screen, not two stacked ones.
+- **Scope:** the tile action at `PhoneActivity.java:111-114` and the dialpad match rows (`DialpadActivity.java:101,111`): ignore repeat navigation taps while a launch is pending (cleared in `onResume`), or launch `ConfirmCallActivity` with `FLAG_ACTIVITY_SINGLE_TOP` / `REORDER_TO_FRONT` semantics. `guard()` has no repeat suppression (`BaseActivity.java:109-139`), the touch guard defaults to off (`Prefs.java:30`), and `ConfirmCallActivity` uses the standard launch mode.
+- **Non-goals:** debouncing the Call button (already protected by `DirectCallAction.pending`); changing back-stack behaviour otherwise.
+- **Acceptance/tests:** two rapid clicks produce one started intent, on the grid and on dialpad match rows; single taps and back/re-enter navigation still work.
+- **Risk:** low. **Effort:** small (~half day). **Depends on:** none.
+
+### T-13 (small) - Keep contacts grid scroll position on return (CL-06)
+- **Goal:** returning from the confirmation screen lands where the user scrolled, not back at the top.
+- **Scope:** `PhoneActivity.refresh()` replaces the adapter on every resume (`PhoneActivity.java:69,110`), and `AbsListView.setAdapter` resets to position 0. Either keep the adapter and update its data when the sorted list is unchanged, or save/restore `getFirstVisiblePosition()` around the replacement.
+- **Overlap note:** T-06's owned contacts worker may subsume this (a kept adapter with data updates is the natural shape there). If T-06 is selected, fold this acceptance in and skip the standalone fix; T-13 is the small standalone option if T-06 is not imminent.
+- **Acceptance/tests:** a 120-contact fixture: scroll to a late position, open confirmation, press Back - first visible position is preserved; a changed contact list still refreshes content correctly.
+- **Risk:** low. **Effort:** small (~half day). **Depends on:** none standalone; subsumed by T-06 when that lands.
+
+### T-14 (tiny) - PIN lockout deadline clamp (CL-09)
+- **Goal:** a backwards device-clock change cannot extend an active PIN lockout beyond the 10-minute cap.
+- **Scope:** the deadline is stored as `System.currentTimeMillis() + lock` (`PinGateActivity.java:203`) and checked with `until > now` (`PinLock.java:87-89`) with no upper bound on `until - now`. Treat `until - now > MAX_LOCK_MS` as expired/clamped, or store `elapsedRealtime` plus a boot reference.
+- **Non-goals:** changing lockout durations or failure thresholds; forward clock changes ending a lockout early (harmless for a convenience PIN).
+- **Acceptance/tests:** a stored deadline far in the future relative to now unlocks after at most `MAX_LOCK_MS`; ordinary lockout durations still apply; existing PIN tests unchanged.
+- **Risk:** low. **Effort:** tiny (~2 hours). **Depends on:** none.
+
+### T-15 (tiny) - Resolve `CallDecision` test-only dead code (CL-12)
+- **Goal:** no green test suite implies a production contract that production does not use.
+- **Scope:** `CallDecision` (`app/src/main/java/info/fadl/mamalauncher/CallDecision.java`) is referenced only by `CallDecisionTest`; the real decision logic is `DirectCallAction.tap/permissionResult`. Either delete the class with its test, or route `DirectCallAction` through it and test the real path (needed anyway if T-03 lands, since CL-01 shows the two can diverge - `CallDecision` has no notion of cancellation).
+- **Non-goals:** changing call behaviour; both options are behaviour-preserving.
+- **Acceptance/tests:** no production references after deletion, or `DirectCallAction` provably uses the class with the T-03 regression suite green.
+- **Risk:** low. **Effort:** tiny (~2 hours). **Depends on:** none; natural companion to T-03.
+
+### T-16 (small, conditional on D-02) - Favourite semantics implementation (CL-08)
+- **Goal:** the star toggle and the pinned group agree, per D-02.
+- **Scope:** either the contact-level "not pinned" override in `LocalFavorites` with the confirmation screen writing it, or the Arabic per-contact explanation on the confirmation screen, per D-02's choice.
+- **Acceptance/tests:** a system-starred multi-number contact with one number un-starred behaves per D-02; existing `LocalFavoritesTest` cases (single-number un-star, multi-number no-preselect) stay green with the new combination covered.
+- **Risk:** low. **Effort:** small (~half day). **Depends on:** D-02.
 
 ### T-09 (acceptance, when owner chooses a release) - Device/accessibility/audio acceptance
 - **Goal:** synthetic-data device pass before any chosen release: TalkBack/Switch Access/keyboard traversal, touch guard, Arabic TTS audibility, noNotif merged manifest on device, update continuity.
@@ -118,13 +169,15 @@ Empty input stays non-callable in all cases. Do not silently impose a universal 
 5. T-06 before T-07 (both touch `PhoneActivity`).
 6. T-08 after T-02.
 7. T-10 independently, whenever UI lint should join the gate.
-8. T-09 gates any release the owner requests.
+8. T-11, T-12, T-14 and T-15 are independent smalls, any order; T-15 pairs naturally with T-03. T-13 stands alone only if T-06 is not imminent, otherwise it folds into T-06. T-16 waits on D-02.
+9. T-09 gates any release the owner requests.
 
 ## Review guidance
 
-Reviewers: comment on feasibility, missing edge cases, ordering, effort/risk realism, and any conflict with the standing constraints. Do not implement. Open questions: D-01 short-number policy; whether T-04b may use a non-production A10s; Play target-API timing if distribution goals change.
+Reviewers: comment on feasibility, missing edge cases, ordering, effort/risk realism, and any conflict with the standing constraints. Do not implement. Open questions: D-01 short-number policy; D-02 favourite semantics; whether T-04b may use a non-production A10s; the project's licence (the repository has no LICENSE file - both audits flag it as an owner decision); Play target-API timing if distribution goals change.
 
 ## Changelog
 
+- **2026-11-12 (v4):** incorporated the Claude independent audit (PR #20, `docs/audits/2026-11-12-claude-audit.md`), all twelve findings re-verified against main `79774e4` (source inspection plus rerunning `:app:testNoNotifDebugUnitTest` / `:app:testFullDebugUnitTest` / both app lint tasks - the audit's 290-test and lint counts reproduce exactly). Mapping: CL-01/02/03/07/10/11 reproduce Codex GPT-01/02+04/03/06/05/07 and are already covered by T-03/T-07/T-06/T-05/T-08/T-01. Six findings are new and added as: T-11 (CL-04 high-contrast PIN gate + Settings hint), T-12 (CL-05 double-tap stacked confirmations), T-13 (CL-06 grid scroll reset, with a T-06 overlap note), T-14 (CL-09 PIN lockout wall-clock clamp), T-15 (CL-12 `CallDecision` dead code), and D-02 + conditional T-16 (CL-08 system-starred multi-number un-pin semantics). T-08 gained the version-catalog trigger precision and the paid-7.6.8 option; T-02 scope now includes dependency verification/lock files. Claude's two PR #19 self-corrections (UI lint is green on main; a paid 7.6.8 exists) match the v3 text and needed no plan change. No Codex-only findings exist: all seven GPT findings map to CL items. No audit finding conflicts with the standing constraints; CL-07 explicitly defers to D-01.
 - **2026-11-12 (v3):** second review round (Greptile + CodeRabbit on v2), each item re-verified against current source: (1) corrected the T-09 expected-failure direction - the accepted limitation is installing full16 over noNotif20 (20→16 downgrade blocked), while full16 → noNotif20 is the supported upgrade to verify (the backwards wording originated in Claude's v2 suggestion and was propagated here); (2) T-04 and the artifact boundary now say locally test-signed (never release key) measurement builds, since Android requires a signature even on an emulator - the prior "unsigned" wording made T-04 impossible as written; (3) T-02 lint gate corrected on newer evidence: the WrongConstant failure record predates PR #14's documented suppression (`UiBinder.java:185-188`) and candidate20's 0-error UI lint result, so UI lint gets a fresh CI run instead of a pre-declared red, and T-10 is now conditional on a real fresh failure; (4) T-01 scope already covers the stale doc lines this surfaced. Claude's v2 lint blocker was correct against the docs it cited; those docs predate the fix and are themselves T-01 drift targets.
 - **2026-11-12 (v2):** incorporated Codex + Claude PR #19 review comments, each re-verified against main `79774e4`: clarified the build/artifact authorization boundary; fixed the T-06→T-08 cross-reference; resolved the T-02 lint gate (app lint gated, UI lint a known non-gating red with fix task T-10 added); expanded T-03 with callback forwarding, interrupted-feedback definition and grant-observed flag clearing; split T-04 into emulator/device parts with pinned build type and fixture prerequisites; expanded D-01 with `+`/`*`/`#`, MMI and Save alignment; confined T-05 to the dialpad with real a11y state; defined T-06 degraded-history behavior, named deadline requirement and 3-5 day estimate; added T-07 golden/stale-completion/thread-safety requirements; rewrote T-08 with the major-version jump and explicit stop-and-ask; tied T-09 update continuity to release-request signing with the expected-failure full16 check; ordering updated (T-01→T-02, T-03→T-05, T-06→T-07). Greptile's T-06→T-08 reference fix and CodeRabbit's minor comment are covered by the same edits. No reviewer comment conflicted with the standing constraints.
