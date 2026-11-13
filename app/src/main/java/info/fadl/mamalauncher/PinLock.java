@@ -109,7 +109,17 @@ public final class PinLock {
         long armedElapsed = p.getLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, 0);
         if (armedWall > 0 && armedElapsed > 0 && nowElapsed >= armedElapsed) {
             long remMono = (until - armedWall) - (nowElapsed - armedElapsed);
-            return Math.max(0, Math.min(Math.min(remWall, MAX_LOCK_MS), remMono));
+            if (remMono <= 0) {
+                // The monotonic schedule is spent even though the wall deadline
+                // is still ahead (a backward clock change). Clear the record:
+                // after a reboot, elapsedRealtime drops below the anchors and
+                // the unanchored fallback would otherwise re-arm a spent lockout.
+                p.edit().remove(Prefs.PIN_LOCKOUT_UNTIL)
+                        .remove(Prefs.PIN_LOCKOUT_ARMED_WALL)
+                        .remove(Prefs.PIN_LOCKOUT_ARMED_ELAPSED).apply();
+                return 0;
+            }
+            return Math.min(Math.min(remWall, MAX_LOCK_MS), remMono);
         }
         if (remWall > MAX_LOCK_MS) {
             p.edit().putLong(Prefs.PIN_LOCKOUT_UNTIL, nowWall + MAX_LOCK_MS)

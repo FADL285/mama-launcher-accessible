@@ -160,6 +160,10 @@ public class PhoneActivity extends BaseActivity {
         int pos = grid.getFirstVisiblePosition();
         if (ad != null && pos >= 0 && pos < ad.getCount())
             out.putLong(STATE_FIRST_VISIBLE, ((ContactEntry) ad.getItem(pos)).id);
+        else if (savedFirstVisible > 0)
+            // A second recreation before the async load installed an adapter
+            // must not drop the restored anchor.
+            out.putLong(STATE_FIRST_VISIBLE, savedFirstVisible);
         super.onSaveInstanceState(out);
     }
 

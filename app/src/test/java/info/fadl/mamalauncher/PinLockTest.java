@@ -110,6 +110,23 @@ public class PinLockTest {
     }
 
     @Test
+    public void monotonicExpiryClearsTheRecordSoARebootCannotReArmIt() {
+        // Backward clock change: the wall deadline is still ahead when the
+        // monotonic schedule runs out.
+        long armedWall = 1_700_000_000_000L, armedElapsed = 3_600_000, lock = 600_000;
+        arm(armedWall + lock, armedWall, armedElapsed);
+        long nowWall = armedWall - 3_600_000L; // wall rolled back an hour
+        assertEquals(0, PinLock.remainingLockoutMs(prefs, nowWall, armedElapsed + lock));
+        // The record is cleared...
+        assertFalse(prefs.contains(Prefs.PIN_LOCKOUT_UNTIL));
+        assertFalse(prefs.contains(Prefs.PIN_LOCKOUT_ARMED_WALL));
+        assertFalse(prefs.contains(Prefs.PIN_LOCKOUT_ARMED_ELAPSED));
+        // ...so after a reboot (elapsedRealtime below the anchors) the spent
+        // lockout is not re-armed by the unanchored fallback.
+        assertEquals(0, PinLock.remainingLockoutMs(prefs, nowWall + 3_600_000L, 1_000));
+    }
+
+    @Test
     public void noDeadlineOrExpiredDeadlineIsUnlocked() {
         arm(0, 0, 0);
         assertEquals(0, PinLock.remainingLockoutMs(prefs, 1_000_000, 5_000));
