@@ -25,8 +25,9 @@ public class PhoneActivity extends BaseActivity {
     private CallHistoryController history;
     private ContactPhotoLoader photos;
     private GridView grid;
-    private Long returnToContact; // opened from the grid: Back shows this contact again
-    private static final String STATE_RETURN_TO_CONTACT = "phone.return_to_contact";
+    // T-13 (owner decision 2026-11-13, option 1): the user's scroll anchor is the
+    // first-visible contact, never the opened one. Back from confirmation keeps the
+    // same first-visible contact by id, even when a pin/un-pin re-sort moved it.
     private static final String STATE_FIRST_VISIBLE = "phone.first_visible_contact";
     private long savedFirstVisible = -1;
     private View setupView;
@@ -37,8 +38,6 @@ public class PhoneActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (savedInstanceState != null) {
-            long opened = savedInstanceState.getLong(STATE_RETURN_TO_CONTACT, -1);
-            if (opened > 0) returnToContact = opened;
             long top = savedInstanceState.getLong(STATE_FIRST_VISIBLE, -1);
             if (top > 0) savedFirstVisible = top;
         }
@@ -130,7 +129,6 @@ public class PhoneActivity extends BaseActivity {
                         View tile = super.getView(position, recycled, parent);
                         ContactEntry contact = sorted.get(position);
                         guard(tile, () -> { if (beginNavigation()) {
-                                returnToContact = contact.id;
                                 startActivity(ConfirmCallActivity.intentFor(
                                 PhoneActivity.this, contact).putExtra("system_favorite",systemStars.contains(contact.id)));
                         } });
@@ -138,26 +136,26 @@ public class PhoneActivity extends BaseActivity {
                     }
                 });
                 emptyView.setVisibility(sorted.isEmpty() ? View.VISIBLE : View.GONE);
-                // T-13: keep the user's place. Back from confirmation shows the opened
-                // contact at its (possibly re-sorted) position; otherwise the previous
-                // first-visible contact; otherwise the top.
+                // T-13: keep the user's place. Back from confirmation restores the
+                // same first-visible contact at its (possibly re-sorted) position;
+                // otherwise the top. The opened contact is never scrolled to.
                 final Long fallbackVisible = firstVisible != null ? firstVisible
                         : (savedFirstVisible > 0 ? savedFirstVisible : null);
-                // returnToContact is consumed only when the restore is applied,
+                // The saved anchor is consumed only when the restore is applied,
                 // so a second refresh racing this one cannot drop the place.
                 grid.post(() -> { if (generation != refreshGeneration) return; // a newer refresh owns the restore
                     if (grid.getAdapter() != null && !sorted.isEmpty()) {
-                    grid.setSelection(restorePosition(sorted, returnToContact, fallbackVisible));
-                    returnToContact = null; savedFirstVisible = -1;
+                    int place = restorePosition(sorted, fallbackVisible);
+                    if (place > 0) grid.setSelection(place);
+                    savedFirstVisible = -1;
                 } });
             });
         }).start();
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
-        // T-13: the opened and first-visible contacts survive recreation while
-        // confirmation is open, so Back still lands on the user's place.
-        if (returnToContact != null) out.putLong(STATE_RETURN_TO_CONTACT, returnToContact);
+        // T-13: the first-visible contact survives recreation while confirmation
+        // is open, so Back still lands on the user's place.
         android.widget.ListAdapter ad = grid.getAdapter();
         int pos = grid.getFirstVisiblePosition();
         if (ad != null && pos >= 0 && pos < ad.getCount())
@@ -211,8 +209,7 @@ public class PhoneActivity extends BaseActivity {
         refresh();
     }
 
-    static int restorePosition(java.util.List<ContactEntry> sorted, Long opened, Long firstVisible) {
-        if (opened != null) { int i = indexOfContact(sorted, opened); if (i >= 0) return i; }
+    static int restorePosition(java.util.List<ContactEntry> sorted, Long firstVisible) {
         if (firstVisible != null) { int i = indexOfContact(sorted, firstVisible); if (i >= 0) return i; }
         return 0;
     }
