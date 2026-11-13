@@ -88,6 +88,19 @@ public final class PinLock {
         return lockoutUntilMs > nowMs;
     }
 
+    /** Effective lockout deadline. A stored deadline more than MAX_LOCK_MS in
+     *  the future with NO usable arming record is corrupt legacy state (the
+     *  app itself only ever writes deadlines now+lock, lock <= MAX). It is
+     *  re-armed to a bounded now+MAX countdown at first read - the caller
+     *  persists the returned value with fresh arming anchors - instead of
+     *  clamping each read and leaving the gate locked until the far date. */
+    public static long boundedDeadlineMs(long until, long armedWall, long armedElapsed, long nowWall) {
+        if (until <= 0) return 0;
+        boolean anchored = armedWall > 0 && armedElapsed > 0;
+        if (!anchored && until - nowWall > MAX_LOCK_MS) return nowWall + MAX_LOCK_MS;
+        return until;
+    }
+
     /** Milliseconds left on a lockout. The wall-clock deadline is bounded by
      *  the monotonic arming record, so a backward clock change cannot stretch
      *  a lockout past its schedule, and anything beyond MAX_LOCK_MS is treated

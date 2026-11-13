@@ -215,7 +215,20 @@ public class PinGateActivity extends ProtectedModeActivity {
     }
 
     private boolean isLockedOut() {
+        long nowWall = System.currentTimeMillis();
+        long nowElapsed = android.os.SystemClock.elapsedRealtime();
         long until = Prefs.get(this).getLong(Prefs.PIN_LOCKOUT_UNTIL, 0);
+        long bounded = PinLock.boundedDeadlineMs(until,
+                Prefs.get(this).getLong(Prefs.PIN_LOCKOUT_ARMED_WALL, 0),
+                Prefs.get(this).getLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, 0), nowWall);
+        if (bounded != until) {
+            // Corrupt unanchored far-future deadline: re-arm a bounded countdown.
+            Prefs.get(this).edit()
+                    .putLong(Prefs.PIN_LOCKOUT_UNTIL, bounded)
+                    .putLong(Prefs.PIN_LOCKOUT_ARMED_WALL, nowWall)
+                    .putLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, nowElapsed).apply();
+            until = bounded;
+        }
         boolean locked = PinLock.remainingLockoutMs(until,
                 Prefs.get(this).getLong(Prefs.PIN_LOCKOUT_ARMED_WALL, 0),
                 Prefs.get(this).getLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, 0),

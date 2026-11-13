@@ -98,4 +98,21 @@ public class PinLockTest {
             assertFalse(PinLock.verify("salt", "2468", "unknown$"+digest));
         }
     }
+ @Test public void unanchoredFarFutureDeadlineIsReArmedToABoundedCountdown(){
+  long now=1_000_000L;
+  long far=now+24L*60*60*1000; // one day ahead, no arming record (legacy/reboot)
+  assertEquals(now+PinLock.MAX_LOCK_MS,PinLock.boundedDeadlineMs(far,0,0,now));
+ }
+ @Test public void anchoredFarDeadlineIsLeftToTheMonotonicRule(){
+  long now=1_000_000L;
+  long far=now+24L*60*60*1000;
+  assertEquals(far,PinLock.boundedDeadlineMs(far,now-1000,500,now));
+ }
+ @Test public void ordinaryDeadlineIsUntouched(){
+  long now=1_000_000L;
+  long soon=now+60_000;
+  assertEquals(soon,PinLock.boundedDeadlineMs(soon,0,0,now));
+  assertEquals(0,PinLock.boundedDeadlineMs(0,0,0,now));
+  assertEquals(now-1000,PinLock.boundedDeadlineMs(now-1000,0,0,now)); // past deadlines pass through (remainingLockoutMs expires them)
+ }
 }
