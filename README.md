@@ -10,7 +10,7 @@ One canonical version table - the same versions `app/build.gradle` declares:
 
 | State | Flavor | versionCode | versionName | What it is |
 | --- | --- | --- | --- | --- |
-| Stable handset baseline | `full` | 16 | `0.14-pilot-candidate` | The installed stable handoff build. A dated project handoff decision, not a certification of every Android device or accessibility service, and not "latest source". |
+| Stable handset baseline (2026-11-11) | `full` | 16 | `0.14-pilot-candidate` | The installed stable handoff build. A dated project handoff decision, not a certification of every Android device or accessibility service, and not "latest source". |
 | Listener-free candidate | `noNotif` | 20 | `0.15-no-notif-footer-candidate` | Drops the notification listener entirely; history and the rest stay. See [candidate validation](docs/no-notification-candidate.md) and [feature validation and limits](docs/notification-history-validation.md). |
 | Current source | both flavors | 16 / 20 | as above | The `main` branch of this repository. Check the commit history for the exact head; do not treat any dated audit or validation count below as current. |
 
