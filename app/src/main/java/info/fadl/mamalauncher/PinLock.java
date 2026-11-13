@@ -88,34 +88,35 @@ public final class PinLock {
         return lockoutUntilMs > nowMs;
     }
 
-    /** Effective lockout deadline. A stored deadline more than MAX_LOCK_MS in
-     *  the future with NO usable arming record is corrupt legacy state (the
-     *  app itself only ever writes deadlines now+lock, lock <= MAX). It is
-     *  re-armed to a bounded now+MAX countdown at first read - the caller
-     *  persists the returned value with fresh arming anchors - instead of
-     *  clamping each read and leaving the gate locked until the far date. */
-    public static long boundedDeadlineMs(long until, long armedWall, long armedElapsed, long nowWall) {
-        if (until <= 0) return 0;
-        boolean anchored = armedWall > 0 && armedElapsed > 0;
-        if (!anchored && until - nowWall > MAX_LOCK_MS) return nowWall + MAX_LOCK_MS;
-        return until;
-    }
-
-    /** Milliseconds left on a lockout. The wall-clock deadline is bounded by
-     *  the monotonic arming record, so a backward clock change cannot stretch
-     *  a lockout past its schedule, and anything beyond MAX_LOCK_MS is treated
-     *  as corrupt legacy state. Without arming data (legacy installs, or after
-     *  a reboot resets elapsedRealtime) the wall deadline alone applies. */
-    public static long remainingLockoutMs(long until, long armedWall, long armedElapsed,
+    /** Milliseconds left on the stored lockout, repairing untrustworthy state.
+     *  The wall-clock deadline is bounded by the monotonic arming record, so a
+     *  backward clock change cannot stretch a lockout past its schedule.
+     *  Without a usable arming record (a legacy install upgraded mid-lockout,
+     *  or a reboot that reset elapsedRealtime) a deadline beyond the cap is
+     *  corrupt: it is re-armed ONCE to now+MAX_LOCK_MS and persisted with fresh
+     *  anchors, so the lockout counts down instead of clamping every read to
+     *  the cap and waiting out the far-future wall time. A stored deadline
+     *  within the cap needs no repair and simply counts down on the wall
+     *  clock. Persistence is best-effort: a failed write still returns the
+     *  bounded value, and the next read re-arms. */
+    public static long remainingLockoutMs(android.content.SharedPreferences p,
                                           long nowWall, long nowElapsed) {
+        long until = p.getLong(Prefs.PIN_LOCKOUT_UNTIL, 0);
         if (until <= 0) return 0;
         long remWall = until - nowWall;
         if (remWall <= 0) return 0;
-        if (remWall > MAX_LOCK_MS) remWall = MAX_LOCK_MS;
-        long remMono = remWall;
+        long armedWall = p.getLong(Prefs.PIN_LOCKOUT_ARMED_WALL, 0);
+        long armedElapsed = p.getLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, 0);
         if (armedWall > 0 && armedElapsed > 0 && nowElapsed >= armedElapsed) {
-            remMono = (until - armedWall) - (nowElapsed - armedElapsed);
+            long remMono = (until - armedWall) - (nowElapsed - armedElapsed);
+            return Math.max(0, Math.min(Math.min(remWall, MAX_LOCK_MS), remMono));
         }
-        return Math.max(0, Math.min(remWall, remMono));
+        if (remWall > MAX_LOCK_MS) {
+            p.edit().putLong(Prefs.PIN_LOCKOUT_UNTIL, nowWall + MAX_LOCK_MS)
+                    .putLong(Prefs.PIN_LOCKOUT_ARMED_WALL, nowWall)
+                    .putLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, nowElapsed).apply();
+            return MAX_LOCK_MS;
+        }
+        return remWall;
     }
 }
