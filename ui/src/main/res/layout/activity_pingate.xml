@@ -11,7 +11,7 @@
             android:orientation="horizontal" android:gravity="center_vertical" android:padding="8dp">
             <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_back_dark"/>
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="@string/back" android:textSize="20sp" android:textColor="@color/back_blue"/>
+                android:text="@string/back" android:textSize="20sp" android:textColor="?attr/surfaceAction"/>
         </LinearLayout>
     </LinearLayout>
 
@@ -19,10 +19,10 @@
         android:layout_marginTop="6dp" android:src="@drawable/ic_settings"/>
     <TextView android:id="@+id/pin_title"
         android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
-        android:gravity="center" android:text="@string/pingate_title" android:textSize="26sp" android:textStyle="bold" android:textColor="@color/text_main"/>
+        android:gravity="center" android:text="@string/pingate_title" android:textSize="26sp" android:textStyle="bold" android:textColor="?attr/surfaceText"/>
     <TextView android:id="@+id/pin_subtitle"
         android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:gravity="center" android:text="@string/pingate_enter" android:textSize="18sp" android:textColor="#5A5348"/>
+        android:gravity="center" android:text="@string/pingate_enter" android:textSize="18sp" android:textColor="?attr/surfaceSecondaryText"/>
 
     <LinearLayout android:id="@+id/pin_dots"
         android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center_horizontal"
@@ -36,7 +36,7 @@
     <TextView android:id="@+id/pin_error"
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:gravity="center" android:textSize="17sp" android:textStyle="bold"
-        android:textColor="@color/danger_text" android:minHeight="26dp"/>
+        android:textColor="?attr/surfaceError" android:minHeight="26dp"/>
 
     <LinearLayout android:id="@+id/pin_pad" android:layoutDirection="ltr"
         android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
@@ -65,6 +65,6 @@
     <TextView android:id="@+id/btn_device_lock"
         android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
         android:gravity="center" android:padding="10dp"
-        android:text="@string/or_use_device_lock" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/back_blue"/>
+        android:text="@string/or_use_device_lock" android:textSize="18sp" android:textStyle="bold" android:textColor="?attr/surfaceAction"/>
 </LinearLayout>
 </ScrollView>
