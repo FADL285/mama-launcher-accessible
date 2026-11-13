@@ -82,7 +82,7 @@ public class RobustnessFlowTest {
  @Test public void noDialerProducesFeedbackInsteadOfCrash(){
   DialpadActivity a=Robolectric.buildActivity(NoDialerActivity.class).setup().get();
   org.robolectric.Shadows.shadowOf(a.getApplication()).grantPermissions(android.Manifest.permission.CALL_PHONE);
-  key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"2").performClick();
+  key(a.findViewById(R.id.dial_grid),"4").performClick();key(a.findViewById(R.id.dial_grid),"5").performClick();key(a.findViewById(R.id.dial_grid),"6").performClick();
   a.findViewById(R.id.btn_call).performClick();
   assertEquals(a.getString(R.string.handoff_unavailable),org.robolectric.shadows.ShadowToast.getTextOfLatestToast());
  }
