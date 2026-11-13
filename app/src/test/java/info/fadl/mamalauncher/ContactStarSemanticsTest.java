@@ -189,23 +189,29 @@ public class ContactStarSemanticsTest {
  }
  /** T-16 recreation row: old activity destroyed, exact target + highlight
   *  restored, and no call until a fresh deliberate press. */
- @Test public void recreationAfterDestroyKeepsExactTargetHighlightAndNeedsFreshPress(){
+ @Test public void recreationAfterDestroyKeepsSecondChoiceTargetHighlightAndNeedsFreshPress(){
+  recreationAfterDestroyRow("01000000002");
+ }
+ @Test public void recreationAfterDestroyKeepsThirdChoiceTargetHighlightAndNeedsFreshPress(){
+  recreationAfterDestroyRow("01000000003");
+ }
+ private void recreationAfterDestroyRow(String target){
   ContactEntry c=new ContactEntry(7,"ماما",Arrays.asList(new ContactEntry.PhoneNumber("01000000001","A"),new ContactEntry.PhoneNumber("01000000002","B"),new ContactEntry.PhoneNumber("01000000003","C")),null,false);
   org.robolectric.android.controller.ActivityController<ConfirmCallActivity> ctl=Robolectric.buildActivity(ConfirmCallActivity.class,ConfirmCallActivity.intentFor(app,c)).setup();
   ConfirmCallActivity a=ctl.get();
-  select(a,"01000000002");a.findViewById(R.id.btn_favorite).performClick();
+  select(a,target);a.findViewById(R.id.btn_favorite).performClick();
   android.os.Bundle state=new android.os.Bundle();ctl.saveInstanceState(state);ctl.pause().stop().destroy();
   Shadows.shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.CALL_PHONE);
   ConfirmCallActivity b=Robolectric.buildActivity(ConfirmCallActivity.class,ConfirmCallActivity.intentFor(app,c)).create(state).start().resume().visible().get();
-  assertEquals("01000000002",((TextView)b.findViewById(R.id.selected_call_number)).getText().toString());
+  assertEquals(target,((TextView)b.findViewById(R.id.selected_call_number)).getText().toString());
   assertEquals("★",starText(b));
-  View row=key(b.findViewById(R.id.numbers_container),"01000000002");
+  View row=key(b.findViewById(R.id.numbers_container),target);
   assertEquals(R.drawable.btn_number_selected,Shadows.shadowOf(row.getBackground()).getCreatedFromResId());
   assertNull(Shadows.shadowOf(b).getNextStartedActivity()); // no call on restore
   b.findViewById(R.id.btn_call).performClick();
   Intent call=Shadows.shadowOf(b).getNextStartedActivity();
   assertEquals(Intent.ACTION_CALL,call.getAction());
-  assertEquals("tel:01000000002",call.getDataString()); // the exact restored target
+  assertEquals("tel:"+target,call.getDataString()); // the exact restored target
  }
  /** T-16 entry-path row: a real dialpad match row carries one number; the star
   *  still pins the whole two-number contact on the grid. */
