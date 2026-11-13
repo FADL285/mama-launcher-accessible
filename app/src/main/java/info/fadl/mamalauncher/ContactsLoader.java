@@ -111,9 +111,15 @@ public final class ContactsLoader {
         // Service strings (USSD/short codes with * or #) are never phone-number
         // equivalents: normalizeNumber strips those characters, so without this
         // guard "123" (ambulance) and "*123#" would merge and one dial target
-        // would vanish. Each service string stays its own class.
-        if (a.indexOf('*') >= 0 || a.indexOf('#') >= 0
-                || b.indexOf('*') >= 0 || b.indexOf('#') >= 0) return false;
+        // would vanish. Each service string stays its own class. Whitespace is
+        // storage formatting, not part of the string: "*123 #" and "*123#" are
+        // the same class (dial pads strip spaces anyway).
+        boolean aService = a.indexOf('*') >= 0 || a.indexOf('#') >= 0;
+        boolean bService = b.indexOf('*') >= 0 || b.indexOf('#') >= 0;
+        if (aService || bService) {
+            if (!aService || !bService) return false;
+            return a.replaceAll("\\s+", "").equals(b.replaceAll("\\s+", ""));
+        }
         if (normalizeNumber(a).equals(normalizeNumber(b))) return true;
         // Region-free: the same digit sequence in any script (ASCII or
         // Arabic-Indic) is one number - DialContactMatcher.digits equates them.

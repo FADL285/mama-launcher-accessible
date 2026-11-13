@@ -138,6 +138,14 @@ public class ContactsDedupFormsTest {
    row(1,"ماما","*123#","خدمة"),row(1,"ماما","*123#","خدمة")),EG);
   assertEquals(1,only(out).numbers.size());
  }
+ @Test public void serviceStringsDifferingOnlyBySpacesCollapse(){
+  // Whitespace is storage formatting, not part of the service string: main
+  // merged these (digits-equal) and a space is not a different dial target.
+  List<ContactEntry> out=ContactsLoader.group(Arrays.asList(
+   row(1,"ماما","*123#","خدمة"),row(1,"ماما","*123 #","خدمة")),EG);
+  assertEquals(1,only(out).numbers.size());
+  assertEquals("*123 #",only(out).numbers.get(0).number); // deterministic survivor
+ }
  @Test public void distinctServiceStringsStaySeparate(){
   List<ContactEntry> out=ContactsLoader.group(Arrays.asList(
    row(1,"ماما","*#06#","خدمة"),row(1,"ماما","*#07#","خدمة")),EG);
