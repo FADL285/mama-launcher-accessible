@@ -6,11 +6,16 @@ An Arabic-first Android home screen for older adults and people who find reading
 
 ## Current status
 
-**0.14 is the stable handset handoff baseline.** Its internal version string is still `0.14-pilot-candidate` (version code `16`). This is a project handoff decision, not a certification of every Android device or accessibility service. This feature branch adds optional notification dots and read-only history for review, not a new installed release. Its version is deliberately unchanged. See [feature validation and limits](docs/notification-history-validation.md).
+One canonical version table - the same versions `app/build.gradle` declares:
 
-- Current source: merged [PR #10](https://github.com/FADL285/mama-launcher-accessible/pull/10), commit `46c966d16575edbfb3aa86cc99b559a4b6832145`.
-- Fresh baseline checks on 2026-11-10: **206 app tests + 88 UI tests**, zero failures; Android Lint **0 errors / 11 warnings**; Semgrep **0 findings** in 36 production Java files with 88 applicable rules.
-- Those checks are JVM/static/layout checks. They do not measure handset frame times, memory, carrier calling, audible pronunciation, TalkBack or Switch Access.
+| State | Flavor | versionCode | versionName | What it is |
+| --- | --- | --- | --- | --- |
+| Stable handset baseline | `full` | 16 | `0.14-pilot-candidate` | The installed stable handoff build. A dated project handoff decision, not a certification of every Android device or accessibility service, and not "latest source". |
+| Listener-free candidate | `noNotif` | 20 | `0.15-no-notif-footer-candidate` | Drops the notification listener entirely; history and the rest stay. See [candidate validation](docs/no-notification-candidate.md) and [feature validation and limits](docs/notification-history-validation.md). |
+| Current source | both flavors | 16 / 20 | as above | The `main` branch of this repository. Check the commit history for the exact head; do not treat any dated audit or validation count below as current. |
+
+- **0.14 (full16) is the stable handset handoff baseline.** `full` can never update an installed `noNotif20` build (16 < 20): that is an accepted limitation, and the supported upgrade direction is full16 -> noNotif20.
+- Test/lint counts live in the dated validation docs ([candidate validation](docs/no-notification-candidate.md), [feature validation and limits](docs/notification-history-validation.md)) and the dated audits under [docs/audits](docs/audits/), each tied to its own date and commit. They are JVM/static/layout checks: they do not measure handset frame times, memory, carrier calling, audible pronunciation, TalkBack or Switch Access.
 - Keep the stable installation while considering improvements. See the [ranked audit and proposed next steps](docs/audit-014.md). Nothing there is an approved code change.
 
 ## What it does
@@ -29,7 +34,7 @@ In 0.14, Home centers the visible icon/name group inside equal-height cards. Lon
 
 ## Privacy and limits
 
-- The manifest requests `READ_CONTACTS`, `CALL_PHONE` and optional `READ_CALL_LOG`. Notification dots use separately enabled special notification access. No internet permission, analytics SDK, accounts, SMS or call-log writes. Broad Android notification access is explained before setup; the feature uses existence metadata, not message text.
+- The manifest requests `READ_CONTACTS`, `CALL_PHONE` and optional `READ_CALL_LOG`. In the `full` flavor only, notification dots use separately enabled special notification access; `noNotif` has no notification listener at all. No internet permission, analytics SDK, accounts, SMS or call-log writes. Broad Android notification access is explained before setup; the feature uses existence metadata, not message text.
 - Speech chooses Arabic voices the installed TTS engine reports as offline. The engine is a separate app; this is not an independent guarantee about its implementation. No Egyptian speech model is bundled.
 - Favorite overrides and setup preferences are app-local. System-starred contacts are read from the contacts provider; clearing launcher data removes only the overrides, so system favorites remain and can reappear. Backup is disabled in the manifest and backup rules exclude app data. Uninstalling or clearing storage loses that configuration.
 - The settings PIN discourages accidental or casual changes. It is not device security, kiosk enforcement or protection against a rooted/compromised device.

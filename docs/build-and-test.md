@@ -1,6 +1,6 @@
 # Build, test and release continuity
 
-Toolchain baseline:0.14/code16. The app now has `full` and `noNotif` flavors. This guide documents the existing build; it does not upgrade tools or authorize a new release. The delivered noNotif19 candidate is documented in [candidate validation](no-notification-candidate.md).
+Toolchain baseline: 0.14/code16. The app has `full` (versionCode 16, `0.14-pilot-candidate`) and `noNotif` (versionCode 20, `0.15-no-notif-footer-candidate`) flavors, matching `app/build.gradle`; the README's Current status table is the canonical version reference. This guide documents the existing build; it does not upgrade tools or authorize a new release. The delivered noNotif20 candidate is documented in [candidate validation](no-notification-candidate.md).
 
 ## Toolchain
 
