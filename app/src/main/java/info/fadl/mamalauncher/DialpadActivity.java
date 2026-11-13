@@ -106,7 +106,7 @@ public class DialpadActivity extends BaseActivity {
             if(shown++==1)break;
             boolean saved=exact.stream().anyMatch(e->e.id==c.id);
             android.widget.Button row=info.fadl.mamalauncher.ui.DialMatchUi.preview(this,c,saved);
-            guard(row,()->startActivity(ConfirmCallActivity.intentFor(this,c)));box.addView(row);
+            guard(row,()->{if(beginNavigation())startActivity(ConfirmCallActivity.intentFor(this,c));});box.addView(row);
         }
         if(found.size()>1) {
             android.widget.Button more=new android.widget.Button(this);more.setText(getString(R.string.dial_more,found.size()));more.setAllCaps(false);more.setTextSize(18);
@@ -116,7 +116,7 @@ public class DialpadActivity extends BaseActivity {
                     public Object getItem(int i){return found.get(i);}
                     public long getItemId(int i){return found.get(i).id;}
                     public android.view.View getView(int i,android.view.View recycled,android.view.ViewGroup parent){return info.fadl.mamalauncher.ui.DialMatchUi.chooserItem(parent.getContext(),found.get(i));}
-                },(d,i)->startActivity(ConfirmCallActivity.intentFor(this,found.get(i))))
+                },(d,i)->{if(beginNavigation())startActivity(ConfirmCallActivity.intentFor(this,found.get(i)));})
                 .setNegativeButton(android.R.string.cancel,null).show());box.addView(more);
         }
     }

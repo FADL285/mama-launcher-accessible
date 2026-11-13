@@ -56,8 +56,16 @@ public abstract class BaseActivity extends Activity {
             registerReceiver(screenOffReceiver, new android.content.IntentFilter(Intent.ACTION_SCREEN_OFF));
         }
     }
+    private boolean navPending;
+    /** True for the first navigation tap; repeats are ignored until onResume clears the latch. */
+    protected boolean beginNavigation() {
+        if (navPending) return false;
+        navPending = true;
+        return true;
+    }
     @Override protected void onResume() {
         super.onResume();
+        navPending = false;
         foreground = true;
         completeHomeReturnIfUnlocked();
     }

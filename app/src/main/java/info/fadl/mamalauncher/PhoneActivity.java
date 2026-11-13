@@ -111,8 +111,8 @@ public class PhoneActivity extends BaseActivity {
                     @Override public View getView(int position, View recycled, android.view.ViewGroup parent) {
                         View tile = super.getView(position, recycled, parent);
                         ContactEntry contact = sorted.get(position);
-                        guard(tile, () -> startActivity(ConfirmCallActivity.intentFor(
-                                PhoneActivity.this, contact).putExtra("system_favorite",systemStars.contains(contact.id))));
+                        guard(tile, () -> { if (beginNavigation()) startActivity(ConfirmCallActivity.intentFor(
+                                PhoneActivity.this, contact).putExtra("system_favorite",systemStars.contains(contact.id))); });
                         return tile;
                     }
                 });
