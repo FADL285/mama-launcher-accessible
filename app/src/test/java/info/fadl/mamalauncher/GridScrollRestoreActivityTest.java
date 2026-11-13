@@ -51,11 +51,34 @@ public class GridScrollRestoreActivityTest {
   settle();
   assertEquals(80,indexOf(grid,target.id)); // data unchanged, order unchanged
   assertEquals("Back must restore the opened contact, not the top",80,grid.getSelectedItemPosition());
-  LocalFavorites.set(a,target.id,true); // pin it: re-sort moves it into the pinned group
+  // While "in confirmation" (target still the opened contact), pin ANOTHER
+  // contact: the re-sort moves that contact up and shifts the target down.
+  ContactEntry other=(ContactEntry)grid.getAdapter().getItem(90); // below the target: the re-sort shifts it
+  LocalFavorites.set(a,other.id,true);
   ctl.pause().resume();
   settle();
-  int moved=indexOf(grid,target.id);
-  assertTrue("pinning must re-sort the contact upward, got "+moved,moved>=0 && moved<80);
-  assertEquals("Back must follow the opened contact to its new position",moved,grid.getSelectedItemPosition());
+  assertEquals("the newly pinned contact leads the grid",0,indexOf(grid,other.id));
+  int shifted=indexOf(grid,target.id);
+  assertTrue("the opened contact shifted down, got "+shifted,shifted>80);
+  assertEquals("Back must follow the OPENED contact across the re-sort, not the fallback",
+   shifted,grid.getSelectedItemPosition());
+ }
+ @Test public void recreationKeepsTheOpenedContact()throws Exception{
+  ActivityController<PhoneActivity> ctl=Robolectric.buildActivity(PhoneActivity.class).setup();
+  PhoneActivity a=ctl.get();
+  settle();
+  GridView grid=a.findViewById(R.id.contacts_grid);
+  ContactEntry target=(ContactEntry)grid.getAdapter().getItem(80);
+  grid.getAdapter().getView(80,null,grid).performClick(); // opened
+  android.os.Bundle state=new android.os.Bundle();
+  ctl.saveInstanceState(state).pause().stop().destroy(); // Android kills it
+  PhoneActivity b=Robolectric.buildActivity(PhoneActivity.class)
+   .create(state).start().postCreate(state).restoreInstanceState(state).resume().visible().get();
+  settle();
+  GridView grid2=b.findViewById(R.id.contacts_grid);
+  assertEquals(COUNT,grid2.getAdapter().getCount());
+  assertEquals("recreation must keep the opened contact's place",
+   80,grid2.getSelectedItemPosition());
+  assertEquals(80,indexOf(grid2,target.id));
  }
 }

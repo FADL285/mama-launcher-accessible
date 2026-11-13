@@ -26,6 +26,9 @@ public class PhoneActivity extends BaseActivity {
     private ContactPhotoLoader photos;
     private GridView grid;
     private Long returnToContact; // opened from the grid: Back shows this contact again
+    private static final String STATE_RETURN_TO_CONTACT = "phone.return_to_contact";
+    private static final String STATE_FIRST_VISIBLE = "phone.first_visible_contact";
+    private long savedFirstVisible = -1;
     private View setupView;
     private View emptyView;
     private int refreshGeneration;
@@ -33,6 +36,12 @@ public class PhoneActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (savedInstanceState != null) {
+            long opened = savedInstanceState.getLong(STATE_RETURN_TO_CONTACT, -1);
+            if (opened > 0) returnToContact = opened;
+            long top = savedInstanceState.getLong(STATE_FIRST_VISIBLE, -1);
+            if (top > 0) savedFirstVisible = top;
+        }
         setContentView(R.layout.activity_phone);
         info.fadl.mamalauncher.ui.PageHeader.title(findViewById(android.R.id.content),R.string.tile_phone);
         guard(findViewById(R.id.btn_retry_contacts),this::refresh);
@@ -132,10 +141,28 @@ public class PhoneActivity extends BaseActivity {
                 // T-13: keep the user's place. Back from confirmation shows the opened
                 // contact at its (possibly re-sorted) position; otherwise the previous
                 // first-visible contact; otherwise the top.
-                final Long opened = returnToContact; returnToContact = null;
-                grid.post(() -> { if (grid.getAdapter() != null && !sorted.isEmpty()) grid.setSelection(restorePosition(sorted, opened, firstVisible)); });
+                final Long fallbackVisible = firstVisible != null ? firstVisible
+                        : (savedFirstVisible > 0 ? savedFirstVisible : null);
+                // returnToContact is consumed only when the restore is applied,
+                // so a second refresh racing this one cannot drop the place.
+                grid.post(() -> { if (generation != refreshGeneration) return; // a newer refresh owns the restore
+                    if (grid.getAdapter() != null && !sorted.isEmpty()) {
+                    grid.setSelection(restorePosition(sorted, returnToContact, fallbackVisible));
+                    returnToContact = null; savedFirstVisible = -1;
+                } });
             });
         }).start();
+    }
+
+    @Override protected void onSaveInstanceState(Bundle out) {
+        // T-13: the opened and first-visible contacts survive recreation while
+        // confirmation is open, so Back still lands on the user's place.
+        if (returnToContact != null) out.putLong(STATE_RETURN_TO_CONTACT, returnToContact);
+        android.widget.ListAdapter ad = grid.getAdapter();
+        int pos = grid.getFirstVisiblePosition();
+        if (ad != null && pos >= 0 && pos < ad.getCount())
+            out.putLong(STATE_FIRST_VISIBLE, ((ContactEntry) ad.getItem(pos)).id);
+        super.onSaveInstanceState(out);
     }
 
     void selectHistory(boolean selected) {
