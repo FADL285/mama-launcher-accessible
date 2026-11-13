@@ -4,7 +4,7 @@
   <ScrollView android:id="@+id/settings_scroll" android:paddingLeft="8dp" android:paddingRight="8dp" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingLeft="10dp" android:paddingRight="10dp">
       <LinearLayout android:id="@+id/settings_menu" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_menu_hint" android:textSize="16sp" android:padding="4dp" android:textColor="@color/text_main" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_menu_hint" android:textSize="16sp" android:padding="4dp" android:textColor="?attr/surfaceText" />
         <LinearLayout android:id="@+id/open_section_apps" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="64dp" android:orientation="vertical" android:padding="10dp" android:layout_marginTop="6dp" android:background="@drawable/tile_bg" android:clickable="true" android:focusable="true">
           <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_nav_apps_title" android:textSize="20sp" android:textColor="@color/text_main" android:textStyle="bold" />
           <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_nav_apps_hint" android:textSize="15sp" android:textColor="@color/text_main" />

@@ -14,4 +14,5 @@
     <color name="yt_red">#C4302B</color>
     <color name="contrast_bg">#000000</color>
     <color name="contrast_text">#FFD600</color>
+    <color name="contrast_error">#FF5252</color>
 </resources>

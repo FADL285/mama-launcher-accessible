@@ -11,7 +11,7 @@ This is a small, framework-based, multi-activity Android application, not an MVV
 | Daily navigation | `MainActivity`, `AppsPageActivity`, `BaseActivity` | Chosen apps, clock, touch guard, screen-lock return |
 | Contacts | `PhoneActivity`, `ContactsLoader`, `ContactSorter`, `LocalFavorites` | Permission, provider reads, grouping, sorting and failure/retry |
 | Dialpad | `DialpadActivity`, `DialContactMatcher`, `DialIntents` | Typed number, background matching, saved-number check and system handoff |
-| Call boundary | `ConfirmCallActivity`, `CallDecision`, `DirectCallAction` | Visible target/number choice, deliberate action, permission and call intent |
+| Call boundary | `ConfirmCallActivity`, `DirectCallAction` | Visible target/number choice, deliberate action, permission and call intent |
 | Setup protection | `PinGateActivity`, `ProtectedModeActivity`, `SessionGate`, `PinLock` | PIN/device credential, foreground-only session and lockout |
 | Preferences | `Prefs`, `AppSelection`, `LocalFavorites`, `SpeechEngineChoice` | Local configuration, migration/order and user choices |
 | Speech | `NameSpeaker`, `ArabicVoicePolicy`, `ArabicSpeechState` | Engine initialization, offline Arabic selection, state/retry and shutdown |

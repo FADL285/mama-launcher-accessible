@@ -95,9 +95,9 @@
     <string name="tts_preparing">صوت العربي لسه مش جاهز. المحرك ممكن ينزله تلقائيًا؛ جرب الصوت بعد اكتمال التحميل.</string>
     <string name="tts_unsupported">المحرك ده مش بيدعم العربي. اختار محرك تاني.</string>
     <string name="tts_test_started">تم طلب النطق - في انتظار نتيجة المحرك</string>
-    <string name="favorite_add">إضافة الرقم ده للمفضلة داخل التطبيق</string>
-    <string name="favorite_remove">إزالة الرقم ده من مفضلة التطبيق</string>
-    <string name="favorite_choose_number">اختار رقم الأول عشان تضيفه للمفضلة</string>
+    <string name="favorite_add">إضافة الاسم ده للمفضلة داخل التطبيق</string>
+    <string name="favorite_remove">إزالة الاسم ده من مفضلة التطبيق</string>
+    <string name="favorite_choose_number">اختار رقم الأول عشان تضيف الاسم للمفضلة</string>
     <string name="zero_plus_hint">صفر، اضغط مطولا لإضافة كود الدولة بعلامة زائد</string>
     <string name="dial_view_saved">عرض الاسم</string>
     <string name="dial_saved">متسجّل</string>

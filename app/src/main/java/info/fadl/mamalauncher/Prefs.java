@@ -15,6 +15,8 @@ public final class Prefs {
     public static final String PIN_HASH = "pin_hash";
     public static final String PIN_FAILURES = "pin_failures";
     public static final String PIN_LOCKOUT_UNTIL = "pin_lockout_until";
+    public static final String PIN_LOCKOUT_ARMED_WALL = "pin_lockout_armed_wall";
+    public static final String PIN_LOCKOUT_ARMED_ELAPSED = "pin_lockout_armed_elapsed";
     public static final String USE_DEVICE_LOCK = "use_device_lock";
     public static final String HOME_AFTER_LOCK = "home_after_lock";
 

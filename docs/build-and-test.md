@@ -1,6 +1,6 @@
 # Build, test and release continuity
 
-Toolchain baseline:0.14/code16. The app now has `full` and `noNotif` flavors. This guide documents the existing build; it does not upgrade tools or authorize a new release. The delivered noNotif19 candidate is documented in [candidate validation](no-notification-candidate.md).
+Toolchain baseline: 0.14/code16. The app has `full` (versionCode 16, `0.14-pilot-candidate`) and `noNotif` (versionCode 20, `0.15-no-notif-footer-candidate`) flavors, matching `app/build.gradle`; the README's Current status table is the canonical version reference. This guide documents the existing build; it does not upgrade tools or authorize a new release. The delivered noNotif20 candidate is documented in [candidate validation](no-notification-candidate.md).
 
 ## Toolchain
 
@@ -114,3 +114,18 @@ This historical record predates the flavor split and the subsequent HomeLabel li
 ```
 
 On a 2GB runner, running lint and Robolectric concurrently exhausted memory once (exit 137); sequential, single-worker runs completed. The unchanged UI HomeLabel break-strategy constant fails standalone UI lint on this SDK/toolchain, also reproduced on main. Do not suppress it or claim standalone UI lint is green. The feature validation record separates that existing error, new warnings, tests and handset gaps. Release/signing/install remains a separately approved stage.
+
+## CI gates (T-02, added 2026-11-13)
+
+`.github/workflows/ci.yml` runs on every PR and on pushes to `main`, on a pinned `ubuntu-22.04` image with Temurin JDK 11 and Android SDK platform 33 / Build Tools 30.0.3 (the golden-recording baseline). Jobs are separate on purpose: a combined lint+Robolectric run hit exit 137 on a 2GB runner.
+
+1. **wrapper** - Gradle wrapper jar validation (`gradle/actions/setup-gradle` `validate-wrappers`, pinned by SHA). The wrapper distribution itself is checksum-pinned via `distributionSha256Sum` in `gradle/wrapper/gradle-wrapper.properties` (verified against gradle.org and services.gradle.org; a tampered value fails with an expected/actual checksum error - negative control run locally 2026-11-13).
+2. **unit-tests** - `:app:testNoNotifDebugUnitTest :app:testFullDebugUnitTest`.
+3. **goldens** - `:ui:verifyPaparazziDebug`.
+4. **lint** - `:app:lintNoNotifDebug :app:lintFullDebug :ui:lintDebug` (the fresh UI lint run: 0 errors on main as of 2026-11-13; any new failure is handled under T-10, never suppressed).
+5. **manifest-check** - merges both flavor manifests and fails if `LauncherNotificationListener` appears in the noNotif merged manifest (artifact-input level, beyond the Robolectric `NoNotificationBuildTest`); a positive control asserts it IS present in the full merged manifest so the check is not vacuous.
+6. **package** - `:app:assembleNoNotifDebug :app:assembleFullDebug`, only after all checks pass. CI-only debug packaging: never uploaded, never distributed, no signing.
+
+Dependency payloads are checksum-pinned by `gradle/verification-metadata.xml` (sha256; signatures off). It covers every dependency of the CI task set; regenerate with `./gradlew --write-verification-metadata sha256 <ci tasks>` when dependencies change, and review the diff like a lockfile.
+
+Intentional flavor-specific skips: `NotificationListenerFlowTest` is skipped on noNotif (`Assume` on `BuildConfig.NOTIFICATION_ACCESS`) and `NoNotificationBuildTest` is skipped on full - each suite's skip count is the other flavor's listener tests, not a hidden failure.

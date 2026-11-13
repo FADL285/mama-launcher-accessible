@@ -28,7 +28,9 @@ public class ContactsGrouperTest {
                 new ContactsLoader.RawRow(1, "منى", "0200000002", "البيت", null, true)));
         assertEquals(1, out.size());
         assertEquals(2, out.get(0).numbers.size());
-        assertEquals("01000000001", out.get(0).numbers.get(0).number); // original display kept
+        // T-17: the survivor is the fixed-rule pick (spaced form sorts first),
+        // identical under any provider order - no longer first-seen.
+        assertEquals("0100 000 0001", out.get(0).numbers.get(0).number);
         assertEquals("0200000002", out.get(0).numbers.get(1).number);
     }
 

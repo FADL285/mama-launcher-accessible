@@ -40,18 +40,26 @@ public class DialpadActivity extends BaseActivity {
             if(generation!=lookupGeneration)return;
             java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded;
             boolean ok=true;
-            try {loaded=ContactsLoader.loadVerified(getContentResolver(),getResources());}catch(RuntimeException e){loaded=new java.util.ArrayList<>();ok=false;}
+            try {loaded=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this));}catch(RuntimeException e){loaded=new java.util.ArrayList<>();ok=false;}
             final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> result=loaded;final boolean success=ok;
             runOnUiThread(()-> {if(isDestroyed() || generation!=lookupGeneration)return;contacts=result;lookupPending=false;contactsAvailable=success;renderMatches();});
         });
     }
+    /** D-01 (option C): callable when 3+ digits, or the input contains * or #. */
+    static boolean callable(String s) {
+        if(s==null || s.isEmpty()) return false;
+        if(s.indexOf('*')>=0 || s.indexOf('#')>=0) return true;
+        int digits=0;
+        for(int i=0;i<s.length();i++) {char c=s.charAt(i);if(c>='0'&&c<='9')digits++;}
+        return digits>=3;
+    }
     private void saveOrShowExisting() {
-        if(number.length()<3 || checkingSave || !resumed)return;
+        if(!callable(number.toString()) || checkingSave || !resumed)return;
         final String typed=number.toString();final int request=++saveGeneration;final String region=country();checkingSave=true;
         lookupWorker.execute(()-> {
             if(request!=saveGeneration)return;
             java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded=new java.util.ArrayList<>();boolean ok=canReadContacts();
-            try {if(ok)loaded=ContactsLoader.loadVerified(getContentResolver(),getResources());}catch(RuntimeException e){ok=false;}
+            try {if(ok)loaded=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this));}catch(RuntimeException e){ok=false;}
             final boolean verified=ok;final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> current=loaded;
             final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact=DialContactMatcher.matches(current,typed,region,true);
             runOnUiThread(()-> {
@@ -98,7 +106,7 @@ public class DialpadActivity extends BaseActivity {
             if(shown++==1)break;
             boolean saved=exact.stream().anyMatch(e->e.id==c.id);
             android.widget.Button row=info.fadl.mamalauncher.ui.DialMatchUi.preview(this,c,saved);
-            guard(row,()->startActivity(ConfirmCallActivity.intentFor(this,c)));box.addView(row);
+            guard(row,()->{if(beginNavigation())startActivity(ConfirmCallActivity.intentFor(this,c));});box.addView(row);
         }
         if(found.size()>1) {
             android.widget.Button more=new android.widget.Button(this);more.setText(getString(R.string.dial_more,found.size()));more.setAllCaps(false);more.setTextSize(18);
@@ -108,7 +116,7 @@ public class DialpadActivity extends BaseActivity {
                     public Object getItem(int i){return found.get(i);}
                     public long getItemId(int i){return found.get(i).id;}
                     public android.view.View getView(int i,android.view.View recycled,android.view.ViewGroup parent){return info.fadl.mamalauncher.ui.DialMatchUi.chooserItem(parent.getContext(),found.get(i));}
-                },(d,i)->startActivity(ConfirmCallActivity.intentFor(this,found.get(i))))
+                },(d,i)->{if(beginNavigation())startActivity(ConfirmCallActivity.intentFor(this,found.get(i)));})
                 .setNegativeButton(android.R.string.cancel,null).show());box.addView(more);
         }
     }
@@ -137,7 +145,7 @@ public class DialpadActivity extends BaseActivity {
         callAction=new DirectCallAction(this,(blocked,granted) ->
                 android.widget.Toast.makeText(this,blocked?R.string.call_blocked_hint:R.string.call_permission_ready,
                         android.widget.Toast.LENGTH_LONG).show());
-        guard(callBtn, () -> callAction.tap(number.toString()));
+        guard(callBtn, () -> { if(callable(number.toString())) callAction.tap(number.toString()); });
         guard(saveBtn, this::saveOrShowExisting);
         sync();
     }
@@ -153,7 +161,7 @@ public class DialpadActivity extends BaseActivity {
     }
     @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results) {
         super.onRequestPermissionsResult(code,permissions,results);
-        callAction.permissionResult(code,results);
+        callAction.permissionResult(code,permissions,results);
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
@@ -212,9 +220,12 @@ public class DialpadActivity extends BaseActivity {
         // field scrolls horizontally and we keep the last digit in view.
         // Digits are NEVER dropped or ellipsized.
         display.post(() -> display.bringPointIntoView(number.length()));
-        boolean has = number.length() >= 3;
-        callBtn.setAlpha(has ? 1f : 0.45f);
-        saveBtn.setAlpha(has ? 1f : 0.45f);
+        boolean can = callable(number.toString());
+        // Truly disabled, not just dimmed: TalkBack announces the real state.
+        callBtn.setEnabled(can);
+        saveBtn.setEnabled(can);
+        callBtn.setAlpha(can ? 1f : 0.45f);
+        saveBtn.setAlpha(can ? 1f : 0.45f);
         renderMatches();
     }
 }
