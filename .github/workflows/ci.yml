@@ -92,10 +92,16 @@ jobs:
         run: ./gradlew :app:processNoNotifDebugMainManifest :app:processFullDebugMainManifest
       - name: noNotif artifact inputs carry no notification listener
         run: |
-          if grep -q 'LauncherNotificationListener' app/build/intermediates/merged_manifest/noNotifDebug/AndroidManifest.xml; then
+          set -euo pipefail
+          NM=app/build/intermediates/merged_manifest/noNotifDebug/AndroidManifest.xml
+          FM=app/build/intermediates/merged_manifest/fullDebug/AndroidManifest.xml
+          # an unreadable input is a failure, never a silent pass
+          test -r "$NM" || { echo "FAIL: cannot read $NM" >&2; exit 1; }
+          test -r "$FM" || { echo "FAIL: cannot read $FM" >&2; exit 1; }
+          if grep -q 'LauncherNotificationListener' "$NM"; then
             echo 'FAIL: notification listener present in merged noNotif manifest' >&2; exit 1
           fi
-          grep -q 'LauncherNotificationListener' app/build/intermediates/merged_manifest/fullDebug/AndroidManifest.xml \
+          grep -q 'LauncherNotificationListener' "$FM" \
             || { echo 'FAIL: positive control - listener missing from merged full manifest' >&2; exit 1; }
           echo 'OK: listener absent from noNotif inputs, present in full inputs'
 
