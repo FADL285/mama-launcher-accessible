@@ -58,7 +58,7 @@ final class HistorySnapshot {
         != PackageManager.PERMISSION_GRANTED) return empty;
     List<ContactEntry> current;
     try {
-      current = ContactsLoader.loadVerified(c.getContentResolver(), c.getResources());
+      current = ContactsLoader.loadVerified(c.getContentResolver(), c.getResources(), NumberRegion.current(c));
       signal.throwIfCanceled();
     } catch (RuntimeException unavailable) {
       return empty;

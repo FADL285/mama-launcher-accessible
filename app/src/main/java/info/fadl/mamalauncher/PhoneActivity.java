@@ -92,7 +92,7 @@ public class PhoneActivity extends BaseActivity {
         grid.setVisibility(View.VISIBLE);
         new Thread(() -> {
             List<ContactEntry> original;
-            try { original=ContactsLoader.loadVerified(getContentResolver(),getResources()); }
+            try { original=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this)); }
             catch(RuntimeException readFailure) {
                 runOnUiThread(() -> {
                     if(generation!=refreshGeneration || isDestroyed() || isFinishing())return;

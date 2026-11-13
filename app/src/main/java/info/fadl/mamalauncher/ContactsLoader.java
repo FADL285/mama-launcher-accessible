@@ -46,37 +46,109 @@ public final class ContactsLoader {
      *  order. Linked raw contacts often repeat the same number; identical
      *  duplicates collapse so mama never has to choose between twins. */
     public static List<ContactEntry> group(List<RawRow> rows) {
+        return group(rows, "");
+    }
+
+    /** T-17: one number saved in several forms (national 0100...,
+     *  international +20100..., IDD 0020100..., spaced, Unicode digits)
+     *  shows as ONE button. Equivalence classes run over the WHOLE set of
+     *  raw forms (digits-equal via DialContactMatcher.digits, or E.164-equal
+     *  via DialContactMatcher.exact with the device region), so the old
+     *  first-seen collapse cannot leak provider order into the result. The
+     *  survivor of each class is picked by a fixed rule: national form
+     *  first (no '+' and no "00" international prefix - the form mama sees
+     *  and dials today), then fewer normalized digits, then lexicographic
+     *  on the normalized form, the raw string, and the label. The survivor
+     *  keeps its own display form and its own type label. With an
+     *  unresolvable region only digit-identical forms merge (safe). */
+    public static List<ContactEntry> group(List<RawRow> rows, String country) {
         Map<Long, ContactEntry> byId = new LinkedHashMap<>();
-        Map<Long, List<ContactEntry.PhoneNumber>> numbers = new LinkedHashMap<>();
-        Map<Long, java.util.Set<String>> seen = new LinkedHashMap<>();
+        Map<Long, List<RawRow>> numbers = new LinkedHashMap<>();
         for (RawRow r : rows) {
             if (r.number == null || r.number.trim().isEmpty()) continue;
             if (!byId.containsKey(r.id)) {
                 byId.put(r.id, new ContactEntry(r.id, r.name,
                         new ArrayList<>(), r.photoUri, r.starred));
                 numbers.put(r.id, new ArrayList<>());
-                seen.put(r.id, new java.util.LinkedHashSet<>());
             }
-            if (!seen.get(r.id).add(normalizeNumber(r.number))) continue;
-            numbers.get(r.id).add(new ContactEntry.PhoneNumber(r.number, r.typeLabel));
+            numbers.get(r.id).add(r);
         }
         List<ContactEntry> out = new ArrayList<>();
         for (Map.Entry<Long, ContactEntry> e : byId.entrySet()) {
             ContactEntry base = e.getValue();
-            out.add(new ContactEntry(base.id, base.name, numbers.get(e.getKey()),
+            out.add(new ContactEntry(base.id, base.name,
+                    dedupEquivalentForms(numbers.get(e.getKey()), country),
                     base.photoUri, base.starred));
         }
         return out;
     }
 
+    /** Merges equivalent forms class by class; each class keeps its first
+     *  member's position, displaying the fixed-rule survivor. */
+    private static List<ContactEntry.PhoneNumber> dedupEquivalentForms(
+            List<RawRow> forms, String country) {
+        boolean[] consumed = new boolean[forms.size()];
+        List<ContactEntry.PhoneNumber> out = new ArrayList<>();
+        for (int i = 0; i < forms.size(); i++) {
+            if (consumed[i]) continue;
+            RawRow survivor = forms.get(i);
+            for (int j = i + 1; j < forms.size(); j++) {
+                if (consumed[j]) continue;
+                if (!sameNumber(forms.get(i).number, forms.get(j).number, country)) continue;
+                consumed[j] = true;
+                survivor = preferredForm(survivor, forms.get(j));
+            }
+            out.add(new ContactEntry.PhoneNumber(survivor.number, survivor.typeLabel));
+        }
+        return out;
+    }
+
+    /** Same number: identical digit sequence (DialContactMatcher.digits
+     *  normalizes Unicode digits and separators), or E.164-equal in the
+     *  device region. Region-free equality needs no country. */
+    private static boolean sameNumber(String a, String b, String country) {
+        if (normalizeNumber(a).equals(normalizeNumber(b))) return true;
+        // Region-free: the same digit sequence in any script (ASCII or
+        // Arabic-Indic) is one number - DialContactMatcher.digits equates them.
+        String da = DialContactMatcher.digits(a), db = DialContactMatcher.digits(b);
+        if (!da.isEmpty() && da.equals(db)) return true;
+        if (country == null || country.isEmpty()) return false;
+        return DialContactMatcher.exact(a, b, country);
+    }
+
+    private static int formRank(String normalized) {
+        if (normalized.startsWith("+")) return 1;
+        if (normalized.startsWith("00")) return 2;
+        return 0; // national: no '+', no international prefix
+    }
+
+    /** Fixed survivor rule over the whole class: national rank first, then
+     *  fewer digits, then lexicographic on normalized form, raw string and
+     *  label - fully deterministic, independent of provider order. */
+    private static RawRow preferredForm(RawRow a, RawRow b) {
+        String na = normalizeNumber(a.number), nb = normalizeNumber(b.number);
+        int ra = formRank(na), rb = formRank(nb);
+        if (ra != rb) return ra < rb ? a : b;
+        if (na.length() != nb.length()) return na.length() < nb.length() ? a : b;
+        int c = na.compareTo(nb); if (c != 0) return c < 0 ? a : b;
+        c = a.number.compareTo(b.number); if (c != 0) return c < 0 ? a : b;
+        String la = a.typeLabel == null ? "" : a.typeLabel;
+        String lb = b.typeLabel == null ? "" : b.typeLabel;
+        return la.compareTo(lb) <= 0 ? a : b;
+    }
+
     public static List<ContactEntry> load(ContentResolver resolver, Resources res) {
-        return load(resolver,res,false);
+        return load(resolver,res,"",false);
     }
     /** Saving requires a completed read, not a null cursor mistaken for zero matches. */
     static List<ContactEntry> loadVerified(ContentResolver resolver,Resources res) {
-        return load(resolver,res,true);
+        return load(resolver,res,"",true);
     }
-    private static List<ContactEntry> load(ContentResolver resolver, Resources res, boolean requireResult) {
+    /** Verified load with the device region for national/international dedup (T-17). */
+    static List<ContactEntry> loadVerified(ContentResolver resolver,Resources res,String country) {
+        return load(resolver,res,country,true);
+    }
+    private static List<ContactEntry> load(ContentResolver resolver, Resources res, String country, boolean requireResult) {
         String[] projection = new String[]{
                 Phone.CONTACT_ID,
                 Phone.DISPLAY_NAME,
@@ -97,6 +169,6 @@ public final class ContactsLoader {
                         c.getString(5), c.getInt(6) == 1));
             }
         }
-        return group(rows);
+        return group(rows, country);
     }
 }

@@ -40,7 +40,7 @@ public class DialpadActivity extends BaseActivity {
             if(generation!=lookupGeneration)return;
             java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded;
             boolean ok=true;
-            try {loaded=ContactsLoader.loadVerified(getContentResolver(),getResources());}catch(RuntimeException e){loaded=new java.util.ArrayList<>();ok=false;}
+            try {loaded=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this));}catch(RuntimeException e){loaded=new java.util.ArrayList<>();ok=false;}
             final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> result=loaded;final boolean success=ok;
             runOnUiThread(()-> {if(isDestroyed() || generation!=lookupGeneration)return;contacts=result;lookupPending=false;contactsAvailable=success;renderMatches();});
         });
@@ -59,7 +59,7 @@ public class DialpadActivity extends BaseActivity {
         lookupWorker.execute(()-> {
             if(request!=saveGeneration)return;
             java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded=new java.util.ArrayList<>();boolean ok=canReadContacts();
-            try {if(ok)loaded=ContactsLoader.loadVerified(getContentResolver(),getResources());}catch(RuntimeException e){ok=false;}
+            try {if(ok)loaded=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this));}catch(RuntimeException e){ok=false;}
             final boolean verified=ok;final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> current=loaded;
             final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact=DialContactMatcher.matches(current,typed,region,true);
             runOnUiThread(()-> {
