@@ -113,6 +113,31 @@ public class ContactsDedupFormsTest {
   assertEquals(1,only(out).numbers.size());
   assertEquals("01001234567",only(out).numbers.get(0).number); // ASCII survives
  }
+ @Test public void plainNumberAndSameDigitServiceStringStaySeparate(){
+  // v12 row: 123 (ambulance) and *123# are different dial targets.
+  List<ContactEntry> out=ContactsLoader.group(Arrays.asList(
+   row(1,"ماما","123","خدمة"),row(1,"ماما","*123#","خدمة")),EG);
+  assertEquals(2,only(out).numbers.size());
+  assertEquals("123",only(out).numbers.get(0).number);
+  assertEquals("*123#",only(out).numbers.get(1).number);
+ }
+ @Test public void plainNumberAndSameDigitServiceStringStaySeparateReversed(){
+  List<ContactEntry> out=ContactsLoader.group(Arrays.asList(
+   row(1,"ماما","*123#","خدمة"),row(1,"ماما","123","خدمة")),EG);
+  assertEquals(2,only(out).numbers.size());
+  assertEquals("*123#",only(out).numbers.get(0).number);
+  assertEquals("123",only(out).numbers.get(1).number);
+ }
+ @Test public void sameDigitServiceStringsWithDifferentMarksStaySeparate(){
+  List<ContactEntry> out=ContactsLoader.group(Arrays.asList(
+   row(1,"ماما","*123#","خدمة"),row(1,"ماما","#123#","خدمة")),EG);
+  assertEquals(2,only(out).numbers.size());
+ }
+ @Test public void identicalServiceStringsStillCollapse(){
+  List<ContactEntry> out=ContactsLoader.group(Arrays.asList(
+   row(1,"ماما","*123#","خدمة"),row(1,"ماما","*123#","خدمة")),EG);
+  assertEquals(1,only(out).numbers.size());
+ }
  @Test public void distinctServiceStringsStaySeparate(){
   List<ContactEntry> out=ContactsLoader.group(Arrays.asList(
    row(1,"ماما","*#06#","خدمة"),row(1,"ماما","*#07#","خدمة")),EG);

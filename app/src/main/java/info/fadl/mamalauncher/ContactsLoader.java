@@ -107,6 +107,13 @@ public final class ContactsLoader {
      *  normalizes Unicode digits and separators), or E.164-equal in the
      *  device region. Region-free equality needs no country. */
     private static boolean sameNumber(String a, String b, String country) {
+        if (a.equals(b)) return true; // identical twins collapse
+        // Service strings (USSD/short codes with * or #) are never phone-number
+        // equivalents: normalizeNumber strips those characters, so without this
+        // guard "123" (ambulance) and "*123#" would merge and one dial target
+        // would vanish. Each service string stays its own class.
+        if (a.indexOf('*') >= 0 || a.indexOf('#') >= 0
+                || b.indexOf('*') >= 0 || b.indexOf('#') >= 0) return false;
         if (normalizeNumber(a).equals(normalizeNumber(b))) return true;
         // Region-free: the same digit sequence in any script (ASCII or
         // Arabic-Indic) is one number - DialContactMatcher.digits equates them.
