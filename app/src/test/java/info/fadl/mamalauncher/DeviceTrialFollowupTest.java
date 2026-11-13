@@ -30,13 +30,13 @@ public class DeviceTrialFollowupTest {
  @Test public void dialPressCallsDirectlyOnlyOnceWhenGranted(){
   Shadows.shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.CALL_PHONE);
   DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();
-  key(a.findViewById(R.id.dial_grid),"1").performClick();
+  key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"2").performClick();
   a.findViewById(R.id.btn_call).performClick();a.findViewById(R.id.btn_call).performClick();
-  Intent call=Shadows.shadowOf(a).getNextStartedActivity();assertEquals(Intent.ACTION_CALL,call.getAction());assertEquals("tel:1",call.getDataString());
+  Intent call=Shadows.shadowOf(a).getNextStartedActivity();assertEquals(Intent.ACTION_CALL,call.getAction());assertEquals("tel:112",call.getDataString());
   assertNull(Shadows.shadowOf(a).getNextStartedActivity());
  }
  @Test public void permissionGrantNeverAutoCallsAndNewPressIsRequired(){
-  DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();key(a.findViewById(R.id.dial_grid),"1").performClick();
+  DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"2").performClick();
   a.findViewById(R.id.btn_call).performClick();
   assertEquals("android.content.pm.action.REQUEST_PERMISSIONS",Shadows.shadowOf(a).getNextStartedActivity().getAction());
   Shadows.shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.CALL_PHONE);
@@ -45,7 +45,7 @@ public class DeviceTrialFollowupTest {
   a.findViewById(R.id.btn_call).performClick();assertEquals(Intent.ACTION_CALL,Shadows.shadowOf(a).getNextStartedActivity().getAction());
  }
  @Test public void deniedPermissionNeverCalls(){
-  DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();key(a.findViewById(R.id.dial_grid),"1").performClick();a.findViewById(R.id.btn_call).performClick();Shadows.shadowOf(a).getNextStartedActivity();
+  DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"2").performClick();a.findViewById(R.id.btn_call).performClick();Shadows.shadowOf(a).getNextStartedActivity();
   a.onRequestPermissionsResult(42,new String[]{android.Manifest.permission.CALL_PHONE},new int[]{PackageManager.PERMISSION_DENIED});assertNull(Shadows.shadowOf(a).getNextStartedActivity());
  }
  private void screenOff(android.app.Activity a){

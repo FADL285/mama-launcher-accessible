@@ -45,8 +45,16 @@ public class DialpadActivity extends BaseActivity {
             runOnUiThread(()-> {if(isDestroyed() || generation!=lookupGeneration)return;contacts=result;lookupPending=false;contactsAvailable=success;renderMatches();});
         });
     }
+    /** D-01 (option C): callable when 3+ digits, or the input contains * or #. */
+    static boolean callable(String s) {
+        if(s==null || s.isEmpty()) return false;
+        if(s.indexOf('*')>=0 || s.indexOf('#')>=0) return true;
+        int digits=0;
+        for(int i=0;i<s.length();i++) {char c=s.charAt(i);if(c>='0'&&c<='9')digits++;}
+        return digits>=3;
+    }
     private void saveOrShowExisting() {
-        if(number.length()<3 || checkingSave || !resumed)return;
+        if(!callable(number.toString()) || checkingSave || !resumed)return;
         final String typed=number.toString();final int request=++saveGeneration;final String region=country();checkingSave=true;
         lookupWorker.execute(()-> {
             if(request!=saveGeneration)return;
@@ -137,7 +145,7 @@ public class DialpadActivity extends BaseActivity {
         callAction=new DirectCallAction(this,(blocked,granted) ->
                 android.widget.Toast.makeText(this,blocked?R.string.call_blocked_hint:R.string.call_permission_ready,
                         android.widget.Toast.LENGTH_LONG).show());
-        guard(callBtn, () -> callAction.tap(number.toString()));
+        guard(callBtn, () -> { if(callable(number.toString())) callAction.tap(number.toString()); });
         guard(saveBtn, this::saveOrShowExisting);
         sync();
     }
@@ -212,9 +220,12 @@ public class DialpadActivity extends BaseActivity {
         // field scrolls horizontally and we keep the last digit in view.
         // Digits are NEVER dropped or ellipsized.
         display.post(() -> display.bringPointIntoView(number.length()));
-        boolean has = number.length() >= 3;
-        callBtn.setAlpha(has ? 1f : 0.45f);
-        saveBtn.setAlpha(has ? 1f : 0.45f);
+        boolean can = callable(number.toString());
+        // Truly disabled, not just dimmed: TalkBack announces the real state.
+        callBtn.setEnabled(can);
+        saveBtn.setEnabled(can);
+        callBtn.setAlpha(can ? 1f : 0.45f);
+        saveBtn.setAlpha(can ? 1f : 0.45f);
         renderMatches();
     }
 }
