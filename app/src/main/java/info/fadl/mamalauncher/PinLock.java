@@ -88,6 +88,12 @@ public final class PinLock {
         return lockoutUntilMs > nowMs;
     }
 
+    private static void clearRecord(android.content.SharedPreferences p) {
+        p.edit().remove(Prefs.PIN_LOCKOUT_UNTIL)
+                .remove(Prefs.PIN_LOCKOUT_ARMED_WALL)
+                .remove(Prefs.PIN_LOCKOUT_ARMED_ELAPSED).apply();
+    }
+
     /** Milliseconds left on the stored lockout, repairing untrustworthy state.
      *  The wall-clock deadline is bounded by the monotonic arming record, so a
      *  backward clock change cannot stretch a lockout past its schedule.
@@ -104,7 +110,15 @@ public final class PinLock {
         long until = p.getLong(Prefs.PIN_LOCKOUT_UNTIL, 0);
         if (until <= 0) return 0;
         long remWall = until - nowWall;
-        if (remWall <= 0) return 0;
+        if (remWall <= 0) {
+            // Ordinary wall expiry: the record is spent, so retire it here too.
+            // A reboot plus a wall-clock reset into the past (a drained battery
+            // resetting the RTC) would otherwise make the stale deadline future
+            // again and let the unanchored fallback re-arm a fresh lockout for
+            // someone who has not mistyped.
+            clearRecord(p);
+            return 0;
+        }
         long armedWall = p.getLong(Prefs.PIN_LOCKOUT_ARMED_WALL, 0);
         long armedElapsed = p.getLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, 0);
         if (armedWall > 0 && armedElapsed > 0 && nowElapsed >= armedElapsed) {
@@ -114,9 +128,7 @@ public final class PinLock {
                 // is still ahead (a backward clock change). Clear the record:
                 // after a reboot, elapsedRealtime drops below the anchors and
                 // the unanchored fallback would otherwise re-arm a spent lockout.
-                p.edit().remove(Prefs.PIN_LOCKOUT_UNTIL)
-                        .remove(Prefs.PIN_LOCKOUT_ARMED_WALL)
-                        .remove(Prefs.PIN_LOCKOUT_ARMED_ELAPSED).apply();
+                clearRecord(p);
                 return 0;
             }
             return Math.min(Math.min(remWall, MAX_LOCK_MS), remMono);

@@ -127,6 +127,20 @@ public class PinLockTest {
     }
 
     @Test
+    public void wallExpiryClearsTheRecordSoARebootPlusClockResetCannotReArmIt() {
+        long armedWall = 1_700_000_000_000L, armedElapsed = 3_600_000, lock = 600_000;
+        arm(armedWall + lock, armedWall, armedElapsed);
+        // The lockout expires the ordinary way: the wall clock passes the deadline.
+        assertEquals(0, PinLock.remainingLockoutMs(prefs, armedWall + lock, armedElapsed + lock));
+        assertFalse(prefs.contains(Prefs.PIN_LOCKOUT_UNTIL));
+        assertFalse(prefs.contains(Prefs.PIN_LOCKOUT_ARMED_WALL));
+        assertFalse(prefs.contains(Prefs.PIN_LOCKOUT_ARMED_ELAPSED));
+        // Reboot (elapsedRealtime below the anchors) plus an RTC reset into the
+        // past: the spent record must not come back as a fresh lockout.
+        assertEquals(0, PinLock.remainingLockoutMs(prefs, armedWall - 31_536_000_000L, 1_000));
+    }
+
+    @Test
     public void noDeadlineOrExpiredDeadlineIsUnlocked() {
         arm(0, 0, 0);
         assertEquals(0, PinLock.remainingLockoutMs(prefs, 1_000_000, 5_000));
