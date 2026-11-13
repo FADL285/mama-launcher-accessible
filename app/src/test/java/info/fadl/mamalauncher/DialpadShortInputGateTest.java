@@ -47,7 +47,7 @@ public class DialpadShortInputGateTest {
  }
  @Test public void backspaceAcrossTheBoundaryReDisables(){
   DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();
-  type(a,"112");assertGate(a,true);
+  type(a,"456");assertGate(a,true);
   a.findViewById(R.id.btn_backspace).performClick();assertGate(a,false);
   a.findViewById(R.id.btn_backspace).performClick();assertGate(a,false);
   type(a,"#");assertGate(a,true);
@@ -68,7 +68,7 @@ public class DialpadShortInputGateTest {
  }
  @Test public void restoredCallableInputKeepsTheEnabledState(){
   ActivityController<DialpadActivity> c=Robolectric.buildActivity(DialpadActivity.class).setup();
-  type(c.get(),"112");
+  type(c.get(),"456");
   android.os.Bundle state=new android.os.Bundle();c.saveInstanceState(state);
   DialpadActivity restored=Robolectric.buildActivity(DialpadActivity.class).create(state).start().resume().visible().get();
   assertGate(restored,true);
