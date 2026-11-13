@@ -38,8 +38,9 @@ jobs:
           java-version: '11'
       - name: Android SDK platform 33 + Build Tools 30.0.3
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-33" "build-tools;30.0.3"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-33" "build-tools;30.0.3"
       - uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
       - run: ./gradlew :app:testNoNotifDebugUnitTest :app:testFullDebugUnitTest
 
@@ -66,8 +67,9 @@ jobs:
           java-version: '11'
       - name: Android SDK platform 33 + Build Tools 30.0.3
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-33" "build-tools;30.0.3"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-33" "build-tools;30.0.3"
       - uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
       - run: ./gradlew :app:lintNoNotifDebug :app:lintFullDebug :ui:lintDebug
 
@@ -82,8 +84,9 @@ jobs:
           java-version: '11'
       - name: Android SDK platform 33 + Build Tools 30.0.3
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-33" "build-tools;30.0.3"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-33" "build-tools;30.0.3"
       - uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
       - name: Merge both flavor manifests
         run: ./gradlew :app:processNoNotifDebugMainManifest :app:processFullDebugMainManifest
@@ -107,8 +110,9 @@ jobs:
           java-version: '11'
       - name: Android SDK platform 33 + Build Tools 30.0.3
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-33" "build-tools;30.0.3"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-33" "build-tools;30.0.3"
       - uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
       - name: CI-only debug packaging (never uploaded, never distributed)
         run: ./gradlew :app:assembleNoNotifDebug :app:assembleFullDebug
