@@ -25,6 +25,7 @@ public class PhoneActivity extends BaseActivity {
     private CallHistoryController history;
     private ContactPhotoLoader photos;
     private GridView grid;
+    private Long returnToContact; // opened from the grid: Back shows this contact again
     private View setupView;
     private View emptyView;
     private int refreshGeneration;
@@ -107,16 +108,32 @@ public class PhoneActivity extends BaseActivity {
                 if (generation != refreshGeneration) return; // stale results
                 if (isDestroyed() || isFinishing()) return;
                 if(checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED){refresh();return;}
+                final Long firstVisible;
+                {
+                    android.widget.ListAdapter old = grid.getAdapter();
+                    int pos = grid.getFirstVisiblePosition();
+                    ContactEntry top = (old != null && pos >= 0 && pos < old.getCount())
+                            ? (ContactEntry) old.getItem(pos) : null;
+                    firstVisible = top != null ? top.id : null;
+                }
                 grid.setAdapter(new ContactGridAdapter(this, sorted, photos) {
                     @Override public View getView(int position, View recycled, android.view.ViewGroup parent) {
                         View tile = super.getView(position, recycled, parent);
                         ContactEntry contact = sorted.get(position);
-                        guard(tile, () -> { if (beginNavigation()) startActivity(ConfirmCallActivity.intentFor(
-                                PhoneActivity.this, contact).putExtra("system_favorite",systemStars.contains(contact.id))); });
+                        guard(tile, () -> { if (beginNavigation()) {
+                                returnToContact = contact.id;
+                                startActivity(ConfirmCallActivity.intentFor(
+                                PhoneActivity.this, contact).putExtra("system_favorite",systemStars.contains(contact.id)));
+                        } });
                         return tile;
                     }
                 });
                 emptyView.setVisibility(sorted.isEmpty() ? View.VISIBLE : View.GONE);
+                // T-13: keep the user's place. Back from confirmation shows the opened
+                // contact at its (possibly re-sorted) position; otherwise the previous
+                // first-visible contact; otherwise the top.
+                final Long opened = returnToContact; returnToContact = null;
+                grid.post(() -> { if (grid.getAdapter() != null && !sorted.isEmpty()) grid.setSelection(restorePosition(sorted, opened, firstVisible)); });
             });
         }).start();
     }
@@ -165,5 +182,15 @@ public class PhoneActivity extends BaseActivity {
                     grantResults[0] != PackageManager.PERMISSION_GRANTED).apply();
         }
         refresh();
+    }
+
+    static int restorePosition(java.util.List<ContactEntry> sorted, Long opened, Long firstVisible) {
+        if (opened != null) { int i = indexOfContact(sorted, opened); if (i >= 0) return i; }
+        if (firstVisible != null) { int i = indexOfContact(sorted, firstVisible); if (i >= 0) return i; }
+        return 0;
+    }
+    private static int indexOfContact(java.util.List<ContactEntry> sorted, long id) {
+        for (int i = 0; i < sorted.size(); i++) if (sorted.get(i).id == id) return i;
+        return -1;
     }
 }
