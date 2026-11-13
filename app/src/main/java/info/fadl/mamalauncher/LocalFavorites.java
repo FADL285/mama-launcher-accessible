@@ -59,12 +59,19 @@ final class LocalFavorites {
   pendingMarks=decided;
  }
  static boolean contains(Context c,long id,boolean systemDefault){
-  migrateIfNeeded(c);
+  // A pending retry is owned by apply/set (one attempt per load), not by every
+  // per-contact read: the failed commit already applied to memory, so this
+  // process keeps seeing the migrated view while storage keeps failing.
+  if(!retryPending)migrateIfNeeded(c);
   return Prefs.get(c).getBoolean(key(id),systemDefault);
  }
  static void set(Context c,long id,boolean value){
-  migrateIfNeeded(c);
-  Prefs.get(c).edit().putBoolean(key(id),value).apply();
+  // The migration retry and the user's write share the class lock: a worker's
+  // staged re-persist can never interleave with this toggle and undo it.
+  synchronized(LocalFavorites.class){
+   migrateIfNeeded(c);
+   Prefs.get(c).edit().putBoolean(key(id),value).apply();
+  }
  }
  static List<ContactEntry> apply(Context c,List<ContactEntry> contacts){
   migrateIfNeeded(c);

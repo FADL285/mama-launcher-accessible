@@ -224,9 +224,11 @@ public class ContactStarSemanticsTest {
   DialpadActivity d=Robolectric.buildActivity(DialpadActivity.class).setup().get();
   settle();
   for(char ch:"05000000001".toCharArray())key(d.findViewById(R.id.dial_grid),String.valueOf(ch)).performClick();
-  settle();
+  // Deterministic wait: flush the lookup worker, then run the posted UI steps.
+  for(int i=0;i<20;i++){try{d.awaitLookupsForTest();}catch(Exception e){throw new AssertionError(e);}idle();}
   android.widget.LinearLayout box=d.findViewById(R.id.dial_matches);
-  assertTrue("a match row is shown",box.getChildCount()>0);
+  assertTrue("a clickable match row is shown (not the loading hint)",
+   box.getChildCount()>0 && box.getChildAt(0) instanceof android.widget.Button);
   box.getChildAt(0).performClick();idle();
   Intent open=Shadows.shadowOf(d).getNextStartedActivity();
   assertEquals(ConfirmCallActivity.class.getName(),open.getComponent().getClassName());
@@ -276,12 +278,14 @@ public class ContactStarSemanticsTest {
   PhoneActivity phone=Robolectric.buildActivity(PhoneActivity.class).setup().get();
   settle();
   phone.findViewById(R.id.btn_tab_history).performClick();
-  settle();
   android.widget.ListView list=phone.findViewById(R.id.history_list);
+  // Condition-based wait: the history read runs on a worker thread.
+  for(int i=0;i<200 && list.getAdapter()==null;i++){idle();try{Thread.sleep(10);}catch(InterruptedException e){}}
+  assertNotNull("the history page loaded",list.getAdapter());
   assertEquals(1,list.getAdapter().getCount());
   list.getAdapter().getView(0,null,list).performClick(); // rows carry their own guarded click
-  settle();
-  Intent open=Shadows.shadowOf(phone).getNextStartedActivity();
+  Intent open=null;
+  for(int i=0;i<200 && open==null;i++){idle();try{Thread.sleep(10);}catch(InterruptedException e){}open=Shadows.shadowOf(phone).getNextStartedActivity();}
   assertNotNull("history row opens the confirmation screen",open);
   assertEquals(ConfirmCallActivity.class.getName(),open.getComponent().getClassName());
   ConfirmCallActivity confirm=Robolectric.buildActivity(ConfirmCallActivity.class,open).setup().get();
