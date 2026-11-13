@@ -12,7 +12,9 @@ final class LocalFavorites {
  /** One-time key-only collapse of legacy per-number marks (favorite.<id>.<number>).
   *  For each contact id: any true -> pinned; else any false -> unpinned; orphan
   *  marks count as-is. Existing contact-level marks are never overwritten, legacy
-  *  keys stay read-only, malformed keys are skipped, and re-runs are no-ops. */
+  *  keys stay read-only, malformed keys are skipped, and re-runs are no-ops.
+ *  The batch write's commit() result is deliberately not thrown on: a storage
+ *  failure must never close Contacts or the confirmation screen. */
  static synchronized void migrateIfNeeded(Context c){
   migrateIfNeeded(Prefs.get(c));
  }
@@ -38,8 +40,11 @@ final class LocalFavorites {
   }
   SharedPreferences.Editor ed=p.edit();
   for(Map.Entry<Long,Boolean> e:decided.entrySet())ed.putBoolean(key(e.getKey()),e.getValue());
-  if(!ed.putInt(SCHEMA,CURRENT_SCHEMA).commit())
-   throw new IllegalStateException("Cannot store contact star migration");
+  // A failed commit must never crash the launcher. Android applies commit()
+  // to memory before returning the disk result, so the migrated state stays
+  // visible for this process; the flag may simply not be durable, so a later
+  // start re-runs the migration - idempotent and never-overwriting, so safe.
+  ed.putInt(SCHEMA,CURRENT_SCHEMA).commit();
  }
  static boolean contains(Context c,long id,boolean systemDefault){
   migrateIfNeeded(c);

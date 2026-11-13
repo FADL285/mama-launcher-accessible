@@ -124,31 +124,37 @@ public class ContactStarMigrationTest {
   LocalFavorites.migrateIfNeeded(app);
   assertTrue(LocalFavorites.contains(app,1,true));
  }
- private static SharedPreferences.Editor failOnceEditor(final SharedPreferences real,final boolean[] fail){
+ private static SharedPreferences.Editor memoryAppliedDiskFailedEditor(final SharedPreferences real,final boolean[] fail){
   final SharedPreferences.Editor e=real.edit();
   return (SharedPreferences.Editor)java.lang.reflect.Proxy.newProxyInstance(
    ContactStarMigrationTest.class.getClassLoader(),new Class<?>[]{SharedPreferences.Editor.class},
    (proxy,m,args)->{
-    if(m.getName().equals("commit")&&fail[0]){fail[0]=false;return false;}
+    // AOSP semantics: commit() applies to memory first, THEN reports the disk
+    // result - a failed disk write does not roll back the in-memory change.
+    if(m.getName().equals("commit")&&fail[0]){fail[0]=false;e.commit();return false;}
     Object r=m.invoke(e,args);
     return r==e?proxy:r; // keep the fluent chain on the proxy
    });
  }
- @Test public void failedCommitLeavesMigrationIncompleteAndRetries(){
+ @Test public void failedCommitNeverCrashesAndStaysConsistent(){
   legacy(1,"010",true);
   final SharedPreferences real=Prefs.get(app);
   final boolean[] fail={true};
   SharedPreferences fake=(SharedPreferences)java.lang.reflect.Proxy.newProxyInstance(
    ContactStarMigrationTest.class.getClassLoader(),new Class<?>[]{SharedPreferences.class},
    (proxy,m,args)->{
-    if(m.getName().equals("edit"))return failOnceEditor(real,fail);
+    if(m.getName().equals("edit"))return memoryAppliedDiskFailedEditor(real,fail);
     return m.invoke(real,args);
    });
-  try{LocalFavorites.migrateIfNeeded(fake);fail("must throw on a failed commit");}
-  catch(IllegalStateException expected){}
-  assertEquals("schema flag must not persist",0,real.getInt("contact_star_schema",0));
-  assertFalse("no contact key persists",real.contains("contact_star.1"));
-  LocalFavorites.migrateIfNeeded(app); // retry on real storage succeeds
+  LocalFavorites.migrateIfNeeded(fake); // must NOT throw: a storage failure never closes the app
+  assertTrue("in-memory migration is visible this process",LocalFavorites.contains(app,1,false));
+  assertEquals(2,real.getInt("contact_star_schema",0)); // memory applied, disk result false
+  LocalFavorites.migrateIfNeeded(app); // second run is a no-op, never a re-write storm
+  assertTrue(LocalFavorites.contains(app,1,false));
+  // Restart recovery: a start where the flag WAS lost re-runs the migration
+  // from the kept legacy keys - safe because it is idempotent and never-overwriting.
+  real.edit().remove("contact_star_schema").remove("contact_star.1").apply();
+  LocalFavorites.migrateIfNeeded(app);
   assertTrue(LocalFavorites.contains(app,1,false));
  }
 }
