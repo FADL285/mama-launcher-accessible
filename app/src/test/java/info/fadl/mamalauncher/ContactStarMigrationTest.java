@@ -136,6 +136,64 @@ public class ContactStarMigrationTest {
     return r==e?proxy:r; // keep the fluent chain on the proxy
    });
  }
+ // A prefs fake with separate in-memory and durable maps, so the AOSP
+ // memory-first/disk-failed commit shape is directly testable.
+ private static SharedPreferences layeredPrefs(java.util.Map<String,Object> mem,java.util.Map<String,Object> disk,boolean[] failNext){
+  return (SharedPreferences)java.lang.reflect.Proxy.newProxyInstance(
+   ContactStarMigrationTest.class.getClassLoader(),new Class<?>[]{SharedPreferences.class},
+   (proxy,m,args)->{
+    switch(m.getName()){
+     case "getAll":return new java.util.HashMap<>(mem);
+     case "getInt":return mem.containsKey((String)args[0])?(int)(Integer)mem.get((String)args[0]):(int)(Integer)args[1];
+     case "getBoolean":return mem.containsKey((String)args[0])?(boolean)(Boolean)mem.get((String)args[0]):(boolean)(Boolean)args[1];
+     case "contains":return mem.containsKey((String)args[0]);
+     case "edit":return layeredEditor(mem,disk,failNext);
+     default:throw new UnsupportedOperationException(m.getName());
+    }
+   });
+ }
+ private static SharedPreferences.Editor layeredEditor(java.util.Map<String,Object> mem,java.util.Map<String,Object> disk,boolean[] failNext){
+  java.util.Map<String,Object> staged=new java.util.HashMap<>();
+  return (SharedPreferences.Editor)java.lang.reflect.Proxy.newProxyInstance(
+   ContactStarMigrationTest.class.getClassLoader(),new Class<?>[]{SharedPreferences.Editor.class},
+   (proxy,m,args)->{
+    switch(m.getName()){
+     case "putBoolean":staged.put((String)args[0],args[1]);return proxy;
+     case "putInt":staged.put((String)args[0],args[1]);return proxy;
+     case "remove":mem.remove((String)args[0]);return proxy;
+     case "commit":
+      // AOSP order: memory first, then the disk result.
+      mem.putAll(staged);
+      if(failNext[0]){failNext[0]=false;return false;}
+      disk.putAll(staged);return true;
+     case "apply":mem.putAll(staged);disk.putAll(staged);return null;
+     default:throw new UnsupportedOperationException(m.getName());
+    }
+   });
+ }
+ @Test public void memoryUpdatedDiskFailedCommitRetriesInProcessAndKeepsUserMarks(){
+  java.util.Map<String,Object> disk=new java.util.HashMap<>();
+  disk.put("favorite.1.010",Boolean.TRUE);   // legacy mark for contact 1
+  disk.put("favorite.2.010",Boolean.TRUE);   // legacy mark for contact 2
+  java.util.Map<String,Object> mem=new java.util.HashMap<>(disk);
+  boolean[] fail={true};
+  SharedPreferences p=layeredPrefs(mem,disk,fail);
+  LocalFavorites.migrateIfNeeded(p); // no throw
+  assertTrue("memory-first: migrated view visible",mem.containsKey("contact_star.1"));
+  assertEquals(2,mem.get("contact_star_schema"));
+  assertFalse("disk lost the write",disk.containsKey("contact_star_schema"));
+  // The user toggles contact 2 while the migration's disk write is pending -
+  // the retry must never overwrite it with the legacy-derived value.
+  p.edit().putBoolean("contact_star.2",Boolean.FALSE).apply();
+  LocalFavorites.migrateIfNeeded(p); // retryPending forces the persistence retry
+  assertEquals(2,disk.get("contact_star_schema"));
+  assertEquals(Boolean.TRUE,disk.get("contact_star.1"));
+  assertEquals(Boolean.FALSE,disk.get("contact_star.2")); // the user's mark wins
+  // Restart from durable state: schema flag present, nothing re-runs, marks kept.
+  java.util.Map<String,Object> mem2=new java.util.HashMap<>(disk);
+  LocalFavorites.migrateIfNeeded(layeredPrefs(mem2,disk,new boolean[]{false}));
+  assertEquals(Boolean.FALSE,disk.get("contact_star.2"));
+ }
  @Test public void failedCommitNeverCrashesAndStaysConsistent(){
   legacy(1,"010",true);
   final SharedPreferences real=Prefs.get(app);

@@ -21,8 +21,10 @@ final class LocalFavorites {
  /** The migration proper, on an explicit prefs handle so the failed-commit
   *  branch is testable. Runs on the class lock: the grid reads from a worker
   *  thread while confirmation toggles on the main thread. */
+ private static boolean retryPending; // a commit() that reported disk failure
+ private static Map<Long,Boolean> pendingMarks=new HashMap<>(); // our undurable writes
  static synchronized void migrateIfNeeded(SharedPreferences p){
-  if(p.getInt(SCHEMA,1)>=CURRENT_SCHEMA)return;
+  if(!retryPending && p.getInt(SCHEMA,1)>=CURRENT_SCHEMA)return;
   Map<Long,Boolean> decided=new HashMap<>();
   for(Map.Entry<String,?> e:p.getAll().entrySet()){
    String k=e.getKey();
@@ -32,19 +34,29 @@ final class LocalFavorites {
    if(dot<=0)continue;
    long id;
    try{id=Long.parseLong(rest.substring(0,dot));}catch(NumberFormatException nfe){continue;}
-   if(p.contains(key(id)))continue;
    boolean mark=(Boolean)e.getValue();
    Boolean cur=decided.get(id);
    if(cur==null)decided.put(id,mark);
    else if(mark)decided.put(id,Boolean.TRUE);
   }
   SharedPreferences.Editor ed=p.edit();
-  for(Map.Entry<Long,Boolean> e:decided.entrySet())ed.putBoolean(key(e.getKey()),e.getValue());
+  for(Map.Entry<Long,Boolean> e:decided.entrySet()){
+   String k=key(e.getKey());
+   if(!p.contains(k))ed.putBoolean(k,e.getValue());
+   else if(retryPending && pendingMarks.containsKey(e.getKey())
+     && p.getBoolean(k,false)==e.getValue())ed.putBoolean(k,e.getValue());
+   // else: a pre-existing or user-written mark - migration never overwrites it.
+   // The retry re-put only fires when the current value still equals what the
+   // migration itself wrote, i.e. our own write that never reached disk.
+  }
   // A failed commit must never crash the launcher. Android applies commit()
   // to memory before returning the disk result, so the migrated state stays
-  // visible for this process; the flag may simply not be durable, so a later
-  // start re-runs the migration - idempotent and never-overwriting, so safe.
-  ed.putInt(SCHEMA,CURRENT_SCHEMA).commit();
+  // visible for this process; but the in-memory flag alone must not mark the
+  // migration done - retryPending forces the next call to persist again.
+  // The re-run is idempotent and never overwrites marks a user toggle wrote
+  // meanwhile (the contains check above), so retrying is always safe.
+  retryPending=!ed.putInt(SCHEMA,CURRENT_SCHEMA).commit();
+  pendingMarks=decided;
  }
  static boolean contains(Context c,long id,boolean systemDefault){
   migrateIfNeeded(c);
