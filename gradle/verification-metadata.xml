@@ -281,6 +281,12 @@
          <artifact name="aapt2-7.4.2-8841542-linux.jar">
             <sha256 value="6c7284f22ed06c4d141609f54d6e20ccf8fb30157bb7f3d5a3e4f177a8d6d301" origin="dl.google.com direct download"/>
          </artifact>
+         <artifact name="aapt2-7.4.2-8841542-osx.jar">
+            <sha256 value="1a69bd767bb6f8e71ca9faac52229e6a773814d36493b9423b4600a310028e5d" origin="dl.google.com direct download"/>
+         </artifact>
+         <artifact name="aapt2-7.4.2-8841542-windows.jar">
+            <sha256 value="1b1dde1010cfc453753d5419fb6599d0d0a5e9f5ebaa0e24d2d0a2a60ad15dee" origin="dl.google.com direct download"/>
+         </artifact>
          <artifact name="aapt2-7.4.2-8841542.pom">
             <sha256 value="f6063690626a81571dd53dd43b360cfb1a0fba0fde18145417e700e85bbd651c" origin="dl.google.com direct download"/>
          </artifact>
