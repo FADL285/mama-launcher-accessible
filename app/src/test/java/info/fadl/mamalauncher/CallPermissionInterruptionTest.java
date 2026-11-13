@@ -26,7 +26,7 @@ public class CallPermissionInterruptionTest {
  }
  private DialpadActivity dialpadAsking(){
   DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();
-  key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"2").performClick();
+  key(a.findViewById(R.id.dial_grid),"4").performClick();key(a.findViewById(R.id.dial_grid),"5").performClick();key(a.findViewById(R.id.dial_grid),"6").performClick();
   a.findViewById(R.id.btn_call).performClick();
   Intent asked=next(a);
   assertEquals("android.content.pm.action.REQUEST_PERMISSIONS",asked.getAction());
@@ -79,6 +79,33 @@ public class CallPermissionInterruptionTest {
   a.findViewById(R.id.btn_call).performClick();
   assertNull(next(a));
  }
+ @Test public void denialWithRationaleAvailableAsksAgain(){
+  // Plan row: denied once but the system still offers an explanation -> ask again.
+  DialpadActivity a=dialpadAsking();
+  deliver(a,42,new String[]{android.Manifest.permission.CALL_PHONE},new int[]{PackageManager.PERMISSION_DENIED});
+  assertTrue(Prefs.get(a).getBoolean("call_denied_once",false));
+  ((org.robolectric.shadows.ShadowPackageManager)Shadows.shadowOf(a.getPackageManager()))
+   .setShouldShowRequestPermissionRationale(android.Manifest.permission.CALL_PHONE,true);
+  a.findViewById(R.id.btn_call).performClick();
+  assertEquals("android.content.pm.action.REQUEST_PERMISSIONS",next(a).getAction());
+  ((org.robolectric.shadows.ShadowPackageManager)Shadows.shadowOf(a.getPackageManager()))
+   .setShouldShowRequestPermissionRationale(android.Manifest.permission.CALL_PHONE,false);
+ }
+ @Test public void revokeAfterRegrantAsksAgainInsteadOfBlockedHint(){
+  // Plan row: granted, then revoked in Settings -> a fresh press asks, never calls.
+  Shadows.shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.CALL_PHONE);
+  DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();
+  key(a.findViewById(R.id.dial_grid),"4").performClick();key(a.findViewById(R.id.dial_grid),"5").performClick();key(a.findViewById(R.id.dial_grid),"6").performClick();
+  a.findViewById(R.id.btn_call).performClick();
+  assertEquals(Intent.ACTION_CALL,next(a).getAction());
+  Shadows.shadowOf(RuntimeEnvironment.getApplication()).denyPermissions(android.Manifest.permission.CALL_PHONE);
+  // Back from the system dialer with the grant now revoked: a fresh press asks.
+  DialpadActivity b=Robolectric.buildActivity(DialpadActivity.class).setup().get();
+  key(b.findViewById(R.id.dial_grid),"4").performClick();key(b.findViewById(R.id.dial_grid),"5").performClick();key(b.findViewById(R.id.dial_grid),"6").performClick();
+  b.findViewById(R.id.btn_call).performClick();
+  Intent asked=next(b);
+  assertEquals("android.content.pm.action.REQUEST_PERMISSIONS",asked.getAction());
+ }
  @Test public void grantCallbackClearsEarlierDenialButNeverCalls(){
   DialpadActivity a=dialpadAsking();
   Prefs.get(a).edit().putBoolean("call_denied_once",true).apply();
@@ -93,7 +120,7 @@ public class CallPermissionInterruptionTest {
   Prefs.get(RuntimeEnvironment.getApplication()).edit().putBoolean("call_denied_once",true).apply();
   Shadows.shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.CALL_PHONE);
   DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();
-  key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"1").performClick();key(a.findViewById(R.id.dial_grid),"2").performClick();
+  key(a.findViewById(R.id.dial_grid),"4").performClick();key(a.findViewById(R.id.dial_grid),"5").performClick();key(a.findViewById(R.id.dial_grid),"6").performClick();
   a.findViewById(R.id.btn_call).performClick();
   assertFalse(Prefs.get(a).getBoolean("call_denied_once",false));
   assertEquals(Intent.ACTION_CALL,next(a).getAction());
