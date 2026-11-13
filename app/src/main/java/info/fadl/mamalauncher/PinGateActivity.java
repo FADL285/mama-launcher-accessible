@@ -180,6 +180,8 @@ public class PinGateActivity extends ProtectedModeActivity {
                 .putString(Prefs.PIN_HASH, PinLock.hash(salt.toString(), firstEntry))
                 .putInt(Prefs.PIN_FAILURES, 0)
                 .putLong(Prefs.PIN_LOCKOUT_UNTIL, 0)
+                .putLong(Prefs.PIN_LOCKOUT_ARMED_WALL, 0)
+                .putLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, 0)
                 .apply();
         error.setText(R.string.pingate_saved);
         openSettings();
@@ -192,6 +194,8 @@ public class PinGateActivity extends ProtectedModeActivity {
             Prefs.get(this).edit()
                     .putInt(Prefs.PIN_FAILURES, 0)
                     .putLong(Prefs.PIN_LOCKOUT_UNTIL, 0)
+                .putLong(Prefs.PIN_LOCKOUT_ARMED_WALL, 0)
+                .putLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, 0)
                     .apply();
             openSettings();
             return;
@@ -201,6 +205,8 @@ public class PinGateActivity extends ProtectedModeActivity {
         Prefs.get(this).edit()
                 .putInt(Prefs.PIN_FAILURES, failures)
                 .putLong(Prefs.PIN_LOCKOUT_UNTIL, lock > 0 ? System.currentTimeMillis() + lock : 0)
+                .putLong(Prefs.PIN_LOCKOUT_ARMED_WALL, lock > 0 ? System.currentTimeMillis() : 0)
+                .putLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, lock > 0 ? android.os.SystemClock.elapsedRealtime() : 0)
                 .apply();
         entered.setLength(0);
         syncDots();
@@ -210,7 +216,10 @@ public class PinGateActivity extends ProtectedModeActivity {
 
     private boolean isLockedOut() {
         long until = Prefs.get(this).getLong(Prefs.PIN_LOCKOUT_UNTIL, 0);
-        boolean locked = PinLock.isLocked(until, System.currentTimeMillis());
+        boolean locked = PinLock.remainingLockoutMs(until,
+                Prefs.get(this).getLong(Prefs.PIN_LOCKOUT_ARMED_WALL, 0),
+                Prefs.get(this).getLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, 0),
+                System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime()) > 0;
         if (locked) error.setText(R.string.pingate_locked);
         return locked;
     }
@@ -243,6 +252,8 @@ public class PinGateActivity extends ProtectedModeActivity {
             Prefs.get(this).edit()
                     .putInt(Prefs.PIN_FAILURES, 0)
                     .putLong(Prefs.PIN_LOCKOUT_UNTIL, 0)
+                .putLong(Prefs.PIN_LOCKOUT_ARMED_WALL, 0)
+                .putLong(Prefs.PIN_LOCKOUT_ARMED_ELAPSED, 0)
                     .apply();
             if (recovery) {
                 // Authentication permits replacement, not deletion. Keep the

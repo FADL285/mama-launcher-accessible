@@ -87,4 +87,22 @@ public final class PinLock {
     public static boolean isLocked(long lockoutUntilMs, long nowMs) {
         return lockoutUntilMs > nowMs;
     }
+
+    /** Milliseconds left on a lockout. The wall-clock deadline is bounded by
+     *  the monotonic arming record, so a backward clock change cannot stretch
+     *  a lockout past its schedule, and anything beyond MAX_LOCK_MS is treated
+     *  as corrupt legacy state. Without arming data (legacy installs, or after
+     *  a reboot resets elapsedRealtime) the wall deadline alone applies. */
+    public static long remainingLockoutMs(long until, long armedWall, long armedElapsed,
+                                          long nowWall, long nowElapsed) {
+        if (until <= 0) return 0;
+        long remWall = until - nowWall;
+        if (remWall <= 0) return 0;
+        if (remWall > MAX_LOCK_MS) remWall = MAX_LOCK_MS;
+        long remMono = remWall;
+        if (armedWall > 0 && armedElapsed > 0 && nowElapsed >= armedElapsed) {
+            remMono = (until - armedWall) - (nowElapsed - armedElapsed);
+        }
+        return Math.max(0, Math.min(remWall, remMono));
+    }
 }
