@@ -153,7 +153,7 @@ public class DialpadActivity extends BaseActivity {
     }
     @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results) {
         super.onRequestPermissionsResult(code,permissions,results);
-        callAction.permissionResult(code,results);
+        callAction.permissionResult(code,permissions,results);
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
