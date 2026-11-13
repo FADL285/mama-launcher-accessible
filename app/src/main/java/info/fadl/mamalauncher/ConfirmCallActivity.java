@@ -116,7 +116,7 @@ public class ConfirmCallActivity extends BaseActivity {
         guard(findViewById(R.id.btn_favorite),()-> {
             if (contactId < 0) return;
             if(selectedNumber==null)return;
-            LocalFavorites.set(this,contactId,selectedNumber,!LocalFavorites.contains(this,contactId,selectedNumber,systemFavorite));
+            LocalFavorites.set(this,contactId,!LocalFavorites.contains(this,contactId,systemFavorite));
             refreshFavorite();
         });
         refreshFavorite();
@@ -169,7 +169,7 @@ public class ConfirmCallActivity extends BaseActivity {
             return;
         }
         boolean chosen=selectedNumber!=null;
-        boolean favorite=chosen && LocalFavorites.contains(this,contactId,selectedNumber,systemFavorite);
+        boolean favorite=chosen && LocalFavorites.contains(this,contactId,systemFavorite);
         findViewById(R.id.favorite_hint).setVisibility(chosen?View.GONE:View.VISIBLE);
         star.setText(favorite?"★":"☆");star.setEnabled(chosen);star.setAlpha(chosen?1f:0.5f);
         star.setContentDescription(getString(!chosen?R.string.favorite_choose_number:favorite?R.string.favorite_remove:R.string.favorite_add));
