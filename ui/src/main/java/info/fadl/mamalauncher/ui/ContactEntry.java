@@ -21,13 +21,22 @@ public class ContactEntry {
     public final List<PhoneNumber> numbers;
     public final String photoUri; // may be null
     public final boolean starred;
+    /** Provider photo version (PHOTO_ID); null when the provider has none.
+     *  The photo URI alone cannot detect a new photo (thumbnail-only contacts
+     *  keep the same URI across edits), so photo identity is URI + version. */
+    public final String photoVersion;
 
     public ContactEntry(long id, String name, List<PhoneNumber> numbers, String photoUri, boolean starred) {
+        this(id, name, numbers, photoUri, starred, null);
+    }
+
+    public ContactEntry(long id, String name, List<PhoneNumber> numbers, String photoUri, boolean starred, String photoVersion) {
         this.id = id;
         this.name = name == null ? "" : name;
         this.numbers = numbers;
         this.photoUri = photoUri;
         this.starred = starred;
+        this.photoVersion = photoVersion;
     }
 
     /** Convenience for tests: single number, no label. */

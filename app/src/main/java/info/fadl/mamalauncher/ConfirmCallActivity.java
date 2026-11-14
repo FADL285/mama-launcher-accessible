@@ -32,6 +32,7 @@ public class ConfirmCallActivity extends BaseActivity {
     private static final String EXTRA_NUMBERS = "numbers";
     private static final String EXTRA_LABELS = "labels";
     private static final String EXTRA_PHOTO = "photo";
+    private static final String EXTRA_PHOTO_VERSION = "photoVersion";
     private static final String STATE_NUMBER = "state_number";
 
     private String selectedNumber; // null until visibly chosen (multi-number)
@@ -60,6 +61,7 @@ public class ConfirmCallActivity extends BaseActivity {
         i.putStringArrayListExtra(EXTRA_NUMBERS, numbers);
         i.putStringArrayListExtra(EXTRA_LABELS, labels);
         i.putExtra(EXTRA_PHOTO, c.photoUri);
+        i.putExtra(EXTRA_PHOTO_VERSION, c.photoVersion);
         return i;
     }
 
@@ -72,6 +74,7 @@ public class ConfirmCallActivity extends BaseActivity {
         contactId=id;systemFavorite=getIntent().getBooleanExtra("system_favorite",false);
         String name = getIntent().getStringExtra(EXTRA_NAME);
         String photoUri = getIntent().getStringExtra(EXTRA_PHOTO);
+        String photoVersion = getIntent().getStringExtra(EXTRA_PHOTO_VERSION);
         if (name == null || name.trim().isEmpty()) name = getString(R.string.no_name);
 
         List<ContactEntry.PhoneNumber> numbers = new ArrayList<>();
@@ -98,7 +101,7 @@ public class ConfirmCallActivity extends BaseActivity {
         fallback.setText(name);
         fallback.setVisibility(View.VISIBLE);
         photoLoader = photoLoaderFactory.apply(getContentResolver());
-        photoLoader.loadAsync(bigPhoto, id, photoUri, 900, bmp -> {
+        photoLoader.loadAsync(bigPhoto, id, photoUri, photoVersion, 900, bmp -> {
             bigPhoto.setImageBitmap(bmp);
             bigPhoto.setVisibility(View.VISIBLE);
             fallback.setVisibility(View.GONE);

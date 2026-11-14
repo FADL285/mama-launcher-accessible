@@ -20,10 +20,10 @@ public class ContactStarSemanticsTest {
   org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){
    @Override public Cursor query(Uri uri,String[] projection,String s,String[] args,String sort) {
     MatrixCursor c=new MatrixCursor(projection);
-    c.addRow(new Object[]{7L,"ماما","01000000001",2,null,null,1});
-    c.addRow(new Object[]{7L,"ماما","01000000002",2,null,null,1});
-    c.addRow(new Object[]{8L,"خالتي","02000000001",2,null,null,0});
-    c.addRow(new Object[]{9L,"عمتي","03000000001",2,null,null,1});
+    c.addRow(new Object[]{7L,"ماما","01000000001",2,null,null,1,null});
+    c.addRow(new Object[]{7L,"ماما","01000000002",2,null,null,1,null});
+    c.addRow(new Object[]{8L,"خالتي","02000000001",2,null,null,0,null});
+    c.addRow(new Object[]{9L,"عمتي","03000000001",2,null,null,1,null});
     return c;
    }
    @Override public Uri insert(Uri u,ContentValues v){providerWrites++;return null;}
@@ -159,13 +159,13 @@ public class ContactStarSemanticsTest {
   org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){
    @Override public Cursor query(Uri uri,String[] projection,String s,String[] args,String sort) {
     MatrixCursor c=new MatrixCursor(projection);
-    c.addRow(new Object[]{7L,"ماما","01000000001",2,null,null,1});
-    c.addRow(new Object[]{7L,"ماما","01000000002",2,null,null,1});
-    c.addRow(new Object[]{8L,"خالتي","02000000001",2,null,null,0});
-    c.addRow(new Object[]{9L,"عمتي","03000000001",2,null,null,1});
-    c.addRow(new Object[]{10L,"بابا","04000000001",2,null,null,1});
-    c.addRow(new Object[]{10L,"بابا","04000000002",2,null,null,1});
-    c.addRow(new Object[]{10L,"بابا","04000000003",2,null,null,1});
+    c.addRow(new Object[]{7L,"ماما","01000000001",2,null,null,1,null});
+    c.addRow(new Object[]{7L,"ماما","01000000002",2,null,null,1,null});
+    c.addRow(new Object[]{8L,"خالتي","02000000001",2,null,null,0,null});
+    c.addRow(new Object[]{9L,"عمتي","03000000001",2,null,null,1,null});
+    c.addRow(new Object[]{10L,"بابا","04000000001",2,null,null,1,null});
+    c.addRow(new Object[]{10L,"بابا","04000000002",2,null,null,1,null});
+    c.addRow(new Object[]{10L,"بابا","04000000003",2,null,null,1,null});
     return c;
    }
    @Override public Uri insert(Uri u,ContentValues v){providerWrites++;return null;}
@@ -219,8 +219,8 @@ public class ContactStarSemanticsTest {
   org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){
    @Override public Cursor query(Uri uri,String[] projection,String s,String[] args,String sort) {
     MatrixCursor c=new MatrixCursor(projection);
-    c.addRow(new Object[]{11L,"جدتي","05000000001",2,null,null,0});
-    c.addRow(new Object[]{11L,"جدتي","05000000002",2,null,null,0});
+    c.addRow(new Object[]{11L,"جدتي","05000000001",2,null,null,0,null});
+    c.addRow(new Object[]{11L,"جدتي","05000000002",2,null,null,0,null});
     return c;
    }
    @Override public Uri insert(Uri u,ContentValues v){providerWrites++;return null;}
@@ -251,8 +251,8 @@ public class ContactStarSemanticsTest {
   org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){
    @Override public Cursor query(Uri uri,String[] projection,String s,String[] args,String sort) {
     MatrixCursor c=new MatrixCursor(projection);
-    c.addRow(new Object[]{11L,"جدتي","05000000001",2,null,null,0});
-    c.addRow(new Object[]{11L,"جدتي","05000000002",2,null,null,0});
+    c.addRow(new Object[]{11L,"جدتي","05000000001",2,null,null,0,null});
+    c.addRow(new Object[]{11L,"جدتي","05000000002",2,null,null,0,null});
     return c;
    }
    @Override public Uri insert(Uri u,ContentValues v){providerWrites++;return null;}

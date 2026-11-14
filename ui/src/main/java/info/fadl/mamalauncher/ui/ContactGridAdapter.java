@@ -60,7 +60,7 @@ public class ContactGridAdapter extends BaseAdapter {
         fallback.setBackgroundColor(tileColorFor(c.id));
         fallback.setText(c.name);
         fallback.setVisibility(View.VISIBLE);
-        photos.loadAsync(photo, c.id, c.photoUri, 360, bmp -> {
+        photos.loadAsync(photo, c.id, c.photoUri, c.photoVersion, 360, bmp -> {
             photo.setImageBitmap(bmp);
             photo.setVisibility(View.VISIBLE);
             fallback.setVisibility(View.GONE);

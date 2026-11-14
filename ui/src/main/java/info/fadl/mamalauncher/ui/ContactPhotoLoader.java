@@ -10,11 +10,14 @@ import android.view.View;
 
 import java.io.InputStream;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** Photo decode + small byte-bounded cache. Photos never leave the device.
@@ -23,20 +26,41 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  *  T-07: decoding happens on a background thread. A request binds a
  *  placeholder immediately and delivers on the main thread only when the
- *  target view is still bound to the same contact id + URI + size (grid rows
- *  recycle, so adapter position is never an identity). Each owner
- *  (grid screen, confirmation screen) closes its loader on destroy. A refresh
- *  retires in-flight work (generation bump + negative-cache clear) but KEEPS
- *  decoded photos, so returning to the screen never flashes placeholders;
- *  decoded entries are dropped only when the contact list's photo URIs change
- *  or permission is lost. Queued work whose target was recycled is skipped
+ *  target view is still bound to the same contact id + URI + photo version +
+ *  size (grid rows recycle, so adapter position is never an identity). Each
+ *  owner (grid screen, confirmation screen) closes its loader on destroy.
+ *
+ *  Photo identity is URI + provider photo version (PHOTO_ID): for
+ *  thumbnail-only contacts the photo URI stays identical across photo
+ *  changes, so the URI alone cannot detect a new photo. The version comes
+ *  from the contacts query, costs nothing, and changes whenever the photo
+ *  does - a refresh after a photo edit evicts the old pixels instead of
+ *  serving them, while a refresh that changed nothing keeps every decoded
+ *  entry (no placeholder flash, no re-decode).
+ *
+ *  A refresh retires in-flight work (generation bump + negative-cache clear)
+ *  but KEEPS decoded photos. Queued work whose target was recycled is skipped
  *  before it decodes. Failures land in a bounded, expiring negative cache so
- *  a failed-then-readable URI recovers. */
+ *  a failed-then-readable URI recovers.
+ *
+ *  Managed resource limits (same policy as the call-log worker): queued +
+ *  running requests are bounded (overflow is dropped; the row keeps its
+ *  placeholder and re-requests on the next bind), one request per target is
+ *  in flight at a time (rebinds dedupe), and a decode stuck past
+ *  DECODE_TIMEOUT_MS - a provider binder call that ignores interrupts - is
+ *  abandoned: its worker is replaced so fresh requests keep flowing.
+ *  Abandonment is capped; a stuck thread that finally returns frees a slot. */
 public class ContactPhotoLoader implements AutoCloseable {
     private static final int CACHE_BYTES = 6 * 1024 * 1024;
     /** Negative cache: at most 200 URIs, each remembered for one minute. */
     private static final int MAX_MISSES = 200;
     private static final long MISS_TTL_MS = 60_000;
+    /** Queued + running decode requests; beyond it new requests are dropped. */
+    private static final int MAX_PENDING = 64;
+    /** A decode still running after this is abandoned and its worker replaced. */
+    private static final long DECODE_TIMEOUT_MS = 10_000;
+    /** Managed resource limit for abandoned stuck decodes (see class doc). */
+    private static final int MAX_ABANDONED = 3;
 
     public interface Callback {
         /** Main thread. Only fires while the target still owns this request. */
@@ -44,13 +68,27 @@ public class ContactPhotoLoader implements AutoCloseable {
     }
 
     private final ContentResolver resolver;
-    private final ExecutorService ownedExecutor;
-    private final Executor background;
+    /** Owned worker, replaced when a stuck decode is abandoned; null when the
+     *  executor is injected (tests) - an injected executor is never shut down
+     *  or replaced by the loader. */
+    private volatile ExecutorService ownedWorker;
+    /** Where decodes run: the owned worker, or the injected test executor. */
+    private volatile Executor worker;
     private final Handler main;
     private final AtomicInteger generation = new AtomicInteger();
     /** Serializes generation bumps with cache writes (see loadAsync). */
     private final Object lock = new Object();
     private volatile boolean closed;
+    /** Request keys currently queued or decoding (bounded by MAX_PENDING). */
+    private final Set<String> inFlight = new HashSet<>();
+    /** Running/queued task -> request key, so an abandoned worker's discarded
+     *  (never-started) tasks still release their in-flight keys. */
+    private final Map<Runnable, String> taskKeys = new java.util.HashMap<>();
+    private int abandoned;
+    /** Photo keys the latest contact list still carries; a decode for anything
+     *  else must never reach the cache. Null until the first retainUris call
+     *  (no list seen yet: everything is allowed), empty after permission loss. */
+    private volatile Set<String> allowed;
 
     private final android.util.LruCache<String, Bitmap> cache =
             new android.util.LruCache<String, Bitmap>(CACHE_BYTES) {
@@ -70,38 +108,48 @@ public class ContactPhotoLoader implements AutoCloseable {
     }
 
     /** Test seam: a direct background executor makes requests synchronous, so
-     *  golden screenshots capture exactly what a cache hit would show. */
+     *  golden screenshots capture exactly what a cache hit would show. An
+     *  injected executor is never shut down or replaced by the loader. */
     public ContactPhotoLoader(ContentResolver resolver, Executor background, Handler main) {
         this.resolver = resolver;
         if (background == null) {
-            this.ownedExecutor = Executors.newSingleThreadExecutor();
-            this.background = this.ownedExecutor;
+            this.ownedWorker = Executors.newSingleThreadExecutor();
+            this.worker = this.ownedWorker;
         } else {
-            this.ownedExecutor = null;
-            this.background = background;
+            this.ownedWorker = null;
+            this.worker = background;
         }
         this.main = main;
     }
 
+    /** Photo identity: the URI plus the provider's photo version. Two photos
+     *  for the same contact can share a URI, so the version is what separates
+     *  "same photo as before" from "edited since". */
+    public static String photoKey(String photoUri, String photoVersion) {
+        return photoUri + "#" + (photoVersion == null ? "" : photoVersion);
+    }
+
     /** Cache identity includes the decode size: the grid's 360px tile and the
      *  confirmation screen's 900px photo are different entries. */
-    static String cacheKey(String photoUri, int maxDim) {
-        return photoUri + "@" + maxDim;
+    static String cacheKey(String photoUri, String photoVersion, int maxDim) {
+        return photoKey(photoUri, photoVersion) + "@" + maxDim;
     }
 
     /** Requests a photo for a target view. The caller has already bound the
      *  placeholder. A cache hit applies synchronously; a decode applies on
      *  the main thread after it finishes. Either way the bitmap is applied
      *  only if the target is still bound to this exact request. */
-    public void loadAsync(View target, long contactId, String photoUri, int maxDim, Callback callback) {
-        final String requestKey = contactId + "|" + photoUri + "|" + maxDim;
+    public void loadAsync(View target, long contactId, String photoUri, String photoVersion,
+                          int maxDim, Callback callback) {
+        final String requestKey = contactId + "|" + photoUri + "|" + photoVersion + "|" + maxDim;
         // Retag even when there is no photo: a recycled row must never keep
         // the previous contact's request key.
         target.setTag(R.id.photo_request, requestKey);
         if (photoUri == null) return;
         if (closed) return;
         final int gen = generation.get();
-        final String key = cacheKey(photoUri, maxDim);
+        final String photoKey = photoKey(photoUri, photoVersion);
+        final String key = photoKey + "@" + maxDim;
         Bitmap cached = cache.get(key);
         if (cached != null) {
             callback.onPhoto(cached);
@@ -109,30 +157,90 @@ public class ContactPhotoLoader implements AutoCloseable {
         }
         Long missedAt = misses.get(key);
         if (missedAt != null && System.currentTimeMillis() - missedAt < MISS_TTL_MS) return;
+        final AtomicBoolean running = new AtomicBoolean();
+        final AtomicBoolean wasAbandoned = new AtomicBoolean();
+        final Runnable[] watchdog = new Runnable[1];
+        final Runnable[] self = new Runnable[1];
+        synchronized (lock) {
+            // Bound pending work: past the limit the request is dropped - the
+            // row keeps its placeholder and re-requests on its next bind.
+            if (inFlight.size() >= MAX_PENDING) return;
+            // One request per target: a rebind of the same row dedupes here.
+            if (!inFlight.add(requestKey)) return;
+        }
         try {
-            background.execute(() -> {
-            if (generation.get() != gen) return; // refresh made this queued work obsolete
-            // A fling recycles rows faster than one worker decodes: never spend
-            // the decode on a target that has since been rebound.
-            if (!requestKey.equals(target.getTag(R.id.photo_request))) return;
-            Bitmap bmp = load(photoUri, maxDim);
-            // Generation check and cache write are one atomic step: a refresh
-            // between them must not let old pixels or a stale miss into the
-            // freshly cleared caches.
-            synchronized (lock) {
-                if (generation.get() != gen) return;
-                if (bmp != null) cache.put(key, bmp);
-                else { misses.remove(key); misses.put(key, System.currentTimeMillis()); }
+            self[0] = () -> {
+            running.set(true);
+            if (ownedWorker != null) {
+                watchdog[0] = () -> {
+                    // The decode is still inside the provider after the
+                    // timeout: the thread may never return (binder calls
+                    // ignore interrupts), so abandon the worker and give
+                    // later requests a fresh one - capped, like CallLogWorker.
+                    if (!running.get()) return;
+                    synchronized (lock) {
+                        if (abandoned >= MAX_ABANDONED) return;
+                        abandoned++;
+                        wasAbandoned.set(true);
+                        ExecutorService stuck = ownedWorker;
+                        ExecutorService fresh = Executors.newSingleThreadExecutor();
+                        ownedWorker = fresh;
+                        worker = fresh;
+                        // Queued-but-never-started tasks on the stuck worker are
+                        // discarded by shutdownNow and never run their cleanup:
+                        // release their in-flight keys here instead.
+                        for (Runnable dropped : stuck.shutdownNow()) {
+                            String droppedKey = taskKeys.remove(dropped);
+                            if (droppedKey != null) inFlight.remove(droppedKey);
+                        }
+                    }
+                };
+                main.postDelayed(watchdog[0], DECODE_TIMEOUT_MS);
             }
-            if (bmp == null) return;
-            main.post(() -> {
-                if (generation.get() != gen) return;
+            try {
+                if (generation.get() != gen) return; // refresh made this queued work obsolete
+                // A fling recycles rows faster than one worker decodes: never spend
+                // the decode on a target that has since been rebound.
                 if (!requestKey.equals(target.getTag(R.id.photo_request))) return;
-                callback.onPhoto(bmp);
-            });
-        });
+                Bitmap bmp = load(photoUri, maxDim);
+                // Generation check and cache write are one atomic step: a refresh
+                // between them must not let old pixels or a stale miss into the
+                // freshly cleared caches. The allowed photo-key set is applied
+                // at write time too: a request queued from the previous contact
+                // list can finish after the new list arrived, and a departed
+                // photo must never repopulate the cache (it still delivers to a
+                // view that is genuinely still bound to it).
+                synchronized (lock) {
+                    if (generation.get() != gen) return;
+                    Set<String> allowedNow = allowed;
+                    if (allowedNow == null || allowedNow.contains(photoKey)) {
+                        if (bmp != null) cache.put(key, bmp);
+                        else { misses.remove(key); misses.put(key, System.currentTimeMillis()); }
+                    }
+                }
+                if (bmp == null) return;
+                main.post(() -> {
+                    if (generation.get() != gen) return;
+                    if (!requestKey.equals(target.getTag(R.id.photo_request))) return;
+                    callback.onPhoto(bmp);
+                });
+            } finally {
+                running.set(false);
+                if (watchdog[0] != null) main.removeCallbacks(watchdog[0]);
+                synchronized (lock) { taskKeys.remove(self[0]); inFlight.remove(requestKey); }
+                if (wasAbandoned.get()) {
+                    // A stuck thread that returned frees its slot.
+                    main.post(() -> {
+                        synchronized (lock) { if (abandoned > 0) abandoned--; }
+                    });
+                }
+            }
+        };
+            synchronized (lock) { taskKeys.put(self[0], requestKey); }
+            worker.execute(self[0]);
         } catch (java.util.concurrent.RejectedExecutionException shutDown) {
-            // close() raced the enqueue: nothing to deliver.
+            // close() or abandonment raced the enqueue: nothing to deliver.
+            synchronized (lock) { taskKeys.remove(self[0]); inFlight.remove(requestKey); }
         }
     }
 
@@ -149,32 +257,27 @@ public class ContactPhotoLoader implements AutoCloseable {
     }
 
     /**
-     * After a refresh: drop decoded entries whose photo URI is no longer in the
-     * contact list (the photo changed or the contact left). A null set means
-     * permission was lost - nothing may stay.
+     * After a refresh: drop decoded entries whose photo key (URI + provider
+     *  photo version) is no longer in the contact list - the photo changed
+     *  (same URI, new version), or the contact left. Also constrains every
+     *  later cache write to this set, so a request queued from the old list
+     *  cannot repopulate a departed photo. A null set means permission was
+     *  lost - nothing may stay or be written.
      */
-    public void retainUris(java.util.Set<String> photoUris) {
+    public void retainUris(Set<String> photoKeys) {
         synchronized (lock) {
-            if (photoUris == null) {
+            if (photoKeys == null) {
                 cache.evictAll();
+                allowed = Collections.emptySet();
                 return;
             }
+            allowed = new HashSet<>(photoKeys);
             java.util.List<String> stale = new java.util.ArrayList<>();
             for (String key : cache.snapshot().keySet()) {
-                String uri = key.substring(0, key.lastIndexOf('@'));
-                if (!photoUris.contains(uri)) stale.add(key);
+                String photoKey = key.substring(0, key.lastIndexOf('@'));
+                if (!photoKeys.contains(photoKey)) stale.add(key);
             }
             for (String key : stale) cache.remove(key);
-        }
-    }
-
-    /** Hard reset (permission revoked): drops every cached and negative-cached
-     *  entry and orphans in-flight decodes. */
-    public void invalidateAll() {
-        synchronized (lock) {
-            generation.incrementAndGet();
-            cache.evictAll();
-            misses.clear();
         }
     }
 
@@ -185,8 +288,25 @@ public class ContactPhotoLoader implements AutoCloseable {
         synchronized (lock) {
             closed = true;
             generation.incrementAndGet();
+            inFlight.clear();
+            taskKeys.clear();
         }
-        if (ownedExecutor != null) ownedExecutor.shutdownNow();
+        ExecutorService owned = ownedWorker;
+        if (owned != null) owned.shutdownNow();
+    }
+
+    /** Test seam: how many stuck decode workers are currently abandoned. */
+    int abandonedForTest() {
+        synchronized (lock) { return abandoned; }
+    }
+
+    /** Test seam: wait until the current worker has drained. */
+    void awaitIdleForTest() throws Exception {
+        ExecutorService owned = ownedWorker;
+        Executor w = worker;
+        ExecutorService drain = owned != null ? owned
+                : w instanceof ExecutorService ? (ExecutorService) w : null;
+        if (drain != null) drain.submit(() -> {}).get(5, java.util.concurrent.TimeUnit.SECONDS);
     }
 
     /** Synchronous decode with subsampling; null on any unreadable stream. */

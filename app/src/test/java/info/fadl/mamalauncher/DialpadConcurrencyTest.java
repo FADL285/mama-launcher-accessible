@@ -47,7 +47,8 @@ public class DialpadConcurrencyTest {
     ContactsContract.CommonDataKinds.Phone.TYPE,
     ContactsContract.CommonDataKinds.Phone.LABEL,
     ContactsContract.CommonDataKinds.Phone.PHOTO_URI,
-    ContactsContract.CommonDataKinds.Phone.STARRED
+    ContactsContract.CommonDataKinds.Phone.STARRED,
+    ContactsContract.CommonDataKinds.Phone.PHOTO_ID
   };
 
   private View key(View v, String tag) {
@@ -82,7 +83,7 @@ public class DialpadConcurrencyTest {
               }
             }
             MatrixCursor c = new MatrixCursor(COLUMNS);
-            c.addRow(new Object[] {5L, "Mama", "01000000000", 1, null, null, 0});
+            c.addRow(new Object[] {5L, "Mama", "01000000000", 1, null, null, 0, null});
             return c;
           }
         });
@@ -126,8 +127,8 @@ public class DialpadConcurrencyTest {
           public Cursor query(Uri u, String[] p, String s, String[] a, String o) {
             if (failing.get()) return null; // provider now unreadable
             MatrixCursor c = new MatrixCursor(COLUMNS);
-            c.addRow(new Object[] {5L, "Mama", "01000000000", 1, null, null, 0});
-            c.addRow(new Object[] {6L, "Mama Home", "01000000001", 1, null, null, 0});
+            c.addRow(new Object[] {5L, "Mama", "01000000000", 1, null, null, 0, null});
+            c.addRow(new Object[] {6L, "Mama Home", "01000000001", 1, null, null, 0, null});
             return c;
           }
         });

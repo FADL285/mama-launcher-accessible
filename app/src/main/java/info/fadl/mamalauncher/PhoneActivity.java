@@ -136,12 +136,15 @@ public class PhoneActivity extends BaseActivity {
                             ? (ContactEntry) old.getItem(pos) : null;
                     firstVisible = top != null ? top.id : null;
                 }
-                // T-07: keep decoded photos whose URI the new list still
+                // T-07: keep decoded photos whose identity the new list still
                 // carries (no placeholder flash on an unchanged refresh);
-                // drop the ones whose URI left the list.
-                final java.util.Set<String> photoUris = new java.util.HashSet<>();
-                for (ContactEntry c : sorted) if (c.photoUri != null) photoUris.add(c.photoUri);
-                photos.retainUris(photoUris);
+                // drop the ones that left. Photo identity is URI + provider
+                // photo version (PHOTO_ID): a photo edit keeps the URI but
+                // bumps the version, so its stale pixels are evicted here.
+                final java.util.Set<String> photoKeys = new java.util.HashSet<>();
+                for (ContactEntry c : sorted) if (c.photoUri != null)
+                    photoKeys.add(ContactPhotoLoader.photoKey(c.photoUri, c.photoVersion));
+                photos.retainUris(photoKeys);
                 grid.setAdapter(new ContactGridAdapter(this, sorted, photos) {
                     @Override public View getView(int position, View recycled, android.view.ViewGroup parent) {
                         View tile = super.getView(position, recycled, parent);

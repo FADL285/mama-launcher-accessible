@@ -27,11 +27,11 @@ public class GridScrollRestoreActivityTest {
   ShadowApplication.getInstance().grantPermissions(android.Manifest.permission.READ_CONTACTS);
   ShadowContentResolver.registerProviderInternal(ContactsContract.AUTHORITY,new FixtureContactsProvider(){
    @Override public android.database.Cursor query(android.net.Uri uri,String[] projection,String selection,String[] args,String order){
-    MatrixCursor c=new MatrixCursor(new String[]{Phone.CONTACT_ID,Phone.DISPLAY_NAME,Phone.NUMBER,Phone.TYPE,Phone.LABEL,Phone.PHOTO_URI,Phone.STARRED});
+    MatrixCursor c=new MatrixCursor(new String[]{Phone.CONTACT_ID,Phone.DISPLAY_NAME,Phone.NUMBER,Phone.TYPE,Phone.LABEL,Phone.PHOTO_URI,Phone.STARRED,Phone.PHOTO_ID});
     for(long id=1;id<=COUNT;id++){
-     c.addRow(new Object[]{id,"جهة "+String.format("%03d",id),"0100000"+String.format("%04d",id),Phone.TYPE_MOBILE,null,null,0});
+     c.addRow(new Object[]{id,"جهة "+String.format("%03d",id),"0100000"+String.format("%04d",id),Phone.TYPE_MOBILE,null,null,0,null});
      if(id>=80&&id<=95) // the scrolled-into band carries two numbers (multi-number target)
-      c.addRow(new Object[]{id,"جهة "+String.format("%03d",id),"0100001"+String.format("%04d",id),Phone.TYPE_HOME,null,null,0});
+      c.addRow(new Object[]{id,"جهة "+String.format("%03d",id),"0100001"+String.format("%04d",id),Phone.TYPE_HOME,null,null,0,null});
     }
     return c;
    }});
