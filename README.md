@@ -71,7 +71,7 @@ export ANDROID_HOME=/path/to/android-sdk
 
 Built for TalkBack and low-vision use from the start, not retrofitted:
 
-- Every touchable has a visible Arabic label; decorative images are not announced.
+- Controls carry visible Arabic text labels; the few icon-only controls (repeat-name speaker, the favorite star) instead carry a spoken Arabic content description for TalkBack. Decorative images are not announced.
 - Tap targets are large, and every screen has a visible Back action - no gesture-only navigation.
 - Contacts show photos with a colored name-tile fallback, so a missing photo never means a missing person.
 - A contact's name is spoken on the confirmation screen through the installed TTS engine's offline Arabic voice.
