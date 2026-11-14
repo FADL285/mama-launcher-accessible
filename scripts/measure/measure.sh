@@ -44,6 +44,11 @@ if [ "${SCENARIOS[*]}" != "env" ] && [ "$CONTACTS" = unknown ]; then
   exit 2
 fi
 
+# All adb calls go through here. The fds holding the host lock (8/9) must NOT
+# leak into children: a freshly started adb server daemonizes and would hold
+# the lock open forever, hanging every later run.
+adbq() { "${ADB[@]}" "$@" 8>&- 9>&-; }
+
 APP="${APP:-info.fadl.mamalauncher}"
 OUT="${OUT:-baseline-results.csv}"
 SETTLE="${SETTLE:-3}"
@@ -61,21 +66,21 @@ row() { echo "$TS,$CONTACTS,$*" >> "$OUT"; }
 
 prep() {
   # Fresh installs otherwise measure the permission/setup screen, not the grid.
-  "${ADB[@]}" shell pm grant "$APP" android.permission.READ_CONTACTS 2> /dev/null || true
-  "${ADB[@]}" shell pm grant "$APP" android.permission.READ_CALL_LOG 2> /dev/null || true
+  adbq shell pm grant "$APP" android.permission.READ_CONTACTS 2> /dev/null || true
+  adbq shell pm grant "$APP" android.permission.READ_CALL_LOG 2> /dev/null || true
   # Page-cache drop needs root; Google Play emulator images have no su. Probe
   # once so cold numbers record whether the cache was actually dropped.
-  if "${ADB[@]}" shell "su 0 id" > /dev/null 2>&1; then CACHE_DROP=yes; else CACHE_DROP=no; fi
+  if adbq shell "su 0 id" > /dev/null 2>&1; then CACHE_DROP=yes; else CACHE_DROP=no; fi
 }
 
 reset() {
-  "${ADB[@]}" shell am force-stop "$APP"
+  adbq shell am force-stop "$APP"
   # Move focus to a neutral screen instead of HOME: if Mama is the default
   # launcher, a HOME keyevent would relaunch it before the timed (cold) start.
-  "${ADB[@]}" shell am start -a android.settings.SETTINGS > /dev/null
+  adbq shell am start -a android.settings.SETTINGS > /dev/null
   sleep 1
   if [ "$CACHE_DROP" = yes ]; then
-    "${ADB[@]}" shell "su 0 sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'" 2> /dev/null || true
+    adbq shell "su 0 sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'" 2> /dev/null || true
   fi
   sleep 2
 }
@@ -113,7 +118,7 @@ emit() {  # emit METRIC VALUES... -> row metric,median,iqr,valid_n,"values"
 
 start_ms() {  # sets MS + LAUNCH_STATE; fails loudly when TotalTime is missing
   local OUT_START
-  OUT_START=$("${ADB[@]}" shell am start -W -n "$LAUNCH" | tr -d '\r')
+  OUT_START=$(adbq shell am start -W -n "$LAUNCH" | tr -d '\r')
   MS=$(printf '%s' "$OUT_START" | awk '/^TotalTime:/{print $2; exit}')
   LAUNCH_STATE=$(printf '%s' "$OUT_START" | awk -F'[ :]+' '/^LaunchState:/{print $2; exit}')
   [ -n "$MS" ] || { echo "am start failed: $OUT_START" >&2; exit 1; }
@@ -137,11 +142,11 @@ grid_ready_ms() {  # coarse populated-grid GATE without production changes.
   local start=${1:-$(now_ms)} UI
   while :; do
     # Remove any stale dump first: a failed dump must not match an earlier UI.
-    "${ADB[@]}" shell rm -f /sdcard/mama-ui.xml > /dev/null 2>&1 || true
-    "${ADB[@]}" shell uiautomator dump /sdcard/mama-ui.xml > /dev/null 2>&1 || true
+    adbq shell rm -f /sdcard/mama-ui.xml > /dev/null 2>&1 || true
+    adbq shell uiautomator dump /sdcard/mama-ui.xml > /dev/null 2>&1 || true
     # Capture before matching: piping `cat` into `grep -q` under pipefail lets
     # adb die with SIGPIPE and misreport a populated grid as not ready.
-    UI=$("${ADB[@]}" shell cat /sdcard/mama-ui.xml 2> /dev/null || true)
+    UI=$(adbq shell cat /sdcard/mama-ui.xml 2> /dev/null || true)
     case "$UI" in
       *":id/name"*)
         echo $(( $(now_ms) - start )); return 0 ;;
@@ -152,18 +157,18 @@ grid_ready_ms() {  # coarse populated-grid GATE without production changes.
 }
 
 env_row() {
-  FP=$("${ADB[@]}" shell getprop ro.build.fingerprint | tr -d '\r')
-  API=$("${ADB[@]}" shell getprop ro.build.version.sdk | tr -d '\r')
-  MODEL=$("${ADB[@]}" shell getprop ro.product.model | tr -d '\r')
-  DISP=$("${ADB[@]}" shell wm size | tr -d '\r' | tr '\n' ' ')
+  FP=$(adbq shell getprop ro.build.fingerprint | tr -d '\r')
+  API=$(adbq shell getprop ro.build.version.sdk | tr -d '\r')
+  MODEL=$(adbq shell getprop ro.product.model | tr -d '\r')
+  DISP=$(adbq shell wm size | tr -d '\r' | tr '\n' ' ')
   # Resolved-number region changes T-17 dedup behaviour, so record its inputs.
-  SIM=$("${ADB[@]}" shell getprop gsm.sim.operator.iso-country | tr -d '\r ')
-  NET=$("${ADB[@]}" shell getprop gsm.operator.iso-country | tr -d '\r ')
-  LOC=$("${ADB[@]}" shell getprop persist.sys.locale | tr -d '\r ')
+  SIM=$(adbq shell getprop gsm.sim.operator.iso-country | tr -d '\r ')
+  NET=$(adbq shell getprop gsm.operator.iso-country | tr -d '\r ')
+  LOC=$(adbq shell getprop persist.sys.locale | tr -d '\r ')
   # Identify the exact installed binary, not just flavor/build-type names.
   # Capture once: piping dumpsys into an awk that exits early can SIGPIPE adb
   # under pipefail and abort the env scenario.
-  PKG=$("${ADB[@]}" shell dumpsys package "$APP" 2> /dev/null | tr -d '\r' || true)
+  PKG=$(adbq shell dumpsys package "$APP" 2> /dev/null | tr -d '\r' || true)
   VER=$(awk -F= '/versionName=/{print $2; exit}' <<< "$PKG")
   VC=$(awk '{for(i=1;i<=NF;i++) if($i ~ /^versionCode=/) {print $i; exit}}' <<< "$PKG")
   UPD=$(awk -F= '/lastUpdateTime=/{print $2; exit}' <<< "$PKG")
@@ -206,7 +211,7 @@ warm() {
   sleep "$SETTLE"
   local vals=() states=() t
   for t in $(seq 1 "$TRIALS"); do
-    "${ADB[@]}" shell am start -a android.settings.SETTINGS > /dev/null; sleep 1
+    adbq shell am start -a android.settings.SETTINGS > /dev/null; sleep 1
     start_ms > /dev/null
     vals+=( "$MS" ); states+=( "${LAUNCH_STATE:-unknown}" )
     # Note: raising a live singleTask entry reports HOT, not WARM; the
@@ -220,7 +225,7 @@ warm() {
 frames() {
   # display-relative swipes so any emulator size works; when an override size
   # is set, `wm size` prints Physical AND Override lines - use the last one.
-  read -r W H <<< "$("${ADB[@]}" shell wm size | grep -o '[0-9]*x[0-9]*' | tail -n1 | tr 'x' ' ')"
+  read -r W H <<< "$(adbq shell wm size | grep -o '[0-9]*x[0-9]*' | tail -n1 | tr 'x' ' ')"
   local X=$(( W / 2 )) Y1=$(( H * 73 / 100 )) Y2=$(( H * 21 / 100 ))
   local jankys=() p90s=() p99s=() invalid=0
   local t s GFX J P9 P99
@@ -230,11 +235,11 @@ frames() {
       # Scrolling an unpopulated grid is not the S3 workload; exclude it.
       echo "  frames trial $t: grid not ready within ${GRID_TIMEOUT}s - trial invalid, excluded" >&2
       invalid=$((invalid+1)); continue; }
-    "${ADB[@]}" shell dumpsys gfxinfo "$APP" reset > /dev/null
-    for s in $(seq 1 12); do "${ADB[@]}" shell input swipe "$X" "$Y1" "$X" "$Y2" 250; sleep 0.3; done
-    for s in $(seq 1 6);  do "${ADB[@]}" shell input swipe "$X" "$Y2" "$X" "$Y1" 250; sleep 0.3; done
+    adbq shell dumpsys gfxinfo "$APP" reset > /dev/null
+    for s in $(seq 1 12); do adbq shell input swipe "$X" "$Y1" "$X" "$Y2" 250; sleep 0.3; done
+    for s in $(seq 1 6);  do adbq shell input swipe "$X" "$Y2" "$X" "$Y1" 250; sleep 0.3; done
     GFX="$(mktemp)"
-    "${ADB[@]}" shell dumpsys gfxinfo "$APP" > "$GFX"
+    adbq shell dumpsys gfxinfo "$APP" > "$GFX"
     # Exactly one numeric value per metric: anchor on the CPU percentile lines
     # ("  90th percentile: Nms"); the "GPU 90th percentile" line must NOT match,
     # and the label digits (90/99) must not leak into the sample. A missed
@@ -262,7 +267,7 @@ heap() {
       echo "  heap trial $t: grid not ready within ${GRID_TIMEOUT}s - trial invalid, excluded" >&2
       invalid=$((invalid+1)); continue; }
     sleep "$SETTLE"
-    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' \r' || true)
+    PID=$(adbq shell pidof "$APP" | tr -d ' \r' || true)
     # A dead/missing process or an unsupported dump layout must fail the trial,
     # never record a successful zero sample (which fakes a memory improvement).
     if [ -z "$PID" ]; then
@@ -270,7 +275,7 @@ heap() {
       invalid=$((invalid+1)); continue
     fi
     MEM="$(mktemp)"
-    "${ADB[@]}" shell dumpsys meminfo "$APP" > "$MEM"
+    adbq shell dumpsys meminfo "$APP" > "$MEM"
     # App Summary values are plain digits, but some API 30+ layouts use
     # comma group separators; strip them. Absent fields stay empty and the
     # trial is invalidated below (NA, never zero).
@@ -307,22 +312,22 @@ workers() {
       echo "  workers trial $t: grid not ready within ${GRID_TIMEOUT}s - trial invalid, excluded" >&2
       invalid=$((invalid+1)); continue; }
     sleep "$SETTLE"
-    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' \r' || true)
+    PID=$(adbq shell pidof "$APP" | tr -d ' \r' || true)
     if [ -z "$PID" ]; then
       echo "  workers trial $t: app not running - trial invalid, excluded" >&2
       invalid=$((invalid+1)); continue
     fi
     PID0=$PID
-    TH0=$("${ADB[@]}" shell "cat /proc/$PID/status" | tr -d '\r' | awk '/^Threads:/{print $2}' || true)
+    TH0=$(adbq shell "cat /proc/$PID/status" | tr -d '\r' | awk '/^Threads:/{print $2}' || true)
     for c in $(seq 1 "$NAV"); do
-      "${ADB[@]}" shell am start -n "$LAUNCH" > /dev/null
+      adbq shell am start -n "$LAUNCH" > /dev/null
       sleep 1
-      "${ADB[@]}" shell input keyevent KEYCODE_BACK
-      "${ADB[@]}" shell am start -n "$APP/.MainActivity" > /dev/null
+      adbq shell input keyevent KEYCODE_BACK
+      adbq shell am start -n "$APP/.MainActivity" > /dev/null
       sleep 1
     done
     sleep "$SETTLE"   # let bounded async work quiesce before sampling
-    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' \r' || true)
+    PID=$(adbq shell pidof "$APP" | tr -d ' \r' || true)
     if [ -z "$PID" ]; then
       echo "  workers trial $t: process died during navigation - trial invalid, excluded" >&2
       invalid=$((invalid+1)); continue
@@ -333,10 +338,10 @@ workers() {
       echo "  workers trial $t: process restarted during navigation (pid $PID0 -> $PID) - trial invalid, excluded" >&2
       invalid=$((invalid+1)); continue
     fi
-    TH1=$("${ADB[@]}" shell "cat /proc/$PID/status" | tr -d '\r' | awk '/^Threads:/{print $2}' || true)
+    TH1=$(adbq shell "cat /proc/$PID/status" | tr -d '\r' | awk '/^Threads:/{print $2}' || true)
     # Registered jobs only (JOB # lines), not every history/stats line that
     # happens to mention the package.
-    JB=$("${ADB[@]}" shell dumpsys jobscheduler | grep -E '^ *JOB #' | grep -c "$APP" || true)
+    JB=$(adbq shell dumpsys jobscheduler | grep -E '^ *JOB #' | grep -c "$APP" || true)
     case "${TH0:-x}.${TH1:-x}" in
       *[!0-9.]*)
         echo "  workers trial $t: unparseable thread count - trial invalid, excluded" >&2
@@ -356,7 +361,7 @@ verify_seed_count() {
   # The -c label must match reality: an interrupted or partial seed would
   # otherwise be measured and recorded under the wrong contact count.
   local n
-  n=$("${ADB[@]}" shell "content query --uri content://com.android.contacts/raw_contacts --projection _id --where \"account_type='measure.local' AND deleted=0\"" | grep -c 'Row:' || true)
+  n=$(adbq shell "content query --uri content://com.android.contacts/raw_contacts --projection _id --where \"account_type='measure.local' AND deleted=0\"" | grep -c 'Row:' || true)
   if [ "$n" != "$CONTACTS" ]; then
     echo "seed check failed: device holds $n synthetic contacts but this run is labeled -c $CONTACTS - reseed with scripts/measure/seed-contacts.sh $CONTACTS before measuring" >&2
     exit 1

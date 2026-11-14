@@ -38,12 +38,16 @@ done
 case "${COUNT:-}" in ''|*[!0-9]*) echo "usage: seed-contacts.sh [-s SERIAL] COUNT (positive integer)" >&2; exit 1 ;; esac
 [ "$COUNT" -gt 0 ] || { echo "COUNT must be positive" >&2; exit 1; }
 
+# All adb calls go through here so the lock fds (8/9) never leak into a
+# freshly started adb server (it daemonizes and would hold the lock forever).
+adbq() { "${ADB[@]}" "$@" 8>&- 9>&-; }
+
 ACCT="measure.local"
 SCRATCH="$(mktemp -d)"
 
 echo "== cleaning previous synthetic set ($ACCT)"
 # caller_is_syncadapter=true makes the delete REAL, not a deleted=1 tombstone.
-"${ADB[@]}" shell "content delete --uri 'content://com.android.contacts/raw_contacts?caller_is_syncadapter=true' --where \"account_type='$ACCT' AND account_name='$ACCT'\"" > /dev/null
+adbq shell "content delete --uri 'content://com.android.contacts/raw_contacts?caller_is_syncadapter=true' --where \"account_type='$ACCT' AND account_name='$ACCT'\"" > /dev/null
 
 echo "== generating on-device seed script for $COUNT contacts"
 NAMES_SHORT=("ماما" "بابا" "جدتي" "جدي" "خالتي" "عمتي" "خالي" "عمي" "أخويا" "أختي")
@@ -95,20 +99,20 @@ EOS
 done
 
 echo "== pushing $((CHUNK+1)) chunk(s) and running (slow for large counts)"
-"${ADB[@]}" shell "mkdir -p /data/local/tmp/mama-seed"
+adbq shell "mkdir -p /data/local/tmp/mama-seed"
 for P in "$SCRATCH"/part*.sh; do
-  "${ADB[@]}" push "$P" /data/local/tmp/mama-seed/ > /dev/null
-  "${ADB[@]}" shell "sh /data/local/tmp/mama-seed/$(basename "$P")"
+  adbq push "$P" /data/local/tmp/mama-seed/ > /dev/null
+  adbq shell "sh /data/local/tmp/mama-seed/$(basename "$P")"
 done
-"${ADB[@]}" shell "rm -rf /data/local/tmp/mama-seed"
+adbq shell "rm -rf /data/local/tmp/mama-seed"
 
 # Verification: exact account-scoped counts on the Data view (names AND
 # phones), not just raw-contact count - an insert that the provider silently
 # rejected must fail the run, not pass with missing rows.
 EXP_PHONES=$(( COUNT + (COUNT-1)/5 + 1 + (COUNT-1)/7 + 1 + (COUNT-1)/13 + 1 ))
-GOT=$("${ADB[@]}" shell "content query --uri content://com.android.contacts/raw_contacts --projection _id --where \"account_type='$ACCT' AND account_name='$ACCT' AND deleted=0\"" | grep -c 'Row:' || true)
-NAMES=$("${ADB[@]}" shell "content query --uri content://com.android.contacts/data --projection _id --where \"account_type='$ACCT' AND mimetype='vnd.android.cursor.item/name'\"" | grep -c 'Row:' || true)
-PHONES=$("${ADB[@]}" shell "content query --uri content://com.android.contacts/data --projection _id --where \"account_type='$ACCT' AND mimetype='vnd.android.cursor.item/phone_v2'\"" | grep -c 'Row:' || true)
+GOT=$(adbq shell "content query --uri content://com.android.contacts/raw_contacts --projection _id --where \"account_type='$ACCT' AND account_name='$ACCT' AND deleted=0\"" | grep -c 'Row:' || true)
+NAMES=$(adbq shell "content query --uri content://com.android.contacts/data --projection _id --where \"account_type='$ACCT' AND mimetype='vnd.android.cursor.item/name'\"" | grep -c 'Row:' || true)
+PHONES=$(adbq shell "content query --uri content://com.android.contacts/data --projection _id --where \"account_type='$ACCT' AND mimetype='vnd.android.cursor.item/phone_v2'\"" | grep -c 'Row:' || true)
 echo "== seeded: raw_contacts=$GOT/$COUNT names=$NAMES/$COUNT phone_rows=$PHONES/$EXP_PHONES"
 if [ "$GOT" != "$COUNT" ] || [ "$NAMES" != "$COUNT" ] || [ "$PHONES" != "$EXP_PHONES" ]; then
   echo "SEED VERIFICATION FAILED - the synthetic set is incomplete; re-run to clean and reseed" >&2
