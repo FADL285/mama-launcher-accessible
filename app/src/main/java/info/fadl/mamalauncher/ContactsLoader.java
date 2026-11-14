@@ -205,6 +205,10 @@ public final class ContactsLoader {
             }
         }
         checkBudget(started, signal);
-        return group(rows, country);
+        // Grouping (and its per-contact dedup) is real work too: the budget
+        // and the signal are honored once more before the result can leave.
+        List<ContactEntry> grouped = group(rows, country);
+        checkBudget(started, signal);
+        return grouped;
     }
 }

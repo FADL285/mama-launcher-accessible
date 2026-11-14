@@ -89,6 +89,39 @@ public class CallLogConcurrencyTest {
   }
 
   @Test
+  public void readsAfterAnAbandonedOneStillRun() throws Exception {
+    // A blocked read ignores interruption and keeps its thread; cancel() must
+    // abandon that executor so the next read is not queued behind it.
+    CallLogWorker w = new CallLogWorker();
+    CountDownLatch entered = new CountDownLatch(1), never = new CountDownLatch(1);
+    w.read(
+        signal -> {
+          entered.countDown();
+          try {
+            never.await(30, TimeUnit.SECONDS);
+          } catch (InterruptedException ignored) {
+          }
+          return 1;
+        },
+        value -> {},
+        () -> {});
+    assertTrue(entered.await(1, TimeUnit.SECONDS));
+    w.cancel();
+    AtomicInteger successes = new AtomicInteger();
+    try {
+      w.read(signal -> 2, value -> successes.incrementAndGet(), () -> {});
+      for (int i = 0; i < 50 && successes.get() == 0; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("the next read must not queue behind the abandoned one", 1, successes.get());
+    } finally {
+      never.countDown();
+      w.close();
+    }
+  }
+
+  @Test
   public void explicitCancelDropsStaleCallback() throws Exception {
     CallLogWorker w = new CallLogWorker();
     AtomicInteger calls = new AtomicInteger();
