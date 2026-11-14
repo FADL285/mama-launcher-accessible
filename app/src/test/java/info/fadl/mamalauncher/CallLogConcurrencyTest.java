@@ -197,12 +197,36 @@ public class CallLogConcurrencyTest {
         w.cancel();
       }
       assertEquals("abandonment is capped", 3, w.abandonedForTest());
+
+      // At the cap the stuck executor is left running: a new read queues
+      // behind it and fails through its own watchdog - it must never throw
+      // RejectedExecutionException at the caller.
+      AtomicInteger failures = new AtomicInteger(), successes = new AtomicInteger();
+      w.read(signal -> 5, value -> successes.incrementAndGet(), failures::incrementAndGet);
+      Shadows.shadowOf(Looper.getMainLooper()).idleFor(7, TimeUnit.SECONDS);
+      assertEquals("a read past the cap fails through its watchdog, not a crash", 1, failures.get());
+
+      releases.get(3).countDown(); // the capped (never marked) thread returns
+      for (int i = 0; i < 100 && w.abandonedForTest() != 3; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("an unmarked return frees no slot", 3, w.abandonedForTest());
+
       releases.get(0).countDown(); // the first stuck thread returns
       for (int i = 0; i < 100 && w.abandonedForTest() != 2; i++) {
         Thread.sleep(20);
         Shadows.shadowOf(Looper.getMainLooper()).idle();
       }
       assertEquals("a returned thread frees its slot", 2, w.abandonedForTest());
+
+      // With a slot free again, a fresh read runs and succeeds.
+      w.read(signal -> 5, value -> successes.incrementAndGet(), failures::incrementAndGet);
+      for (int i = 0; i < 100 && successes.get() == 0; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("the worker recovers once a slot frees", 1, successes.get());
     } finally {
       for (CountDownLatch r : releases) r.countDown();
       w.close();

@@ -125,6 +125,15 @@ public class HistoryLabelsTest {
     // the retained page, not reload the required data.
     calls.fail = true;
     int callLogQueries = calls.queries;
+    // A focus acknowledgement must not drop the bound snapshot: the retry
+    // below still has to find it (pre-fix, focused() cleared it and the
+    // retry fell back to a full reload that would lose the page here).
+    Object controller = org.robolectric.util.ReflectionHelpers.getField(a, "history");
+    org.robolectric.util.ReflectionHelpers.setField(controller, "rendered", true);
+    a.onWindowFocusChanged(true);
+    settle();
+    assertEquals("focus acknowledgement does not reload the page", callLogQueries, calls.queries);
+    assertEquals(2, list.getAdapter().getCount());
     contactsProvider(
         new FixtureContactsProvider() {
           @Override

@@ -28,6 +28,10 @@ final class CallHistoryController implements AutoCloseable {
   private int displayGeneration;
   private HistorySnapshot displayed;
   private int displayedGeneration;
+  /** The bound page's missed calls were acknowledged on focus. Tracked apart
+   *  from the snapshot itself: displayed stays bound for retryLabels() and
+   *  open() even after acknowledgement. */
+  private boolean missedAcked;
   private CallLogRepository.Result boundPage;
   private String anchor;
   private int anchorOffset, anchorPosition;
@@ -198,13 +202,15 @@ final class CallHistoryController implements AutoCloseable {
   }
 
   void focused() {
-    if (rendered && displayed != null && valid(displayedGeneration) && activity.hasWindowFocus()) {
+    // Acknowledge the bound page's missed calls once per page. The snapshot
+    // stays bound afterwards: retryLabels() and open() rely on it.
+    if (rendered && !missedAcked && displayed != null && valid(displayedGeneration) && activity.hasWindowFocus()) {
       try {
         MissedCallState.acknowledge(activity, displayed.pending);
+        missedAcked = true;
       } catch (SecurityException revoked) {
         refresh();
       }
-      displayed = null;
     }
   }
 
@@ -365,6 +371,7 @@ final class CallHistoryController implements AutoCloseable {
     // Wait for a real window draw, then validate again after the frame.
     displayed = snapshot;
     displayedGeneration = generation;
+    missedAcked = false; // a newly bound page is acknowledged once, on focus
     rendered = false;
     drawObserver = activity.findViewById(android.R.id.content).getViewTreeObserver();
     drawObserver.addOnDrawListener(drawn);
