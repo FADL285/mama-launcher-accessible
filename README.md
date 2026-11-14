@@ -69,4 +69,4 @@ export ANDROID_HOME=/path/to/android-sdk
 
 ## License and credits
 
-No project-wide code license has been chosen or included. Public source visibility is not a license grant. The owner must choose one before offering broader reuse. Font/icon and test-tool notices are in [NOTICE.md](NOTICE.md).
+The project code is licensed under the [Apache License 2.0](LICENSE) (Copyright 2026 Mohamed Fadl). Font/icon and test-tool notices are in [NOTICE.md](NOTICE.md).
