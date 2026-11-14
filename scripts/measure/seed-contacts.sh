@@ -11,6 +11,7 @@
 # here: those need the separately-selected test-only fixture harness
 # (docs/performance-baseline.md, "Pending selections").
 set -euo pipefail
+export LC_ALL=C   # stable numeric/sort behaviour regardless of host locale
 
 # One seeding run per host. flock where it exists (Linux); macOS fallback.
 LOCKD=""

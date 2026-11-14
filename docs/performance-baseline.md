@@ -154,7 +154,13 @@ regression" target would pass or fail on noise. Rules for T-06/T-07:
 
 ## Run the baseline yourself (one command)
 
-On any machine with adb and an emulator or USB test device (API 29+):
+On any machine with adb and an emulator or USB test device (API 29+).
+**Never on a personal or production phone**: the measurement APK is
+signed with the local debug key (installing it over a release-signed app
+fails, and the only workaround - uninstalling - wipes the app's settings),
+and the seeder writes synthetic contacts into the device's real contacts
+store. Use an emulator or the spare non-production A10s (T-04b, pending
+owner authorization).
 
 ```bash
 ./gradlew :app:installNoNotifProfileable

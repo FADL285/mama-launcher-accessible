@@ -14,6 +14,7 @@
 #      LAUNCH (component to time, default $APP/.PhoneActivity).
 # CSV columns: metric,median,iqr,valid_trials,"all valid values"[,extra]
 set -euo pipefail
+export LC_ALL=C   # stable decimal point/sort for EPOCHREALTIME, sort -n, awk
 
 # One measurement run per host. flock where it exists (Linux); macOS has no
 # flock(1), so fall back to a mkdir lock there.
