@@ -67,6 +67,22 @@ export ANDROID_HOME=/path/to/android-sdk
 - Runtime implementation: Java + Android framework Views. Test/build tools are not shipped as app runtime libraries.
 - Configured minimum API 24; compile/target API 33. These settings are not a promise of validation on every supported OS/device.
 
+## Accessibility
+
+Built for TalkBack and low-vision use from the start, not retrofitted:
+
+- Controls carry visible Arabic text labels; the few icon-only controls (repeat-name speaker, the favorite star) instead carry a spoken Arabic content description for TalkBack. Decorative images are not announced.
+- Tap targets are large, and every screen has a visible Back action - no gesture-only navigation.
+- Contacts show photos with a colored name-tile fallback, so a missing photo never means a missing person.
+- A contact's name is spoken on the confirmation screen through the installed TTS engine's offline Arabic voice.
+- Settings offer larger text, high contrast, a touch guard against accidental taps, and vibration feedback.
+
+Current validation is JVM, static and golden-image based. A structured TalkBack / Switch Access / keyboard pass on a real device is tracked as plan task T-09 and has not certified every Android device or accessibility service.
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first: the short version is to keep changes small and reviewable, run the build/test gates before pushing, never commit real contacts or photos (fixtures are synthetic), and write code, commits and docs in English (user-facing strings stay Arabic).
+
 ## License and credits
 
 No project-wide code license has been chosen or included. Public source visibility is not a license grant. The owner must choose one before offering broader reuse. Font/icon and test-tool notices are in [NOTICE.md](NOTICE.md).
