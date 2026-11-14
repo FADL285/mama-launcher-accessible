@@ -4,12 +4,23 @@
 # touches real data. Idempotent: re-running first deletes its own set.
 #
 # Usage: seed-contacts.sh [-s SERIAL] COUNT   (COUNT e.g. 50, 500, 2000)
+# NOTE: ~5 `content` calls per contact, each a fresh on-device process, so
+# 2000 contacts takes roughly 30+ minutes.
 #
 # Photos, a slow/failing provider and corrupt/rotated streams are NOT seeded
 # here: those need the separately-selected test-only fixture harness
 # (docs/performance-baseline.md, "Pending selections").
 set -euo pipefail
-exec 9> /tmp/mama-seed.lock && flock 9   # one seeding run per host
+
+# One seeding run per host. flock where it exists (Linux); macOS fallback.
+if command -v flock > /dev/null 2>&1; then
+  exec 9> /tmp/mama-seed.lock
+  flock 9
+else
+  LOCKD=/tmp/mama-seed.lock.d
+  mkdir "$LOCKD" 2> /dev/null || { echo "another seeding run is active ($LOCKD)" >&2; exit 1; }
+  trap 'rmdir "$LOCKD"' EXIT
+fi
 
 ADB=(adb); COUNT=""
 while [ $# -gt 0 ]; do
@@ -33,11 +44,11 @@ NAMES_SHORT=("ماما" "بابا" "جدتي" "جدي" "خالتي" "عمتي" "
 NAMES_LONG=("عبد الرحمن محمد عبد الله السيد علي" "فاطمة الزهراء محمد أحمد حسن إبراهيم" "مصطفى كامل عبد العزيز محمود الشاذلي" "أم كلثوم إبراهيم السيد البلتاجي أحمد")
 PREFIXES=(010 011 012 015)
 
-CHUNK=0; F="$SCRATCH/part0.sh"; printf '#!/system/bin/sh\nset -e\n' > "$F"
+CHUNK=0; F="$SCRATCH/part0.sh"; printf '#!/system/bin/sh\n' > "$F"
 i=0
 while [ "$i" -lt "$COUNT" ]; do
   if [ $(( i % 400 )) -eq 0 ] && [ "$i" -gt 0 ]; then
-    CHUNK=$((CHUNK+1)); F="$SCRATCH/part$CHUNK.sh"; printf '#!/system/bin/sh\nset -e\n' > "$F"
+    CHUNK=$((CHUNK+1)); F="$SCRATCH/part$CHUNK.sh"; printf '#!/system/bin/sh\n' > "$F"
   fi
   # Every name unique (index suffix) so the provider never auto-aggregates
   # synthetic raw contacts into one aggregate contact.
@@ -49,6 +60,9 @@ while [ "$i" -lt "$COUNT" ]; do
   NUM1="${PREFIXES[$(( i % 4 ))]}$(printf '%08d' $(( 10000000 + i )) )"
   # Insert the raw contact with a unique sync1 marker, then read its id back
   # with a query - `content insert` output is not reliable across builds.
+  # NOTE: the on-device `content` CLI catches provider exceptions and exits 0,
+  # so `set -e` here cannot catch failed inserts; the host-side verification
+  # at the end (exact account-scoped row counts) is the real guard.
   cat >> "$F" <<EOS
 content insert --uri content://com.android.contacts/raw_contacts --bind account_type:s:$ACCT --bind account_name:s:$ACCT --bind sync1:s:seed_$i > /dev/null
 ID=\$(content query --uri content://com.android.contacts/raw_contacts --projection _id --where "sync1='seed_$i'" | sed -n 's/.*_id=\([0-9]*\).*/\1/p')
@@ -56,7 +70,15 @@ ID=\$(content query --uri content://com.android.contacts/raw_contacts --projecti
 content insert --uri content://com.android.contacts/data --bind raw_contact_id:i:\$ID --bind mimetype:s:vnd.android.cursor.item/name --bind data1:s:"$NAME" > /dev/null
 content insert --uri content://com.android.contacts/data --bind raw_contact_id:i:\$ID --bind mimetype:s:vnd.android.cursor.item/phone_v2 --bind data1:s:$NUM1 --bind data2:i:2 --bind data3:s:"موبايل" > /dev/null
 EOS
-  # every 7th contact gets a second (intl) form of the same number, every 13th a third
+  # Every 5th contact gets a GENUINELY DIFFERENT second number: this
+  # guarantees real multi-number contacts for the confirmation workload on
+  # any device region (T-17 dedup merges only equivalent forms).
+  if [ $(( i % 5 )) -eq 0 ]; then
+    NUM2="${PREFIXES[$(( (i + 1) % 4 ))]}$(printf '%08d' $(( 20000000 + i )) )"
+    echo "content insert --uri content://com.android.contacts/data --bind raw_contact_id:i:\$ID --bind mimetype:s:vnd.android.cursor.item/phone_v2 --bind data1:s:$NUM2 --bind data2:i:2 --bind data3:s:\"عمل\" > /dev/null" >> "$F"
+  fi
+  # Every 7th gets an intl (+20) form of the FIRST number, every 13th a 0020
+  # form: equivalent-forms load for the T-17 dedup path (region-dependent).
   if [ $(( i % 7 )) -eq 0 ]; then
     echo "content insert --uri content://com.android.contacts/data --bind raw_contact_id:i:\$ID --bind mimetype:s:vnd.android.cursor.item/phone_v2 --bind data1:s:+20${NUM1#0} --bind data2:i:2 --bind data3:s:\"دولي\" > /dev/null" >> "$F"
   fi
@@ -74,7 +96,15 @@ for P in "$SCRATCH"/part*.sh; do
 done
 "${ADB[@]}" shell "rm -rf /data/local/tmp/mama-seed"
 
+# Verification: exact account-scoped counts on the Data view (names AND
+# phones), not just raw-contact count - an insert that the provider silently
+# rejected must fail the run, not pass with missing rows.
+EXP_PHONES=$(( COUNT + (COUNT-1)/5 + 1 + (COUNT-1)/7 + 1 + (COUNT-1)/13 + 1 ))
 GOT=$("${ADB[@]}" shell "content query --uri content://com.android.contacts/raw_contacts --projection _id --where \"account_type='$ACCT' AND account_name='$ACCT' AND deleted=0\"" | grep -c 'Row:' || true)
-PHONES=$("${ADB[@]}" shell "content query --uri content://com.android.contacts/data --projection _id --where \"mimetype='vnd.android.cursor.item/phone_v2'\"" | grep -c 'Row:' || true)
-echo "== seeded $GOT synthetic contacts (expected $COUNT), phone rows on device: $PHONES"
-[ "$GOT" = "$COUNT" ]
+NAMES=$("${ADB[@]}" shell "content query --uri content://com.android.contacts/data --projection _id --where \"account_type='$ACCT' AND mimetype='vnd.android.cursor.item/name'\"" | grep -c 'Row:' || true)
+PHONES=$("${ADB[@]}" shell "content query --uri content://com.android.contacts/data --projection _id --where \"account_type='$ACCT' AND mimetype='vnd.android.cursor.item/phone_v2'\"" | grep -c 'Row:' || true)
+echo "== seeded: raw_contacts=$GOT/$COUNT names=$NAMES/$COUNT phone_rows=$PHONES/$EXP_PHONES"
+if [ "$GOT" != "$COUNT" ] || [ "$NAMES" != "$COUNT" ] || [ "$PHONES" != "$EXP_PHONES" ]; then
+  echo "SEED VERIFICATION FAILED - the synthetic set is incomplete; re-run to clean and reseed" >&2
+  exit 1
+fi

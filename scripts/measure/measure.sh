@@ -8,9 +8,23 @@
 #   -c CONTACTS: seeded contact count, recorded on every row (required so
 #   50/500/2000 runs stay distinguishable in one CSV).
 # Env: APP (default info.fadl.mamalauncher), OUT (default baseline-results.csv),
-#      SETTLE (seconds to wait for async grid load before sampling, default 3)
+#      SETTLE (seconds to wait after start before sampling, default 3),
+#      GRID_TIMEOUT (seconds to poll for a populated contacts grid, default 15),
+#      NAV (navigation cycles per workers trial, default 10),
+#      LAUNCH (component to time, default $APP/.PhoneActivity).
+# CSV columns: metric,median,iqr,valid_trials,"all valid values"[,extra]
 set -euo pipefail
-exec 8> /tmp/mama-measure.lock && flock 8   # one measurement run per host
+
+# One measurement run per host. flock where it exists (Linux); macOS has no
+# flock(1), so fall back to a mkdir lock there.
+if command -v flock > /dev/null 2>&1; then
+  exec 8> /tmp/mama-measure.lock
+  flock 8
+else
+  LOCKD=/tmp/mama-measure.lock.d
+  mkdir "$LOCKD" 2> /dev/null || { echo "another measurement run is active ($LOCKD)" >&2; exit 1; }
+  trap 'rmdir "$LOCKD"' EXIT
+fi
 
 ADB=(adb); TRIALS=5; CONTACTS="${CONTACTS:-unknown}"; SCENARIOS=()
 while [ $# -gt 0 ]; do
@@ -27,17 +41,25 @@ done
 APP="${APP:-info.fadl.mamalauncher}"
 OUT="${OUT:-baseline-results.csv}"
 SETTLE="${SETTLE:-3}"
-# MainActivity is the exported launcher/home entry (singleTask); PhoneActivity
-# is not exported, so component starts must target MainActivity.
-LAUNCH="$APP/.MainActivity"
+GRID_TIMEOUT="${GRID_TIMEOUT:-15}"
+NAV="${NAV:-10}"
+# PhoneActivity hosts the contacts grid - the workload T-06/T-07 change. It is
+# exported ONLY in the profileable build type (app/src/profileable), so timed
+# starts can target it here while production build types keep it unexported.
+# Time the home screen separately with LAUNCH=$APP/.MainActivity.
+LAUNCH="${LAUNCH:-$APP/.PhoneActivity}"
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+COMMIT="$(git -C "$(dirname "$0")/.." rev-parse --short HEAD 2> /dev/null || echo unknown)"
 
 row() { echo "$TS,$CONTACTS,$*" >> "$OUT"; }
 
 prep() {
   # Fresh installs otherwise measure the permission/setup screen, not the grid.
-  "${ADB[@]}" shell pm grant "$APP" android.permission.READ_CONTACTS 2>/dev/null || true
-  "${ADB[@]}" shell pm grant "$APP" android.permission.READ_CALL_LOG 2>/dev/null || true
+  "${ADB[@]}" shell pm grant "$APP" android.permission.READ_CONTACTS 2> /dev/null || true
+  "${ADB[@]}" shell pm grant "$APP" android.permission.READ_CALL_LOG 2> /dev/null || true
+  # Page-cache drop needs root; Google Play emulator images have no su. Probe
+  # once so cold numbers record whether the cache was actually dropped.
+  if "${ADB[@]}" shell "su 0 id" > /dev/null 2>&1; then CACHE_DROP=yes; else CACHE_DROP=no; fi
 }
 
 reset() {
@@ -46,114 +68,231 @@ reset() {
   # launcher, a HOME keyevent would relaunch it before the timed (cold) start.
   "${ADB[@]}" shell am start -a android.settings.SETTINGS > /dev/null
   sleep 1
-  # drop page cache when root is available (emulator); harmless otherwise
-  "${ADB[@]}" shell "su 0 sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'" 2>/dev/null || true
+  if [ "$CACHE_DROP" = yes ]; then
+    "${ADB[@]}" shell "su 0 sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'" 2> /dev/null || true
+  fi
   sleep 2
 }
 
-median() {  # average the two middle values on even counts
+median() {  # average the two middle values on even counts; numeric args only
   printf '%s\n' "$@" | sort -n | awk '{a[NR]=$1} END{if(NR%2) print a[(NR+1)/2]; else printf "%.1f\n", (a[NR/2]+a[NR/2+1])/2}'
 }
 
-start_ms() {  # fails loudly when the start does not report a TotalTime
-  local OUT_START MS
+iqr() {  # interquartile range (median-of-halves); empty below 4 values
+  [ $# -ge 4 ] || return 0
+  printf '%s\n' "$@" | sort -n | awk '{a[NR]=$1} END{
+    n=NR; lo=int(n/2); hi=n-lo
+    if(lo%2) q1=a[(lo+1)/2]; else q1=(a[lo/2]+a[lo/2+1])/2
+    if(hi%2) q3=a[lo+(hi+1)/2]; else q3=(a[lo+hi/2]+a[lo+hi/2+1])/2
+    printf "%.1f\n", q3-q1}'
+}
+
+nums() {  # keep only numeric values (NA and friends are excluded from stats)
+  local v
+  for v in "$@"; do case "$v" in '' | *[!0-9.]*) ;; *) printf '%s\n' "$v" ;; esac; done
+}
+
+emit() {  # emit METRIC VALUES... -> row metric,median,iqr,valid_n,"values"
+  local m="$1"; shift
+  local valid
+  valid=$(nums "$@")
+  if [ -n "$valid" ]; then
+    # intentional word splitting: valid is one number per line, all numeric
+    row "$m,$(median $valid),$(iqr $valid),$(printf '%s\n' "$valid" | wc -l | tr -d ' '),\"$(printf '%s ' $valid | sed 's/ $//')\""
+  else
+    row "$m,NA,,0,\"no valid samples\""
+  fi
+}
+
+start_ms() {  # sets MS + LAUNCH_STATE; fails loudly when TotalTime is missing
+  local OUT_START
   OUT_START=$("${ADB[@]}" shell am start -W -n "$LAUNCH")
-  MS=$(printf '%s' "$OUT_START" | grep '^TotalTime:' | awk '{print $2}')
+  MS=$(printf '%s' "$OUT_START" | awk '/^TotalTime:/{print $2; exit}')
+  LAUNCH_STATE=$(printf '%s' "$OUT_START" | awk -F'[ :]+' '/^LaunchState:/{print $2; exit}')
   [ -n "$MS" ] || { echo "am start failed: $OUT_START" >&2; exit 1; }
   echo "$MS"
+}
+
+grid_ready_s() {  # coarse (~1s) populated-grid signal without production changes
+  local start=$SECONDS
+  while :; do
+    "${ADB[@]}" shell uiautomator dump /sdcard/mama-ui.xml > /dev/null 2>&1 || true
+    # A contact tile name view exists only once the async load has installed
+    # and filled the grid adapter (item_contact.xml @id/name).
+    if "${ADB[@]}" shell cat /sdcard/mama-ui.xml 2> /dev/null | grep -q ":id/name"; then
+      echo $(( SECONDS - start )); return 0
+    fi
+    [ $(( SECONDS - start )) -ge "$GRID_TIMEOUT" ] && { echo NA; return 1; }
+    sleep 1
+  done
 }
 
 env_row() {
   FP=$("${ADB[@]}" shell getprop ro.build.fingerprint | tr -d '\r')
   API=$("${ADB[@]}" shell getprop ro.build.version.sdk | tr -d '\r')
   MODEL=$("${ADB[@]}" shell getprop ro.product.model | tr -d '\r')
-  DISP=$("${ADB[@]}" shell wm size | tr -d '\r')
-  echo "env: model=$MODEL api=$API fingerprint=$FP display=$DISP host=$(uname -srm)"
-  row "env,\"$MODEL\",$API,\"$FP\",\"$DISP\",\"$(uname -srm)\""
+  DISP=$("${ADB[@]}" shell wm size | tr -d '\r' | tr '\n' ' ')
+  # Resolved-number region changes T-17 dedup behaviour, so record its inputs.
+  SIM=$("${ADB[@]}" shell getprop gsm.sim.operator.iso-country | tr -d '\r ')
+  NET=$("${ADB[@]}" shell getprop gsm.operator.iso-country | tr -d '\r ')
+  LOC=$("${ADB[@]}" shell getprop persist.sys.locale | tr -d '\r ')
+  # Identify the exact installed binary, not just flavor/build-type names.
+  VER=$("${ADB[@]}" shell dumpsys package "$APP" | awk -F= '/versionName=/{print $2; exit}' | tr -d '\r')
+  VC=$("${ADB[@]}" shell dumpsys package "$APP" | awk '{for(i=1;i<=NF;i++) if($i ~ /^versionCode=/) {print $i; exit}}' | tr -d '\r')
+  echo "env: model=$MODEL api=$API fingerprint=$FP display=$DISP region(sim=$SIM net=$NET locale=$LOC) cache_drop=$CACHE_DROP apk=\"$VER $VC\" commit=$COMMIT launch=$LAUNCH host=$(uname -srm)"
+  row "env,\"$MODEL\",$API,\"$FP\",\"$DISP\",\"sim=$SIM net=$NET locale=$LOC\",cache_drop=$CACHE_DROP,\"$VER $VC\",commit=$COMMIT,$LAUNCH,\"$(uname -srm)\""
 }
 
 cold() {
-  local vals=()
+  local vals=() states=() ready=()
+  local t GR
   for t in $(seq 1 "$TRIALS"); do
     reset
-    MS=$(start_ms); vals+=( "$MS" ); echo "  cold trial $t: ${MS}ms"
+    start_ms > /dev/null
+    # A "cold" trial that the platform reports as WARM/HOT is not a cold
+    # start (e.g. Mama relaunched as the default home). Fail loudly.
+    if [ "$LAUNCH_STATE" != COLD ]; then
+      echo "  cold trial $t: LaunchState=${LAUNCH_STATE:-unknown}, expected COLD - scenario invalid" >&2
+      row "cold_start_ms,NA,,0,\"invalid: LaunchState=${LAUNCH_STATE:-unknown}\""
+      return 1
+    fi
+    GR=$(grid_ready_s || true)
+    vals+=( "$MS" ); states+=( "$LAUNCH_STATE" ); ready+=( "$GR" )
+    echo "  cold trial $t: ${MS}ms state=$LAUNCH_STATE grid_ready=${GR}s"
   done
-  row "cold_start_ms,$(median "${vals[@]}"),$TRIALS,\"${vals[*]}\""
+  emit cold_start_ms ${vals[@]+"${vals[@]}"}
+  emit grid_ready_s ${ready[@]+"${ready[@]}"}
+  row "cold_launch_states,NA,,${#states[@]},\"${states[*]:-}\""
 }
 
 warm() {
-  start_ms > /dev/null   # process + activity exist (singleTask: re-starts raise the task)
+  start_ms > /dev/null   # process + activity exist before "warm" trials
   sleep "$SETTLE"
-  local vals=()
+  local vals=() states=() t
   for t in $(seq 1 "$TRIALS"); do
     "${ADB[@]}" shell am start -a android.settings.SETTINGS > /dev/null; sleep 1
-    MS=$(start_ms); vals+=( "$MS" ); echo "  warm trial $t: ${MS}ms"
+    start_ms > /dev/null
+    vals+=( "$MS" ); states+=( "${LAUNCH_STATE:-unknown}" )
+    # Note: raising a live singleTask entry reports HOT, not WARM; the
+    # reported state is recorded, not assumed.
+    echo "  warm trial $t: ${MS}ms state=${LAUNCH_STATE:-unknown}"
   done
-  row "warm_start_ms,$(median "${vals[@]}"),$TRIALS,\"${vals[*]}\""
+  emit warm_start_ms ${vals[@]+"${vals[@]}"}
+  row "warm_launch_states,NA,,${#states[@]},\"${states[*]:-}\""
 }
 
 frames() {
-  # display-relative swipes so any emulator size works
-  read -r W H <<< "$("${ADB[@]}" shell wm size | grep -o '[0-9]*x[0-9]*' | tr 'x' ' ')"
+  # display-relative swipes so any emulator size works; when an override size
+  # is set, `wm size` prints Physical AND Override lines - use the last one.
+  read -r W H <<< "$("${ADB[@]}" shell wm size | grep -o '[0-9]*x[0-9]*' | tail -n1 | tr 'x' ' ')"
   local X=$(( W / 2 )) Y1=$(( H * 73 / 100 )) Y2=$(( H * 21 / 100 ))
   local jankys=() p90s=() p99s=()
+  local t s GFX J P9 P99
   for t in $(seq 1 "$TRIALS"); do
-    reset; start_ms > /dev/null; sleep "$SETTLE"
+    reset; start_ms > /dev/null
+    grid_ready_s > /dev/null || echo "  frames trial $t: grid not ready within ${GRID_TIMEOUT}s" >&2
     "${ADB[@]}" shell dumpsys gfxinfo "$APP" reset > /dev/null
     for s in $(seq 1 12); do "${ADB[@]}" shell input swipe "$X" "$Y1" "$X" "$Y2" 250; sleep 0.3; done
     for s in $(seq 1 6);  do "${ADB[@]}" shell input swipe "$X" "$Y2" "$X" "$Y1" 250; sleep 0.3; done
-    local GFX; GFX="$(mktemp)"
+    GFX="$(mktemp)"
     "${ADB[@]}" shell dumpsys gfxinfo "$APP" > "$GFX"
-    local J P9 P99
-    J=$(grep -o 'Janky frames: [0-9]* (\([0-9.]*\)%)' "$GFX" | grep -o '[0-9.]*%' | tr -d '%')
-    P9=$(grep -o '90th percentile: [0-9]*ms' "$GFX" | grep -o '[0-9]*')
-    P99=$(grep -o '99th percentile: [0-9]*ms' "$GFX" | grep -o '[0-9]*')
+    # Exactly one numeric value per metric: anchor on the CPU percentile lines
+    # ("  90th percentile: Nms"); the "GPU 90th percentile" line must NOT match,
+    # and the label digits (90/99) must not leak into the sample. A missed
+    # match yields NA (excluded from medians), never 0, and never aborts.
+    J=$(sed -n 's/^ *Janky frames: [0-9]* (\([0-9.]*\)%).*/\1/p' "$GFX" | head -n1 || true)
+    P9=$(awk '/^ *90th percentile:/{gsub(/ms/,"",$3); print $3; exit}' "$GFX" || true)
+    P99=$(awk '/^ *99th percentile:/{gsub(/ms/,"",$3); print $3; exit}' "$GFX" || true)
     rm -f "$GFX"
-    jankys+=( "${J:-0}" ); p90s+=( "${P9:-0}" ); p99s+=( "${P99:-0}" )
-    echo "  frames trial $t: janky=${J:-n/a}% p90=${P9:-n/a}ms p99=${P99:-n/a}ms"
+    jankys+=( "${J:-NA}" ); p90s+=( "${P9:-NA}" ); p99s+=( "${P99:-NA}" )
+    echo "  frames trial $t: janky=${J:-NA}% p90=${P9:-NA}ms p99=${P99:-NA}ms"
   done
-  row "frames_janky_pct,$(median "${jankys[@]}"),$TRIALS,\"${jankys[*]}\""
-  row "frames_p90_ms,$(median "${p90s[@]}"),$TRIALS,\"${p90s[*]}\""
-  row "frames_p99_ms,$(median "${p99s[@]}"),$TRIALS,\"${p99s[*]}\""
+  emit frames_janky_pct ${jankys[@]+"${jankys[@]}"}
+  emit frames_p90_ms ${p90s[@]+"${p90s[@]}"}
+  emit frames_p99_ms ${p99s[@]+"${p99s[@]}"}
 }
 
 heap() {
-  local tots=() nats=() javas=()
+  local tots=() nats=() javas=() invalid=0
+  local t PID MEM T N J
   for t in $(seq 1 "$TRIALS"); do
     reset; start_ms > /dev/null; sleep "$SETTLE"
-    local MEM; MEM="$(mktemp)"
+    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' ' || true)
+    # A dead/missing process or an unsupported dump layout must fail the trial,
+    # never record a successful zero sample (which fakes a memory improvement).
+    if [ -z "$PID" ]; then
+      echo "  heap trial $t: app not running - trial invalid, excluded" >&2
+      invalid=$((invalid+1)); continue
+    fi
+    MEM="$(mktemp)"
     "${ADB[@]}" shell dumpsys meminfo "$APP" > "$MEM"
-    local T N J
-    T=$(awk '/TOTAL PSS/{print $3; exit}' "$MEM")
-    N=$(awk '/Native Heap/{print $3; exit}' "$MEM")
-    J=$(awk '/Java Heap/{print $3; exit}' "$MEM")
+    T=$(awk '/TOTAL PSS/{print $3; exit}' "$MEM" || true)
+    N=$(awk '/Native Heap/{print $3; exit}' "$MEM" || true)
+    J=$(awk '/Java Heap/{print $3; exit}' "$MEM" || true)
     rm -f "$MEM"
-    tots+=( "${T:-0}" ); nats+=( "${N:-0}" ); javas+=( "${J:-0}" )
-    echo "  heap trial $t: total=${T:-n/a}KB native=${N:-n/a}KB java=${J:-n/a}KB"
+    case "${T:-x}.${N:-x}.${J:-x}" in
+      *[!0-9.]*)
+        echo "  heap trial $t: unparseable meminfo (T=${T:--} N=${N:--} J=${J:--}) - trial invalid, excluded" >&2
+        invalid=$((invalid+1)); continue ;;
+    esac
+    tots+=( "$T" ); nats+=( "$N" ); javas+=( "$J" )
+    echo "  heap trial $t: total=${T}KB native=${N}KB java=${J}KB"
   done
-  row "heap_total_kb,$(median "${tots[@]}"),$TRIALS,\"${tots[*]}\""
-  row "heap_native_kb,$(median "${nats[@]}"),$TRIALS,\"${nats[*]}\""
-  row "heap_java_kb,$(median "${javas[@]}"),$TRIALS,\"${javas[*]}\""
+  [ "$invalid" -eq 0 ] || echo "  heap: $invalid invalid trial(s) excluded from statistics" >&2
+  emit heap_total_kb ${tots[@]+"${tots[@]}"}
+  emit heap_native_kb ${nats[@]+"${nats[@]}"}
+  emit heap_java_kb ${javas[@]+"${javas[@]}"}
 }
 
 workers() {
-  local ths=() jobs_=()
+  # Retention across navigation (T-06's repeated-visit workload): each trial
+  # starts the app once, then runs NAV in-process cycles of PhoneActivity ->
+  # back -> MainActivity so workers retained per visit can accumulate, then
+  # waits for bounded work to quiesce and samples again. A fresh-process
+  # sample (force-stop per measurement) cannot detect per-visit leaks.
+  local before=() after=() jobs_=() invalid=0
+  local t c PID TH0 TH1 JB
   for t in $(seq 1 "$TRIALS"); do
     reset; start_ms > /dev/null; sleep "$SETTLE"
-    local PID; PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' ' || true)
-    [ -n "$PID" ] || { echo "  workers trial $t: app not running"; continue; }
-    local TH JB
-    TH=$("${ADB[@]}" shell "cat /proc/$PID/status" | awk '/^Threads:/{print $2}')
-    JB=$("${ADB[@]}" shell dumpsys jobscheduler | grep -c "$APP" || true)
-    ths+=( "${TH:-0}" ); jobs_+=( "${JB:-0}" )
-    echo "  workers trial $t: threads=$TH jobs=$JB"
+    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' ' || true)
+    if [ -z "$PID" ]; then
+      echo "  workers trial $t: app not running - trial invalid, excluded" >&2
+      invalid=$((invalid+1)); continue
+    fi
+    TH0=$("${ADB[@]}" shell "cat /proc/$PID/status" | awk '/^Threads:/{print $2}' || true)
+    for c in $(seq 1 "$NAV"); do
+      "${ADB[@]}" shell am start -n "$LAUNCH" > /dev/null
+      sleep 1
+      "${ADB[@]}" shell input keyevent KEYCODE_BACK
+      "${ADB[@]}" shell am start -n "$APP/.MainActivity" > /dev/null
+      sleep 1
+    done
+    sleep "$SETTLE"   # let bounded async work quiesce before sampling
+    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' ' || true)
+    if [ -z "$PID" ]; then
+      echo "  workers trial $t: process died during navigation - trial invalid, excluded" >&2
+      invalid=$((invalid+1)); continue
+    fi
+    TH1=$("${ADB[@]}" shell "cat /proc/$PID/status" | awk '/^Threads:/{print $2}' || true)
+    # Registered jobs only (JOB # lines), not every history/stats line that
+    # happens to mention the package.
+    JB=$("${ADB[@]}" shell dumpsys jobscheduler | grep -E '^ *JOB #' | grep -c "$APP" || true)
+    case "${TH0:-x}.${TH1:-x}" in
+      *[!0-9.]*)
+        echo "  workers trial $t: unparseable thread count - trial invalid, excluded" >&2
+        invalid=$((invalid+1)); continue ;;
+    esac
+    before+=( "$TH0" ); after+=( "$TH1" ); jobs_+=( "$JB" )
+    echo "  workers trial $t: threads $TH0 -> $TH1 after $NAV nav cycles, registered_jobs=$JB"
   done
-  [ ${#ths[@]} -gt 0 ] || { echo "no worker samples"; return 0; }
-  row "workers_threads,$(median "${ths[@]}"),$TRIALS,\"${ths[*]}\""
-  row "workers_jobs,$(median "${jobs_[@]}"),$TRIALS,\"${jobs_[*]}\""
+  [ "$invalid" -eq 0 ] || echo "  workers: $invalid invalid trial(s) excluded from statistics" >&2
+  emit workers_threads_before_nav ${before[@]+"${before[@]}"}
+  emit workers_threads_after_nav ${after[@]+"${after[@]}"}
+  emit workers_registered_jobs ${jobs_[@]+"${jobs_[@]}"}
+  row "workers_nav_cycles_per_trial,NA,,${#after[@]},\"$NAV\""
 }
 
-echo "# mama-launcher T-04a baseline, app=$APP, trials=$TRIALS, contacts=$CONTACTS" >> "$OUT"
+echo "# mama-launcher T-04a baseline, app=$APP, commit=$COMMIT, launch=$LAUNCH, trials=$TRIALS, contacts=$CONTACTS, nav=$NAV, cache_drop_probe_at_env" >> "$OUT"
 prep
 for S in "${SCENARIOS[@]}"; do
   echo "== $S"
