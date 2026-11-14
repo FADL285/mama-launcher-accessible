@@ -85,6 +85,19 @@ public class ContactPhotoLoaderTest {
     }
 
     @Test
+    public void photoLessRebindRetiresThePreviousRequest() {
+        Uri u = uri("retire");
+        registerPhoto(u);
+        ImageView view = new ImageView(app);
+        boolean[] delivered = {false};
+        loader.loadAsync(view, 1, u.toString(), 360, bmp -> delivered[0] = true);
+        // Row rebound to a contact with no photo before the decode landed.
+        loader.loadAsync(view, 2, null, 360, bmp -> {});
+        idle();
+        assertFalse("photo-less rebind must retire the old request", delivered[0]);
+    }
+
+    @Test
     public void refreshInvalidationDropsInFlightAndRecoversFailedUris() {
         Uri bad = uri("bad");
         // Robolectric decodes any bytes, so an unreadable photo is a failing stream.

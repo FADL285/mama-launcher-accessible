@@ -45,6 +45,8 @@ public class ContactPhotoLoader implements AutoCloseable {
     private final Executor background;
     private final Handler main;
     private final AtomicInteger generation = new AtomicInteger();
+    /** Serializes generation bumps with cache writes (see loadAsync). */
+    private final Object lock = new Object();
 
     private final android.util.LruCache<String, Bitmap> cache =
             new android.util.LruCache<String, Bitmap>(CACHE_BYTES) {
@@ -88,9 +90,11 @@ public class ContactPhotoLoader implements AutoCloseable {
      *  the main thread after it finishes. Either way the bitmap is applied
      *  only if the target is still bound to this exact request. */
     public void loadAsync(View target, long contactId, String photoUri, int maxDim, Callback callback) {
-        if (photoUri == null) return;
         final String requestKey = contactId + "|" + photoUri + "|" + maxDim;
+        // Retag even when there is no photo: a recycled row must never keep
+        // the previous contact's request key.
         target.setTag(R.id.photo_request, requestKey);
+        if (photoUri == null) return;
         final int gen = generation.get();
         final String key = cacheKey(photoUri, maxDim);
         Bitmap cached = cache.get(key);
@@ -101,10 +105,16 @@ public class ContactPhotoLoader implements AutoCloseable {
         Long missedAt = misses.get(key);
         if (missedAt != null && System.currentTimeMillis() - missedAt < MISS_TTL_MS) return;
         background.execute(() -> {
+            if (generation.get() != gen) return; // refresh made this queued work obsolete
             Bitmap bmp = load(photoUri, maxDim);
-            if (generation.get() != gen) return; // stale generation: drop, do not cache
-            if (bmp != null) cache.put(key, bmp);
-            else { misses.remove(key); misses.put(key, System.currentTimeMillis()); }
+            // Generation check and cache write are one atomic step: a refresh
+            // between them must not let old pixels or a stale miss into the
+            // freshly cleared caches.
+            synchronized (lock) {
+                if (generation.get() != gen) return;
+                if (bmp != null) cache.put(key, bmp);
+                else { misses.remove(key); misses.put(key, System.currentTimeMillis()); }
+            }
             if (bmp == null) return;
             main.post(() -> {
                 if (generation.get() != gen) return;
@@ -119,9 +129,11 @@ public class ContactPhotoLoader implements AutoCloseable {
      *  refresh re-decodes photos, because the same URI may now serve
      *  different pixels. */
     public void invalidateAll() {
-        generation.incrementAndGet();
-        cache.evictAll();
-        misses.clear();
+        synchronized (lock) {
+            generation.incrementAndGet();
+            cache.evictAll();
+            misses.clear();
+        }
     }
 
     /** Stops deliveries and shuts the owned background thread down. */
