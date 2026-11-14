@@ -86,7 +86,7 @@ is listed under "Executed tools and results" below.
   in the grid adapter; the on-device trial will show whether jank is real).
 - **Note (not a defect):** the pilot APK is debug-signed and debuggable; the
   signing key is local and intentionally absent from this repository. Release
-  signing is a future owner decision, as is the code license.
+  signing is a future owner decision; the code license is Apache-2.0 (see LICENSE).
 
 ## OWASP MASVS control-group mapping (checklist review)
 
