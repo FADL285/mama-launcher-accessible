@@ -22,6 +22,10 @@ public class DialpadActivity extends BaseActivity {
     private DirectCallAction callAction;
     private java.util.List<info.fadl.mamalauncher.ui.ContactEntry> contacts = new java.util.ArrayList<>();
     private final java.util.concurrent.ExecutorService lookupWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
+    private final android.os.Handler mainHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+    /** T-06: matches CallLogWorker's watchdog - a provider blocked inside
+     *  query()/moveToNext() fails loudly after this instead of hanging. */
+    private static final long LOOKUP_WATCHDOG_MS=6000;
     private volatile int lookupGeneration;
     /** T-06: refresh and Save are separate consumers with separate signals,
      *  so a new refresh cancels only the previous refresh, never a live Save
@@ -44,13 +48,22 @@ public class DialpadActivity extends BaseActivity {
         lookupPending=true;renderMatches();
         final android.os.CancellationSignal signal=new android.os.CancellationSignal();
         lookupSignal=signal;
+        final Runnable watchdog=()->{
+            if(generation==lookupGeneration && lookupPending){
+                signal.cancel();
+                lookupPending=false;contactsAvailable=false;
+                contacts=new java.util.ArrayList<>();
+                renderMatches();
+            }
+        };
+        mainHandler.postDelayed(watchdog,LOOKUP_WATCHDOG_MS);
         lookupWorker.execute(()-> {
             if(generation!=lookupGeneration)return;
             java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded;
             boolean ok=true;
             try {loaded=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this),signal);}catch(RuntimeException e){loaded=new java.util.ArrayList<>();ok=false;}
             final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> result=loaded;final boolean success=ok;
-            runOnUiThread(()-> {if(isDestroyed() || generation!=lookupGeneration)return;contacts=result;lookupPending=false;contactsAvailable=success;renderMatches();});
+            runOnUiThread(()-> {mainHandler.removeCallbacks(watchdog);if(isDestroyed() || generation!=lookupGeneration)return;contacts=result;lookupPending=false;contactsAvailable=success;renderMatches();});
         });
     }
     /** D-01 (option C): callable when 3+ digits, or the input contains * or #. */
@@ -67,6 +80,14 @@ public class DialpadActivity extends BaseActivity {
         if(saveSignal!=null)saveSignal.cancel();
         final android.os.CancellationSignal signal=new android.os.CancellationSignal();
         saveSignal=signal;
+        final Runnable watchdog=()->{
+            if(request==saveGeneration && checkingSave){
+                signal.cancel();
+                saveGeneration++;checkingSave=false; // a blocked provider is a failed lookup, not a hang
+                android.widget.Toast.makeText(this,R.string.dial_lookup_needed,android.widget.Toast.LENGTH_LONG).show();
+            }
+        };
+        mainHandler.postDelayed(watchdog,LOOKUP_WATCHDOG_MS);
         lookupWorker.execute(()-> {
             if(request!=saveGeneration)return;
             java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded=new java.util.ArrayList<>();boolean ok=canReadContacts();
@@ -74,6 +95,7 @@ public class DialpadActivity extends BaseActivity {
             final boolean verified=ok;final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> current=loaded;
             final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact=DialContactMatcher.matches(current,typed,region,true);
             runOnUiThread(()-> {
+                mainHandler.removeCallbacks(watchdog);
                 if(!resumed || request!=saveGeneration || isDestroyed() || isFinishing())return;
                 checkingSave=false;
                 if(!typed.equals(number.toString())){android.widget.Toast.makeText(this,R.string.dial_save_changed,android.widget.Toast.LENGTH_LONG).show();return;}

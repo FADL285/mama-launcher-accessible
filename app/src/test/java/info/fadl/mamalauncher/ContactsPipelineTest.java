@@ -113,11 +113,15 @@ public class ContactsPipelineTest {
         AtomicInteger queries = new AtomicInteger();
         provider(new FixtureContactsProvider() {
             @Override public Cursor query(Uri u, String[] p, String s, String[] a, String o) {
-                queries.incrementAndGet();
+                int n = queries.incrementAndGet();
                 firstEntered.countDown();
                 try { release.await(3, TimeUnit.SECONDS); }
                 catch (InterruptedException e) { throw new RuntimeException(e); }
-                return oneRow();
+                // Each read returns a DISTINCT contact, so a stale read
+                // winning the race is visible in the installed adapter.
+                MatrixCursor c = new MatrixCursor(COLUMNS);
+                c.addRow(new Object[] {(long) n, "Contact" + n, "0100000000" + n, 1, null, null, 0});
+                return c;
             }
         });
         org.robolectric.android.controller.ActivityController<PhoneActivity> c =
@@ -125,14 +129,45 @@ public class ContactsPipelineTest {
         PhoneActivity a = c.get();
         assertTrue(firstEntered.await(2, TimeUnit.SECONDS));
         // Pause cancels the in-flight read; resume starts a fresh one. The
-        // stale read must drop silently - never the error view, never a
-        // clobbered grid.
+        // stale read must drop silently - never the error view, and never
+        // the superseded read's data in the grid.
         c.pause().resume();
         release.countDown();
         settle();
         assertTrue("resume must issue a fresh read", queries.get() >= 2);
         assertEquals(View.GONE, a.findViewById(R.id.contacts_read_error).getVisibility());
-        assertEquals(View.VISIBLE, a.findViewById(R.id.contacts_grid).getVisibility());
+        android.widget.GridView grid = a.findViewById(R.id.contacts_grid);
+        assertEquals(View.VISIBLE, grid.getVisibility());
+        assertNotNull("the fresh read must install an adapter", grid.getAdapter());
+        info.fadl.mamalauncher.ui.ContactEntry shown =
+                (info.fadl.mamalauncher.ui.ContactEntry) grid.getAdapter().getItem(0);
+        assertEquals("only the freshest read's data may be shown",
+                (long) queries.get(), shown.id);
+    }
+
+    @Test
+    public void blockedProviderFailsLoudlyAtTheWatchdog() throws Exception {
+        // A provider that never answers: the read deadline cannot fire inside
+        // a blocked call, so the worker watchdog must surface the failure.
+        CountDownLatch entered = new CountDownLatch(1), never = new CountDownLatch(1);
+        provider(new FixtureContactsProvider() {
+            @Override public Cursor query(Uri u, String[] p, String s, String[] a, String o) {
+                entered.countDown();
+                try { never.await(30, TimeUnit.SECONDS); }
+                catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+                return oneRow();
+            }
+        });
+        PhoneActivity a = Robolectric.buildActivity(PhoneActivity.class).setup().get();
+        assertTrue(entered.await(2, TimeUnit.SECONDS));
+        try {
+            Shadows.shadowOf(android.os.Looper.getMainLooper())
+                    .idleFor(java.time.Duration.ofSeconds(7));
+            assertEquals("blocked read must fail loudly, not hang",
+                    View.VISIBLE, a.findViewById(R.id.contacts_read_error).getVisibility());
+        } finally {
+            never.countDown(); // free the stuck read thread
+        }
     }
 
     @Test
