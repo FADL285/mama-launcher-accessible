@@ -14,7 +14,7 @@ final class CallLogWorker implements AutoCloseable {
     T run(CancellationSignal signal);
   }
 
-  private final ExecutorService executor = Executors.newSingleThreadExecutor();
+  private ExecutorService executor = Executors.newSingleThreadExecutor();
   private final Handler main = new Handler(Looper.getMainLooper());
   private Future<?> task;
   private CancellationSignal signal;
@@ -62,7 +62,18 @@ final class CallLogWorker implements AutoCloseable {
   void cancel() {
     generation++;
     if (signal != null) signal.cancel();
-    if (task != null) task.cancel(true);
+    if (task != null) {
+      task.cancel(true);
+      if (!task.isDone()) {
+        // A provider blocked inside a binder call ignores interruption, so a
+        // cancelled task can keep the executor's only thread forever and
+        // every later read would queue behind it. Abandon that executor and
+        // give later reads a fresh one; the stuck thread leaks, bounded by
+        // the number of abandoned reads.
+        executor.shutdownNow();
+        executor = Executors.newSingleThreadExecutor();
+      }
+    }
   }
 
   @Override
