@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- T-04a: marks the profileable build type as profileable by shell (simpleperf/
+     Perfetto on a release-like build). Ignored below API 29.
+
+     PhoneActivity is exported in THIS build type only, so the T-04a measurement
+     scripts (scripts/measure/measure.sh) can time the contacts grid directly.
+     Production build types keep android:exported="false"; no release behavior
+     change. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <profileable android:shell="true" />
+        <activity
+            android:name="info.fadl.mamalauncher.PhoneActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+    </application>
+</manifest>
