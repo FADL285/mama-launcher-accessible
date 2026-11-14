@@ -171,11 +171,24 @@ public class ContactsPipelineTest {
     }
 
     @Test
-    public void historyLabelsUnavailableYieldNumberOnlyIndex() {
+    public void cancelledLabelsReadPropagatesNeverBecomesEmpty() {
         provider(cursorProvider(oneRow()));
         CancellationSignal signal = new CancellationSignal();
         signal.cancel(); // caller was cancelled before/during the label read
-        HistorySnapshot.ContactIndex index = HistorySnapshot.contacts(app, signal);
-        assertNull("late labels must not invent a contact", index.find("01000000000"));
+        try {
+            HistorySnapshot.contacts(app, signal);
+            fail("a cancelled label read must surface, never turn into an empty index");
+        } catch (OperationCanceledException expected) {
+        }
+    }
+
+    @Test
+    public void failedLabelsReadPropagatesNeverBecomesEmpty() {
+        provider(cursorProvider(null)); // null cursor: loadVerified must fail
+        try {
+            HistorySnapshot.contacts(app, new CancellationSignal());
+            fail("a failed label read must surface, never turn into an empty index");
+        } catch (RuntimeException expected) {
+        }
     }
 }

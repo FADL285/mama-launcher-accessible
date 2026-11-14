@@ -91,15 +91,21 @@ public class CallLogConcurrencyTest {
   @Test
   public void readsAfterAnAbandonedOneStillRun() throws Exception {
     // A blocked read ignores interruption and keeps its thread; cancel() must
-    // abandon that executor so the next read is not queued behind it.
+    // abandon that executor so the next read is not queued behind it. The
+    // block here swallows interrupts the way a binder call would.
     CallLogWorker w = new CallLogWorker();
     CountDownLatch entered = new CountDownLatch(1), never = new CountDownLatch(1);
     w.read(
         signal -> {
           entered.countDown();
-          try {
-            never.await(30, TimeUnit.SECONDS);
-          } catch (InterruptedException ignored) {
+          boolean released = false;
+          while (!released) {
+            try {
+              never.await(30, TimeUnit.SECONDS);
+              released = true;
+            } catch (InterruptedException ignored) {
+              // Like a blocked binder call: interruption does not free us.
+            }
           }
           return 1;
         },
@@ -119,6 +125,32 @@ public class CallLogConcurrencyTest {
       never.countDown();
       w.close();
     }
+  }
+
+  @Test
+  public void errorSurfacesAsFailureAndWorkerRecovers() throws Exception {
+    // An Error (not just RuntimeException) must reach the failure callback -
+    // an uncaught one would remove the watchdog and hang the view forever.
+    CallLogWorker w = new CallLogWorker();
+    AtomicInteger successes = new AtomicInteger(), failures = new AtomicInteger();
+    w.read(
+        signal -> {
+          throw new OutOfMemoryError("synthetic");
+        },
+        value -> successes.incrementAndGet(),
+        failures::incrementAndGet);
+    for (int i = 0; i < 100 && failures.get() == 0; i++) {
+      Thread.sleep(20);
+      Shadows.shadowOf(Looper.getMainLooper()).idle();
+    }
+    assertEquals("an Error must surface as failure, not a silent hang", 1, failures.get());
+    w.read(signal -> 7, value -> successes.incrementAndGet(), failures::incrementAndGet);
+    for (int i = 0; i < 100 && successes.get() == 0; i++) {
+      Thread.sleep(20);
+      Shadows.shadowOf(Looper.getMainLooper()).idle();
+    }
+    assertEquals(1, successes.get());
+    w.close();
   }
 
   @Test

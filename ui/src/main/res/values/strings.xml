@@ -193,5 +193,7 @@
     <string name="notification_access_disconnected">الاتصال بالنظام انقطع، النقطة غير مؤكدة</string>
     <string name="phone_app_settings">إعدادات التطبيق</string>
     <string name="history_retry">إعادة تحميل السجل</string>
+    <string name="history_labels_failed">الأسماء مش متاحة دلوقتي. الأرقام والمكالمات ظاهرة زي ما هي.</string>
+    <string name="history_labels_retry">إعادة تحميل الأسماء</string>
     <string name="notification_access_not_in_build">النسخة دي من غير وصول للإشعارات، فنقطة إشعارات التطبيقات مش متاحة. سجل المكالمات وعدّاد الفائت مستقلين وبيحتاجوا إذن سجل المكالمات.</string>
 </resources>
