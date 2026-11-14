@@ -23,6 +23,11 @@ public class DialpadActivity extends BaseActivity {
     private java.util.List<info.fadl.mamalauncher.ui.ContactEntry> contacts = new java.util.ArrayList<>();
     private final java.util.concurrent.ExecutorService lookupWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
     private volatile int lookupGeneration;
+    /** T-06: refresh and Save are separate consumers with separate signals,
+     *  so a new refresh cancels only the previous refresh, never a live Save
+     *  lookup - and neither touches the grid or history readers. */
+    private android.os.CancellationSignal lookupSignal;
+    private android.os.CancellationSignal saveSignal;
     private volatile int matchGeneration;
     private boolean lookupPending;
     private boolean checkingSave;
@@ -34,13 +39,16 @@ public class DialpadActivity extends BaseActivity {
     private boolean canReadContacts() {return checkSelfPermission(android.Manifest.permission.READ_CONTACTS)==android.content.pm.PackageManager.PERMISSION_GRANTED;}
     private void refreshContacts() {
         final int generation=++lookupGeneration;
+        if(lookupSignal!=null)lookupSignal.cancel();
         if(!canReadContacts()){lookupPending=false;contactsAvailable=false;contacts.clear();renderMatches();return;}
         lookupPending=true;renderMatches();
+        final android.os.CancellationSignal signal=new android.os.CancellationSignal();
+        lookupSignal=signal;
         lookupWorker.execute(()-> {
             if(generation!=lookupGeneration)return;
             java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded;
             boolean ok=true;
-            try {loaded=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this));}catch(RuntimeException e){loaded=new java.util.ArrayList<>();ok=false;}
+            try {loaded=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this),signal);}catch(RuntimeException e){loaded=new java.util.ArrayList<>();ok=false;}
             final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> result=loaded;final boolean success=ok;
             runOnUiThread(()-> {if(isDestroyed() || generation!=lookupGeneration)return;contacts=result;lookupPending=false;contactsAvailable=success;renderMatches();});
         });
@@ -56,10 +64,13 @@ public class DialpadActivity extends BaseActivity {
     private void saveOrShowExisting() {
         if(!callable(number.toString()) || checkingSave || !resumed)return;
         final String typed=number.toString();final int request=++saveGeneration;final String region=country();checkingSave=true;
+        if(saveSignal!=null)saveSignal.cancel();
+        final android.os.CancellationSignal signal=new android.os.CancellationSignal();
+        saveSignal=signal;
         lookupWorker.execute(()-> {
             if(request!=saveGeneration)return;
             java.util.List<info.fadl.mamalauncher.ui.ContactEntry> loaded=new java.util.ArrayList<>();boolean ok=canReadContacts();
-            try {if(ok)loaded=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this));}catch(RuntimeException e){ok=false;}
+            try {if(ok)loaded=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this),signal);}catch(RuntimeException e){ok=false;}
             final boolean verified=ok;final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> current=loaded;
             final java.util.List<info.fadl.mamalauncher.ui.ContactEntry> exact=DialContactMatcher.matches(current,typed,region,true);
             runOnUiThread(()-> {
@@ -122,7 +133,7 @@ public class DialpadActivity extends BaseActivity {
     }
     /** Deterministic synchronization point for isolated JVM flow tests. */
     void awaitLookupsForTest() throws Exception {lookupWorker.submit(()->{}).get(5,java.util.concurrent.TimeUnit.SECONDS);}
-    @Override protected void onDestroy(){lookupGeneration++;matchGeneration++;lookupWorker.shutdownNow();super.onDestroy();}
+    @Override protected void onDestroy(){lookupGeneration++;matchGeneration++;if(lookupSignal!=null)lookupSignal.cancel();if(saveSignal!=null)saveSignal.cancel();lookupWorker.shutdownNow();super.onDestroy();}
 
 
     @Override
@@ -156,6 +167,7 @@ public class DialpadActivity extends BaseActivity {
     /** Leaving the page invalidates reads and chooser actions, even if it is not destroyed. */
     @Override protected void onPause() {
         resumed=false;saveGeneration++;checkingSave=false;
+        if(saveSignal!=null)saveSignal.cancel();
         if(saveChooser!=null){saveChooser.dismiss();saveChooser=null;}
         super.onPause();
     }

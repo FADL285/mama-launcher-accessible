@@ -58,7 +58,8 @@ final class HistorySnapshot {
         != PackageManager.PERMISSION_GRANTED) return empty;
     List<ContactEntry> current;
     try {
-      current = ContactsLoader.loadVerified(c.getContentResolver(), c.getResources(), NumberRegion.current(c));
+      // T-06: the signal now aborts the read mid-loop, not only after it.
+      current = ContactsLoader.loadVerified(c.getContentResolver(), c.getResources(), NumberRegion.current(c), signal);
       signal.throwIfCanceled();
     } catch (RuntimeException unavailable) {
       return empty;

@@ -33,6 +33,10 @@ public class PhoneActivity extends BaseActivity {
     private View setupView;
     private View emptyView;
     private int refreshGeneration;
+    /** T-06: cancels the in-flight contacts read when a newer refresh (or
+     *  pause/destroy) supersedes it. Only this screen's read is cancelled;
+     *  the dialpad, Save and history consumers keep their own signals. */
+    private android.os.CancellationSignal contactsSignal;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +85,7 @@ public class PhoneActivity extends BaseActivity {
 
     private void refresh() {
         final int generation = ++refreshGeneration;
+        if (contactsSignal != null) contactsSignal.cancel();
         findViewById(R.id.contacts_read_error).setVisibility(View.GONE);
         if (checkSelfPermission(Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -98,10 +103,13 @@ public class PhoneActivity extends BaseActivity {
         Prefs.get(this).edit().remove(PREF_CONTACTS_DENIED).apply();
         setupView.setVisibility(View.GONE);
         grid.setVisibility(View.VISIBLE);
+        final android.os.CancellationSignal signal = new android.os.CancellationSignal();
+        contactsSignal = signal;
         new Thread(() -> {
             List<ContactEntry> original;
-            try { original=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this)); }
+            try { original=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this),signal); }
             catch(RuntimeException readFailure) {
+                if (signal.isCanceled()) return; // superseded or paused: drop silently
                 runOnUiThread(() -> {
                     if(generation!=refreshGeneration || isDestroyed() || isFinishing())return;
                     if(checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED){refresh();return;}
@@ -188,10 +196,12 @@ public class PhoneActivity extends BaseActivity {
     @Override protected void onPause() {
         if (history != null) history.pause();
         refreshGeneration++;
+        if (contactsSignal != null) contactsSignal.cancel();
         super.onPause();
     }
     @Override protected void onDestroy() {
         if (history != null) history.close();
+        if (contactsSignal != null) contactsSignal.cancel();
         super.onDestroy();
     }
 
