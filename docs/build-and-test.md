@@ -69,6 +69,8 @@ Use a flavor-specific release task:
 | noNotif | `:app:assembleNoNotifRelease` | `app/build/outputs/apk/noNotif/release/app-noNotif-release-unsigned.apk` |
 | full | `:app:assembleFullRelease` | `app/build/outputs/apk/full/release/app-full-release-unsigned.apk` |
 
+Measurement builds: `:app:assembleNoNotifProfileable` produces the release-like, debug-key-signed APK used for the T-04a baseline protocol in [performance-baseline.md](performance-baseline.md) (never release-signed, never distributed).
+
 The noNotif flavor is the source of the delivered19 APK. Full currently inherits code16 from main, so do not use it as an update over19 without a separately authorized version/capability decision. There is no release-signing configuration in the repository. The distributed 0.14 was separately aligned and signed with the project's dedicated release key; do not commit that key or its password.
 
 - A debug APK has a different signer and is not an update to the release installation.

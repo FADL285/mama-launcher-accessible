@@ -23,6 +23,22 @@ android {
             buildConfigField "boolean", "NOTIFICATION_ACCESS", "false"
         }
     }
+    buildTypes {
+        release {
+            // Unsigned by default: the owner signs release artifacts out-of-band
+            // with the dedicated release key (docs/build-and-test.md).
+        }
+        // T-04a measurement build: release-like (minify/settings of release via
+        // initWith) but signed with the LOCAL debug key so a profileable APK can
+        // run on an emulator/test device. Never signed with the release key and
+        // never distributed; mixing build types invalidates before/after numbers.
+        profileable {
+            initWith release
+            signingConfig signingConfigs.debug
+            // The :ui library only ships debug/release; consume its release variant.
+            matchingFallbacks = ['release']
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
