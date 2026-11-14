@@ -27,18 +27,26 @@ selections** (see below).
 ## Protocol
 
 1. Record the environment block: `scripts/measure/measure.sh env` (device
-   model, API, build fingerprint, host).
+   model, API, build fingerprint, display size, host).
 2. Seed the target size: `seed-contacts.sh 500` (etc.).
-3. Install the pinned build.
-4. For every scenario run **at least 5 trials** after the documented reset
-   (force-stop, HOME, drop page caches when root is available) and report the
-   **median** with all trial values kept: `measure.sh -t 5 all`.
+3. Install the pinned build. `measure.sh` grants `READ_CONTACTS` and
+   `READ_CALL_LOG` before timing - a fresh install would otherwise measure
+   the permission/setup screen, not the contacts grid.
+4. Timed starts target **`.MainActivity`** (the exported launcher/home entry,
+   singleTask); `.PhoneActivity` is not exported.
+5. For every scenario run **at least 5 trials** after the documented reset
+   (force-stop, move focus to Settings - never HOME, which would relaunch
+   Mama when it is the default launcher - and drop page caches when root is
+   available) and report the **median** with all trial values kept:
+   `measure.sh -t 5 -c 500 all` (`-c` records the seeded size on every row).
+   `SETTLE` (default 3s) is the wait for the async contacts load before
+   sampling frames/heap; raise it on slow emulators.
 
 | # | Scenario | Metric | Command |
 |---|----------|--------|---------|
 | S1 | Cold start, main grid visible | TotalTime (ms) | `measure.sh cold` |
 | S2 | Warm start from recents | TotalTime (ms) | `measure.sh warm` |
-| S3 | Grid scroll (12 up / 6 down swipes) | janky %, p90, p99 frame ms | `measure.sh frames` |
+| S3 | Grid scroll (12 up / 6 down, display-relative swipes) | janky %, p90, p99 frame ms | `measure.sh frames` |
 | S4 | Settled heap after start | total / native / java PSS KB | `measure.sh heap` |
 | S5 | Retained workers after settle | thread count, scheduled jobs | `measure.sh workers` |
 
