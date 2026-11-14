@@ -31,6 +31,10 @@ final class CallLogWorker implements AutoCloseable {
   private volatile java.util.concurrent.atomic.AtomicBoolean taskRunning;
   /** Marks the current task as abandoned so its late return frees a slot. */
   private volatile java.util.concurrent.atomic.AtomicBoolean taskAbandoned;
+  /** Per-task one-shot guard: an abandoned slot is freed exactly once, no
+   *  matter whether the task's own finally or cancel() notices the exit
+   *  first (the finish-and-mark window cannot lose or double-free a slot). */
+  private volatile java.util.concurrent.atomic.AtomicBoolean taskSlotFreed;
   private CancellationSignal signal;
   private int generation;
   private boolean closed;
@@ -54,8 +58,11 @@ final class CallLogWorker implements AutoCloseable {
         new java.util.concurrent.atomic.AtomicBoolean();
     final java.util.concurrent.atomic.AtomicBoolean wasAbandoned =
         new java.util.concurrent.atomic.AtomicBoolean();
+    final java.util.concurrent.atomic.AtomicBoolean slotFreed =
+        new java.util.concurrent.atomic.AtomicBoolean();
     taskRunning = running;
     taskAbandoned = wasAbandoned;
+    taskSlotFreed = slotFreed;
     task =
         executor.submit(
             () -> {
@@ -70,7 +77,7 @@ final class CallLogWorker implements AutoCloseable {
                 // uncaught one would remove the watchdog and hang the view.
               } finally {
                 running.set(false);
-                if (wasAbandoned.get())
+                if (wasAbandoned.get() && slotFreed.compareAndSet(false, true))
                   main.post(
                       () -> {
                         // A stuck thread that returned frees its slot.
@@ -106,16 +113,26 @@ final class CallLogWorker implements AutoCloseable {
       // no swap.
       java.util.concurrent.atomic.AtomicBoolean running = taskRunning;
       if (running != null && running.get() && taskExecutor != null) {
-        taskExecutor.shutdownNow();
+        // Abandon only while swapping is still allowed, and only then shut the
+        // stuck executor down. Past the cap the executor is left running: the
+        // next read queues behind it and fails through its own watchdog - a
+        // clear retryable failure, never a RejectedExecutionException thrown
+        // at the caller from a terminated executor.
         if (executor == taskExecutor && abandoned < MAX_ABANDONED) {
+          taskExecutor.shutdownNow();
           abandoned++;
           java.util.concurrent.atomic.AtomicBoolean mark = taskAbandoned;
           if (mark != null) mark.set(true);
           executor = Executors.newSingleThreadExecutor();
+          // The task may have exited between the running check and the mark:
+          // its finally then saw no mark and freed nothing. Free the slot
+          // here instead - the CAS keeps it exactly-once either way.
+          java.util.concurrent.atomic.AtomicBoolean freed = taskSlotFreed;
+          if (freed != null && !running.get() && freed.compareAndSet(false, true)
+              && abandoned > 0) {
+            abandoned--;
+          }
         }
-        // Past the cap the stuck executor stays: the next read queues behind
-        // it and fails through its own watchdog - a clear retryable failure,
-        // not another leaked thread.
       }
     }
   }
