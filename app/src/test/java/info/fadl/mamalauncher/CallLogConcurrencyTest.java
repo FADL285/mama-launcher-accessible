@@ -98,15 +98,7 @@ public class CallLogConcurrencyTest {
     w.read(
         signal -> {
           entered.countDown();
-          boolean released = false;
-          while (!released) {
-            try {
-              never.await(30, TimeUnit.SECONDS);
-              released = true;
-            } catch (InterruptedException ignored) {
-              // Like a blocked binder call: interruption does not free us.
-            }
-          }
+          blockUninterruptibly(never);
           return 1;
         },
         value -> {},
@@ -123,6 +115,96 @@ public class CallLogConcurrencyTest {
       assertEquals("the next read must not queue behind the abandoned one", 1, successes.get());
     } finally {
       never.countDown();
+      w.close();
+    }
+  }
+
+  private static void blockUninterruptibly(CountDownLatch latch) {
+    boolean released = false;
+    while (!released) {
+      try {
+        latch.await(30, TimeUnit.SECONDS);
+        released = true;
+      } catch (InterruptedException ignored) {
+        // Like a blocked binder call: interruption does not free us.
+      }
+    }
+  }
+
+  @Test
+  public void abandonedTaskFinishingLateCannotClobberTheCurrentReadsState() throws Exception {
+    // A blocks and is abandoned; B runs on the replacement executor and also
+    // blocks; A then finishes late. A's cleanup must not clear B's running
+    // state, or the next cancel() would skip the swap and C would starve.
+    CallLogWorker w = new CallLogWorker();
+    CountDownLatch aEntered = new CountDownLatch(1), aRelease = new CountDownLatch(1);
+    w.read(
+        signal -> {
+          aEntered.countDown();
+          blockUninterruptibly(aRelease);
+          return 1;
+        },
+        value -> {},
+        () -> {});
+    assertTrue(aEntered.await(1, TimeUnit.SECONDS));
+    w.cancel();
+    CountDownLatch bEntered = new CountDownLatch(1), bRelease = new CountDownLatch(1);
+    w.read(
+        signal -> {
+          bEntered.countDown();
+          blockUninterruptibly(bRelease);
+          return 2;
+        },
+        value -> {},
+        () -> {});
+    assertTrue("the replacement read must run on a fresh executor", bEntered.await(1, TimeUnit.SECONDS));
+    aRelease.countDown(); // A unblocks late; its finally clears only A's flag
+    Thread.sleep(100);
+    w.cancel(); // B is still stuck: the swap must still happen
+    AtomicInteger success = new AtomicInteger();
+    try {
+      w.read(signal -> 3, value -> success.incrementAndGet(), () -> {});
+      for (int i = 0; i < 100 && success.get() == 0; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("a read after two abandoned ones must still run", 1, success.get());
+    } finally {
+      bRelease.countDown();
+      w.close();
+    }
+  }
+
+  @Test
+  public void abandonedExecutorsAreCappedAndRecoverWhenStuckThreadsReturn() throws Exception {
+    // Each abandoned read leaks its stuck thread; the leak must be bounded,
+    // and a stuck thread that finally returns must free its slot.
+    CallLogWorker w = new CallLogWorker();
+    java.util.List<CountDownLatch> releases = new java.util.ArrayList<>();
+    try {
+      for (int i = 0; i < 4; i++) {
+        CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+        releases.add(release);
+        w.read(
+            signal -> {
+              entered.countDown();
+              blockUninterruptibly(release);
+              return 1;
+            },
+            value -> {},
+            () -> {});
+        assertTrue("read " + i + " must start", entered.await(1, TimeUnit.SECONDS));
+        w.cancel();
+      }
+      assertEquals("abandonment is capped", 3, w.abandonedForTest());
+      releases.get(0).countDown(); // the first stuck thread returns
+      for (int i = 0; i < 100 && w.abandonedForTest() != 2; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("a returned thread frees its slot", 2, w.abandonedForTest());
+    } finally {
+      for (CountDownLatch r : releases) r.countDown();
       w.close();
     }
   }

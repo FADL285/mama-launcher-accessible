@@ -105,6 +105,45 @@ public class HistoryLabelsTest {
   }
 
   @Test
+  public void labelsRetryNeverReloadsOrLosesTheVisiblePage() throws Exception {
+    contactsProvider(
+        new FixtureContactsProvider() {
+          @Override
+          public Cursor query(Uri u, String[] p, String s, String[] a, String o) {
+            return null;
+          }
+        });
+    ActivityController<PhoneActivity> c = Robolectric.buildActivity(PhoneActivity.class).setup();
+    PhoneActivity a = c.get();
+    a.findViewById(R.id.btn_tab_history).performClick();
+    settle();
+    assertEquals(View.VISIBLE, a.findViewById(R.id.history_labels_state).getVisibility());
+    ListView list = a.findViewById(R.id.history_list);
+    assertEquals(2, list.getAdapter().getCount());
+
+    // Even the call log itself is now unreadable: retrying labels must use
+    // the retained page, not reload the required data.
+    calls.fail = true;
+    int callLogQueries = calls.queries;
+    contactsProvider(
+        new FixtureContactsProvider() {
+          @Override
+          public Cursor query(Uri u, String[] p, String s, String[] a, String o) {
+            MatrixCursor mc = new MatrixCursor(COLUMNS);
+            mc.addRow(new Object[] {1L, "Mama", "01000000000", 1, null, null, 0});
+            return mc;
+          }
+        });
+    a.findViewById(R.id.btn_history_labels_retry).performClick();
+    settle();
+    assertEquals(View.VISIBLE, list.getVisibility());
+    assertEquals("the visible page survives a labels retry", 2, list.getAdapter().getCount());
+    assertEquals(View.GONE, a.findViewById(R.id.history_labels_state).getVisibility());
+    assertEquals("the call log was not re-read", callLogQueries, calls.queries);
+    c.pause().stop().destroy();
+  }
+
+  @Test
   public void blockedLabelsKeepRowsAndRowOpensWithRawNumber() throws Exception {
     CountDownLatch never = new CountDownLatch(1);
     contactsProvider(
@@ -136,9 +175,10 @@ public class HistoryLabelsTest {
       assertEquals(2, list.getAdapter().getCount());
       assertEquals(View.VISIBLE, a.findViewById(R.id.history_labels_state).getVisibility());
 
-      // Tapping a callable row still opens confirmation, with the raw number.
+      // Tapping a callable row opens confirmation at once, with the raw
+      // number: the bound LABELS_FAILED state answers instead of a new read.
       list.getAdapter().getView(0, null, list).performClick();
-      Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(Duration.ofSeconds(7));
+      Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
       settle();
       Intent intent = Shadows.shadowOf(a).getNextStartedActivity();
       assertNotNull("a callable row opens confirmation even when labels are blocked", intent);
