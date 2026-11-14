@@ -8,7 +8,6 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -37,6 +36,10 @@ public class ConfirmCallActivity extends BaseActivity {
 
     private String selectedNumber; // null until visibly chosen (multi-number)
     private NameSpeaker speaker;
+    private ContactPhotoLoader photoLoader;
+    /** Test seam: swaps in a synchronous photo loader. */
+    static java.util.function.Function<android.content.ContentResolver, ContactPhotoLoader>
+            photoLoaderFactory = ContactPhotoLoader::new;
     private boolean refreshSpeech;
     private Button callButton;
     private DirectCallAction callAction;
@@ -86,15 +89,20 @@ public class ConfirmCallActivity extends BaseActivity {
 
         ImageView bigPhoto = findViewById(R.id.big_photo);
         TextView fallback = findViewById(R.id.big_photo_fallback);
-        Bitmap bmp = new ContactPhotoLoader(getContentResolver()).load(photoUri, 900);
-        if (bmp != null) {
+        // T-07: the screen opens before the photo decodes - the name tile is
+        // the immediate placeholder and the 900px decode lands only if this
+        // view is still bound to this contact (fast back/forward never shows
+        // the previous contact's photo).
+        bigPhoto.setVisibility(View.GONE);
+        fallback.setBackgroundColor(ContactGridAdapter.tileColorFor(id));
+        fallback.setText(name);
+        fallback.setVisibility(View.VISIBLE);
+        photoLoader = photoLoaderFactory.apply(getContentResolver());
+        photoLoader.loadAsync(bigPhoto, id, photoUri, 900, bmp -> {
             bigPhoto.setImageBitmap(bmp);
-        } else {
-            bigPhoto.setVisibility(View.GONE);
-            fallback.setBackgroundColor(ContactGridAdapter.tileColorFor(id));
-            fallback.setText(name);
-            fallback.setVisibility(View.VISIBLE);
-        }
+            bigPhoto.setVisibility(View.VISIBLE);
+            fallback.setVisibility(View.GONE);
+        });
 
         callButton = findViewById(R.id.btn_call);
         UiBinder.bindNumbers(findViewById(android.R.id.content), numbers, number -> {
@@ -194,6 +202,7 @@ public class ConfirmCallActivity extends BaseActivity {
 
     @Override
     protected void onDestroy() {
+        if (photoLoader != null) photoLoader.close();
         if (speaker != null) speaker.shutdown();
         super.onDestroy();
     }

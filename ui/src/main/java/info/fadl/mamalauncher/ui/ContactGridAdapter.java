@@ -3,7 +3,6 @@ package info.fadl.mamalauncher.ui;
 import info.fadl.mamalauncher.ui.ContactEntry;
 import info.fadl.mamalauncher.ui.UiBinder;
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -53,18 +52,19 @@ public class ContactGridAdapter extends BaseAdapter {
         name.setText(c.name.isEmpty() ? v.getContext().getString(R.string.no_name) : c.name);
         star.setVisibility(c.starred ? View.VISIBLE : View.GONE);
 
-        Bitmap bmp = photos.load(c.photoUri, 360);
-        if (bmp != null) {
+        // T-07: the placeholder binds synchronously (a recycled row never
+        // keeps the previous contact's photo); the decode lands only if this
+        // view is still bound to the same contact id + URI + size.
+        photo.setImageDrawable(null);
+        photo.setVisibility(View.GONE);
+        fallback.setBackgroundColor(tileColorFor(c.id));
+        fallback.setText(c.name);
+        fallback.setVisibility(View.VISIBLE);
+        photos.loadAsync(photo, c.id, c.photoUri, 360, bmp -> {
             photo.setImageBitmap(bmp);
             photo.setVisibility(View.VISIBLE);
             fallback.setVisibility(View.GONE);
-        } else {
-            photo.setImageDrawable(null);
-            photo.setVisibility(View.GONE);
-            fallback.setBackgroundColor(tileColorFor(c.id));
-            fallback.setText(c.name);
-            fallback.setVisibility(View.VISIBLE);
-        }
+        });
         return v;
     }
 }

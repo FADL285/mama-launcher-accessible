@@ -132,6 +132,10 @@ public class PhoneActivity extends BaseActivity {
                             ? (ContactEntry) old.getItem(pos) : null;
                     firstVisible = top != null ? top.id : null;
                 }
+                // T-07: a refresh defines photo invalidation - the same URI
+                // may now serve different pixels, and in-flight decodes from
+                // before this refresh must neither display nor repopulate.
+                photos.invalidateAll();
                 grid.setAdapter(new ContactGridAdapter(this, sorted, photos) {
                     @Override public View getView(int position, View recycled, android.view.ViewGroup parent) {
                         View tile = super.getView(position, recycled, parent);
@@ -202,6 +206,7 @@ public class PhoneActivity extends BaseActivity {
     @Override protected void onDestroy() {
         if (history != null) history.close();
         if (contactsSignal != null) contactsSignal.cancel();
+        if (photos != null) photos.close();
         super.onDestroy();
     }
 
