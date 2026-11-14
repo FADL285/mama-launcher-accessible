@@ -25,10 +25,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  *  placeholder immediately and delivers on the main thread only when the
  *  target view is still bound to the same contact id + URI + size (grid rows
  *  recycle, so adapter position is never an identity). Each owner
- *  (grid screen, confirmation screen) closes its loader on destroy; a
- *  refresh bumps the generation, and completions from an older generation
- *  neither display nor repopulate the caches. Failures land in a bounded,
- *  expiring negative cache so a failed-then-readable URI recovers. */
+ *  (grid screen, confirmation screen) closes its loader on destroy. A refresh
+ *  retires in-flight work (generation bump + negative-cache clear) but KEEPS
+ *  decoded photos, so returning to the screen never flashes placeholders;
+ *  decoded entries are dropped only when the contact list's photo URIs change
+ *  or permission is lost. Queued work whose target was recycled is skipped
+ *  before it decodes. Failures land in a bounded, expiring negative cache so
+ *  a failed-then-readable URI recovers. */
 public class ContactPhotoLoader implements AutoCloseable {
     private static final int CACHE_BYTES = 6 * 1024 * 1024;
     /** Negative cache: at most 200 URIs, each remembered for one minute. */
@@ -47,6 +50,7 @@ public class ContactPhotoLoader implements AutoCloseable {
     private final AtomicInteger generation = new AtomicInteger();
     /** Serializes generation bumps with cache writes (see loadAsync). */
     private final Object lock = new Object();
+    private volatile boolean closed;
 
     private final android.util.LruCache<String, Bitmap> cache =
             new android.util.LruCache<String, Bitmap>(CACHE_BYTES) {
@@ -95,6 +99,7 @@ public class ContactPhotoLoader implements AutoCloseable {
         // the previous contact's request key.
         target.setTag(R.id.photo_request, requestKey);
         if (photoUri == null) return;
+        if (closed) return;
         final int gen = generation.get();
         final String key = cacheKey(photoUri, maxDim);
         Bitmap cached = cache.get(key);
@@ -104,8 +109,12 @@ public class ContactPhotoLoader implements AutoCloseable {
         }
         Long missedAt = misses.get(key);
         if (missedAt != null && System.currentTimeMillis() - missedAt < MISS_TTL_MS) return;
-        background.execute(() -> {
+        try {
+            background.execute(() -> {
             if (generation.get() != gen) return; // refresh made this queued work obsolete
+            // A fling recycles rows faster than one worker decodes: never spend
+            // the decode on a target that has since been rebound.
+            if (!requestKey.equals(target.getTag(R.id.photo_request))) return;
             Bitmap bmp = load(photoUri, maxDim);
             // Generation check and cache write are one atomic step: a refresh
             // between them must not let old pixels or a stale miss into the
@@ -122,12 +131,45 @@ public class ContactPhotoLoader implements AutoCloseable {
                 callback.onPhoto(bmp);
             });
         });
+        } catch (java.util.concurrent.RejectedExecutionException shutDown) {
+            // close() raced the enqueue: nothing to deliver.
+        }
     }
 
-    /** Refresh/revoke invalidation: drops every cached and negative-cached
-     *  entry and orphans in-flight decodes. Defined semantics: a contacts
-     *  refresh re-decodes photos, because the same URI may now serve
-     *  different pixels. */
+    /**
+     * Refresh start: orphan in-flight decodes and forget recorded misses so a
+     * recovered URI is retried - while keeping every decoded photo, so a
+     * refresh that changes nothing causes no placeholder flash or re-decode.
+     */
+    public void retireRequests() {
+        synchronized (lock) {
+            generation.incrementAndGet();
+            misses.clear();
+        }
+    }
+
+    /**
+     * After a refresh: drop decoded entries whose photo URI is no longer in the
+     * contact list (the photo changed or the contact left). A null set means
+     * permission was lost - nothing may stay.
+     */
+    public void retainUris(java.util.Set<String> photoUris) {
+        synchronized (lock) {
+            if (photoUris == null) {
+                cache.evictAll();
+                return;
+            }
+            java.util.List<String> stale = new java.util.ArrayList<>();
+            for (String key : cache.snapshot().keySet()) {
+                String uri = key.substring(0, key.lastIndexOf('@'));
+                if (!photoUris.contains(uri)) stale.add(key);
+            }
+            for (String key : stale) cache.remove(key);
+        }
+    }
+
+    /** Hard reset (permission revoked): drops every cached and negative-cached
+     *  entry and orphans in-flight decodes. */
     public void invalidateAll() {
         synchronized (lock) {
             generation.incrementAndGet();
@@ -136,9 +178,14 @@ public class ContactPhotoLoader implements AutoCloseable {
         }
     }
 
-    /** Stops deliveries and shuts the owned background thread down. */
+    /** Stops deliveries, rejects new requests, and shuts the owned background
+     *  thread down. The flag and the generation bump are one atomic step with
+     *  cache writes, so a completion racing close() cannot repopulate. */
     @Override public void close() {
-        generation.incrementAndGet();
+        synchronized (lock) {
+            closed = true;
+            generation.incrementAndGet();
+        }
         if (ownedExecutor != null) ownedExecutor.shutdownNow();
     }
 

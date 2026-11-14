@@ -91,6 +91,9 @@ public class PhoneActivity extends BaseActivity {
         findViewById(R.id.contacts_read_error).setVisibility(View.GONE);
         if (checkSelfPermission(Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
+            // Permission lost: nothing photo-related may stay in memory.
+            photos.retireRequests();
+            photos.retainUris(null);
             boolean denied = Prefs.get(this).getBoolean(PREF_CONTACTS_DENIED, false);
             boolean recovery = denied && !shouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS);
             ((android.widget.TextView)findViewById(R.id.btn_allow_contacts)).setText(
@@ -105,6 +108,10 @@ public class PhoneActivity extends BaseActivity {
         Prefs.get(this).edit().remove(PREF_CONTACTS_DENIED).apply();
         setupView.setVisibility(View.GONE);
         grid.setVisibility(View.VISIBLE);
+        // Refresh STARTS here: in-flight decodes belong to the old list and
+        // must be orphaned now (not after the read), and recorded misses get
+        // a fresh chance. Decoded photos stay - see the success callback.
+        photos.retireRequests();
         contactsWorker.read(
             signal -> {
                 List<ContactEntry> original = ContactsLoader.loadVerified(
@@ -129,10 +136,12 @@ public class PhoneActivity extends BaseActivity {
                             ? (ContactEntry) old.getItem(pos) : null;
                     firstVisible = top != null ? top.id : null;
                 }
-                // T-07: a refresh defines photo invalidation - the same URI
-                // may now serve different pixels, and in-flight decodes from
-                // before this refresh must neither display nor repopulate.
-                photos.invalidateAll();
+                // T-07: keep decoded photos whose URI the new list still
+                // carries (no placeholder flash on an unchanged refresh);
+                // drop the ones whose URI left the list.
+                final java.util.Set<String> photoUris = new java.util.HashSet<>();
+                for (ContactEntry c : sorted) if (c.photoUri != null) photoUris.add(c.photoUri);
+                photos.retainUris(photoUris);
                 grid.setAdapter(new ContactGridAdapter(this, sorted, photos) {
                     @Override public View getView(int position, View recycled, android.view.ViewGroup parent) {
                         View tile = super.getView(position, recycled, parent);

@@ -95,8 +95,10 @@ public class UiSnapshotTest {
     public void phoneContacts() {
         View v = paparazzi.inflate(R.layout.activity_phone);
         GridView grid = v.findViewById(R.id.contacts_grid);
+        // No resolver and a no-op executor: nothing decodes, no thread starts,
+        // and the golden captures exactly the placeholder tiles.
         grid.setAdapter(new ContactGridAdapter(v.getContext(), fictionalContacts(),
-                new ContactPhotoLoader(null)));
+                new ContactPhotoLoader(null, command -> {}, null)));
         paparazzi.snapshot(v, "phone-contacts");
     }
 

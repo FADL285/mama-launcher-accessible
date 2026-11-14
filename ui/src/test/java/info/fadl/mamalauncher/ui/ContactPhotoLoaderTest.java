@@ -135,6 +135,96 @@ public class ContactPhotoLoaderTest {
     }
 
     @Test
+    public void refreshKeepsDecodedPhotosButRetriesMisses() {
+        Uri good = uri("keep"), bad = uri("miss");
+        registerPhoto(good);
+        Shadows.shadowOf(app.getContentResolver()).registerInputStreamSupplier(bad,
+                () -> { throw new IllegalStateException("photo gone"); });
+        ImageView a = new ImageView(app), b = new ImageView(app);
+        loader.loadAsync(a, 1, good.toString(), 360, bmp -> {});
+        loader.loadAsync(b, 2, bad.toString(), 360, bmp -> {});
+        idle();
+
+        // Refresh start: in-flight retired, misses cleared, decoded kept.
+        loader.retireRequests();
+        registerPhoto(bad); // the URI recovered
+        boolean[] goodSync = {false}, badLoaded = {false};
+        loader.loadAsync(a, 1, good.toString(), 360, bmp -> goodSync[0] = true);
+        assertTrue("decoded photo survives an unchanged refresh (no re-decode, no flash)", goodSync[0]);
+        loader.loadAsync(b, 2, bad.toString(), 360, bmp -> badLoaded[0] = true);
+        idle();
+        assertTrue("cleared miss is retried on refresh", badLoaded[0]);
+    }
+
+    @Test
+    public void retainUrisDropsOnlyDepartedPhotosAndNullDropsAll() {
+        Uri stays = uri("stays"), left = uri("left");
+        registerPhoto(stays);
+        registerPhoto(left);
+        ImageView a = new ImageView(app), b = new ImageView(app), c = new ImageView(app), d = new ImageView(app);
+        loader.loadAsync(a, 1, stays.toString(), 360, bmp -> {});
+        loader.loadAsync(b, 2, left.toString(), 360, bmp -> {});
+        idle();
+
+        loader.retainUris(new java.util.HashSet<>(java.util.Collections.singletonList(stays.toString())));
+        boolean[] staysSync = {false}, leftSync = {false};
+        loader.loadAsync(c, 1, stays.toString(), 360, bmp -> staysSync[0] = true);
+        assertTrue("unchanged URI is still a cache hit", staysSync[0]);
+        loader.loadAsync(d, 2, left.toString(), 360, bmp -> leftSync[0] = true);
+        assertFalse("departed URI was evicted and must decode again", leftSync[0]);
+        idle();
+        assertTrue(leftSync[0]); // the re-decode completes normally
+
+        loader.retainUris(null); // permission lost
+        boolean[] afterRevoke = {false};
+        loader.loadAsync(c, 1, stays.toString(), 360, bmp -> afterRevoke[0] = true);
+        assertFalse("permission loss evicts everything", afterRevoke[0]);
+    }
+
+    @Test
+    public void closedLoaderIgnoresNewRequestsQuietly() {
+        Uri u = uri("closed");
+        registerPhoto(u);
+        loader.close();
+        ImageView view = new ImageView(app);
+        boolean[] delivered = {false};
+        loader.loadAsync(view, 1, u.toString(), 360, bmp -> delivered[0] = true); // must not throw
+        idle();
+        assertFalse("a closed loader never delivers", delivered[0]);
+    }
+
+    @Test
+    public void recycledTargetIsSkippedBeforeItDecodes() throws Exception {
+        java.util.concurrent.ExecutorService real = java.util.concurrent.Executors.newSingleThreadExecutor();
+        ContactPhotoLoader live = new ContactPhotoLoader(app.getContentResolver(), real, main);
+        Uri u = uri("fling");
+        java.util.concurrent.atomic.AtomicInteger decodes = new java.util.concurrent.atomic.AtomicInteger();
+        Shadows.shadowOf(app.getContentResolver()).registerInputStreamSupplier(u, () -> {
+            decodes.incrementAndGet();
+            return new ByteArrayInputStream(png);
+        });
+        java.util.concurrent.CountDownLatch gate = new java.util.concurrent.CountDownLatch(1);
+        try {
+            real.execute(() -> { // occupy the single worker so the request stays queued
+                try { gate.await(2, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+            });
+            ImageView view = new ImageView(app);
+            boolean[] delivered = {false};
+            live.loadAsync(view, 1, u.toString(), 360, bmp -> delivered[0] = true);
+            // The row is recycled to another contact while the request is queued.
+            view.setTag(R.id.photo_request, "2|content://fixture.photos/other|360");
+            gate.countDown();
+            real.submit(() -> {}).get(2, java.util.concurrent.TimeUnit.SECONDS);
+            idle();
+            assertEquals("a recycled target must be skipped before decoding", 0, decodes.get());
+            assertFalse(delivered[0]);
+        } finally {
+            gate.countDown();
+            live.close();
+        }
+    }
+
+    @Test
     public void gridAndConfirmationSizesAreSeparateCacheEntries() {
         Uri u = uri("sized");
         AtomicInteger opens = new AtomicInteger();
