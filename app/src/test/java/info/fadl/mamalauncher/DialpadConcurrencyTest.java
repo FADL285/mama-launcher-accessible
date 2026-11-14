@@ -115,4 +115,47 @@ public class DialpadConcurrencyTest {
       c.pause().stop().destroy();
     }
   }
+
+  @Test
+  public void failingRefreshNeverWipesVerifiedMatches() throws Exception {
+    java.util.concurrent.atomic.AtomicBoolean failing = new java.util.concurrent.atomic.AtomicBoolean();
+    ShadowContentResolver.registerProviderInternal(
+        ContactsContract.AUTHORITY,
+        new FixtureContactsProvider() {
+          @Override
+          public Cursor query(Uri u, String[] p, String s, String[] a, String o) {
+            if (failing.get()) return null; // provider now unreadable
+            MatrixCursor c = new MatrixCursor(COLUMNS);
+            c.addRow(new Object[] {5L, "Mama", "01000000000", 1, null, null, 0});
+            c.addRow(new Object[] {6L, "Mama Home", "01000000001", 1, null, null, 0});
+            return c;
+          }
+        });
+    ActivityController<DialpadActivity> c =
+        Robolectric.buildActivity(DialpadActivity.class).setup().visible();
+    DialpadActivity a = c.get();
+    View root = ((android.view.ViewGroup) a.findViewById(android.R.id.content)).getChildAt(0);
+    for (char d : "0100".toCharArray()) {
+      key(root, String.valueOf(d)).performClick();
+      Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+    }
+    for (int i = 0; i < 150; i++) {
+      Thread.sleep(20);
+      Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+    }
+    android.widget.LinearLayout matches = a.findViewById(R.id.dial_matches);
+    assertTrue("verified matches render", matches.getChildAt(0) instanceof android.widget.Button);
+
+    // The provider turns unreadable and a new refresh runs (leave + return).
+    failing.set(true);
+    c.pause().resume();
+    for (int i = 0; i < 150; i++) {
+      Thread.sleep(20);
+      Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+    }
+    assertTrue(
+        "a failed refresh must not wipe verified matches",
+        matches.getChildCount() > 0 && matches.getChildAt(0) instanceof android.widget.Button);
+    c.pause().stop().destroy();
+  }
 }

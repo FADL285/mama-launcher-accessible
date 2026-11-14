@@ -60,6 +60,10 @@ final class HistorySnapshot {
       return e164 == null ? raw : e164;
     }
 
+    int size() {
+      return entries.size();
+    }
+
     ContactEntry find(String number) {
       return entries.get(key(number));
     }

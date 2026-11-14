@@ -44,7 +44,13 @@ public class DialpadActivity extends BaseActivity {
         lookupReader.read(
             signal -> ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this),signal),
             loaded -> {contacts=loaded;lookupPending=false;contactsAvailable=true;renderMatches();},
-            () -> {contacts=new java.util.ArrayList<>();lookupPending=false;contactsAvailable=false;renderMatches();});
+            () -> {
+                // A failed refresh only ends the pending state: it must never
+                // wipe verified data a Save (or an earlier refresh) published -
+                // e.g. while the multi-match chooser is open. Real revocation
+                // is handled by the permission path above.
+                lookupPending=false;renderMatches();
+            });
     }
     /** D-01 (option C): callable when 3+ digits, or the input contains * or #. */
     static boolean callable(String s) {
