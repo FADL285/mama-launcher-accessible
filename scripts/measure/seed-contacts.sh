@@ -21,6 +21,11 @@ else
   LOCKD=/tmp/mama-seed.lock.d
   mkdir "$LOCKD" 2> /dev/null || { echo "another seeding run is active ($LOCKD)" >&2; exit 1; }
 fi
+# Register cleanup immediately after acquiring the lock (an early usage exit
+# must not strand it); SCRATCH may not exist yet.
+SCRATCH=""
+cleanup() { [ -z "$SCRATCH" ] || rm -rf "$SCRATCH"; [ -z "$LOCKD" ] || rmdir "$LOCKD" 2> /dev/null || true; }
+trap cleanup EXIT
 
 ADB=(adb); COUNT=""
 while [ $# -gt 0 ]; do
@@ -34,10 +39,6 @@ case "${COUNT:-}" in ''|*[!0-9]*) echo "usage: seed-contacts.sh [-s SERIAL] COUN
 
 ACCT="measure.local"
 SCRATCH="$(mktemp -d)"
-# One cleanup trap for both temp dir and lock dir (a second trap would
-# overwrite the lock cleanup on the macOS fallback path).
-cleanup() { rm -rf "$SCRATCH"; [ -z "$LOCKD" ] || rmdir "$LOCKD" 2> /dev/null || true; }
-trap cleanup EXIT
 
 echo "== cleaning previous synthetic set ($ACCT)"
 # caller_is_syncadapter=true makes the delete REAL, not a deleted=1 tombstone.

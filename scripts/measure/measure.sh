@@ -126,11 +126,13 @@ grid_ready_s() {  # coarse (~1s) populated-grid signal without production change
     # Remove any stale dump first: a failed dump must not match an earlier UI.
     "${ADB[@]}" shell rm -f /sdcard/mama-ui.xml > /dev/null 2>&1 || true
     "${ADB[@]}" shell uiautomator dump /sdcard/mama-ui.xml > /dev/null 2>&1 || true
-    # A contact tile name view exists only once the async load has installed
-    # and filled the grid adapter (item_contact.xml @id/name).
-    if "${ADB[@]}" shell cat /sdcard/mama-ui.xml 2> /dev/null | grep -q ":id/name"; then
-      echo $(( SECONDS - start )); return 0
-    fi
+    # Capture before matching: piping `cat` into `grep -q` under pipefail lets
+    # adb die with SIGPIPE and misreport a populated grid as not ready.
+    UI=$("${ADB[@]}" shell cat /sdcard/mama-ui.xml 2> /dev/null || true)
+    case "$UI" in
+      *":id/name"*)
+        echo $(( SECONDS - start )); return 0 ;;
+    esac
     [ $(( SECONDS - start )) -ge "$GRID_TIMEOUT" ] && { echo NA; return 1; }
     sleep 1
   done
@@ -146,14 +148,17 @@ env_row() {
   NET=$("${ADB[@]}" shell getprop gsm.operator.iso-country | tr -d '\r ')
   LOC=$("${ADB[@]}" shell getprop persist.sys.locale | tr -d '\r ')
   # Identify the exact installed binary, not just flavor/build-type names.
-  VER=$("${ADB[@]}" shell dumpsys package "$APP" | awk -F= '/versionName=/{print $2; exit}' | tr -d '\r')
-  VC=$("${ADB[@]}" shell dumpsys package "$APP" | awk '{for(i=1;i<=NF;i++) if($i ~ /^versionCode=/) {print $i; exit}}' | tr -d '\r')
+  # Capture once: piping dumpsys into an awk that exits early can SIGPIPE adb
+  # under pipefail and abort the env scenario.
+  PKG=$("${ADB[@]}" shell dumpsys package "$APP" 2> /dev/null | tr -d '\r' || true)
+  VER=$(awk -F= '/versionName=/{print $2; exit}' <<< "$PKG")
+  VC=$(awk '{for(i=1;i<=NF;i++) if($i ~ /^versionCode=/) {print $i; exit}}' <<< "$PKG")
   echo "env: model=$MODEL api=$API fingerprint=$FP display=$DISP region(sim=$SIM net=$NET locale=$LOC) cache_drop=$CACHE_DROP apk=\"$VER $VC\" commit=$COMMIT launch=$LAUNCH host=$(uname -srm)"
   row "env,\"$MODEL\",$API,\"$FP\",\"$DISP\",\"sim=$SIM net=$NET locale=$LOC\",cache_drop=$CACHE_DROP,\"$VER $VC\",commit=$COMMIT,$LAUNCH,\"$(uname -srm)\""
 }
 
 cold() {
-  local vals=() states=() ready=()
+  local vals=() states=() ready=() invalid=0
   local t GR T0
   for t in $(seq 1 "$TRIALS"); do
     reset
@@ -167,9 +172,16 @@ cold() {
       return 1
     fi
     GR=$(grid_ready_s "$T0" || true)
+    if [ "$GR" = NA ]; then
+      # The grid never populated (permission, provider or load failure): this
+      # trial is not a valid sample of the contacts workload at any count.
+      echo "  cold trial $t: grid never populated within ${GRID_TIMEOUT}s - trial invalid, excluded" >&2
+      invalid=$((invalid+1)); continue
+    fi
     vals+=( "$MS" ); states+=( "$LAUNCH_STATE" ); ready+=( "$GR" )
     echo "  cold trial $t: ${MS}ms state=$LAUNCH_STATE grid_ready=${GR}s"
   done
+  [ "$invalid" -eq 0 ] || echo "  cold: $invalid invalid trial(s) excluded from statistics" >&2
   emit cold_start_ms ${vals[@]+"${vals[@]}"}
   emit grid_ready_s ${ready[@]+"${ready[@]}"}
   row "cold_launch_states,NA,,${#states[@]},\"${states[*]:-}\""
@@ -196,11 +208,14 @@ frames() {
   # is set, `wm size` prints Physical AND Override lines - use the last one.
   read -r W H <<< "$("${ADB[@]}" shell wm size | grep -o '[0-9]*x[0-9]*' | tail -n1 | tr 'x' ' ')"
   local X=$(( W / 2 )) Y1=$(( H * 73 / 100 )) Y2=$(( H * 21 / 100 ))
-  local jankys=() p90s=() p99s=()
+  local jankys=() p90s=() p99s=() invalid=0
   local t s GFX J P9 P99
   for t in $(seq 1 "$TRIALS"); do
     reset; start_ms > /dev/null
-    grid_ready_s > /dev/null || echo "  frames trial $t: grid not ready within ${GRID_TIMEOUT}s" >&2
+    grid_ready_s > /dev/null || {
+      # Scrolling an unpopulated grid is not the S3 workload; exclude it.
+      echo "  frames trial $t: grid not ready within ${GRID_TIMEOUT}s - trial invalid, excluded" >&2
+      invalid=$((invalid+1)); continue; }
     "${ADB[@]}" shell dumpsys gfxinfo "$APP" reset > /dev/null
     for s in $(seq 1 12); do "${ADB[@]}" shell input swipe "$X" "$Y1" "$X" "$Y2" 250; sleep 0.3; done
     for s in $(seq 1 6);  do "${ADB[@]}" shell input swipe "$X" "$Y2" "$X" "$Y1" 250; sleep 0.3; done
@@ -217,6 +232,7 @@ frames() {
     jankys+=( "${J:-NA}" ); p90s+=( "${P9:-NA}" ); p99s+=( "${P99:-NA}" )
     echo "  frames trial $t: janky=${J:-NA}% p90=${P9:-NA}ms p99=${P99:-NA}ms"
   done
+  [ "$invalid" -eq 0 ] || echo "  frames: $invalid invalid trial(s) excluded from statistics" >&2
   emit frames_janky_pct ${jankys[@]+"${jankys[@]}"}
   emit frames_p90_ms ${p90s[@]+"${p90s[@]}"}
   emit frames_p99_ms ${p99s[@]+"${p99s[@]}"}
@@ -309,10 +325,22 @@ workers() {
   row "workers_nav_cycles_per_trial,NA,,${#after[@]},\"$NAV\""
 }
 
+verify_seed_count() {
+  # The -c label must match reality: an interrupted or partial seed would
+  # otherwise be measured and recorded under the wrong contact count.
+  local n
+  n=$("${ADB[@]}" shell "content query --uri content://com.android.contacts/raw_contacts --projection _id --where \"account_type='measure.local' AND deleted=0\"" | grep -c 'Row:' || true)
+  if [ "$n" != "$CONTACTS" ]; then
+    echo "seed check failed: device holds $n synthetic contacts but this run is labeled -c $CONTACTS - reseed with scripts/measure/seed-contacts.sh $CONTACTS before measuring" >&2
+    exit 1
+  fi
+}
+
 echo "# mama-launcher T-04a baseline, app=$APP, commit=$COMMIT, launch=$LAUNCH, trials=$TRIALS, contacts=$CONTACTS, nav=$NAV, cache_drop_probe_at_env" >> "$OUT"
 prep
 for S in "${SCENARIOS[@]}"; do
   echo "== $S"
+  [ "$S" = env ] || verify_seed_count
   case "$S" in
     env) env_row ;; cold) cold ;; warm) warm ;;
     frames) frames ;; heap) heap ;; workers) workers ;;

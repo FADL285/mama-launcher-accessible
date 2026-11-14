@@ -52,7 +52,10 @@ selections** (see below).
 2. Seed the target size: `seed-contacts.sh 500` (etc.).
 3. Install the pinned build. `measure.sh` grants `READ_CONTACTS` and
    `READ_CALL_LOG` before timing - a fresh install would otherwise measure
-   the permission/setup screen, not the contacts grid.
+   the permission/setup screen, not the contacts grid. Before each scenario
+   the script also verifies the on-device synthetic set actually holds `-c`
+   contacts: an interrupted or partial seed fails the run instead of being
+   measured under the wrong count label.
 4. Timed starts target **`.PhoneActivity`** (the contacts grid - the workload
    T-06/T-07 change), exported only in this build type. To also time the home
    screen, run with `LAUNCH=info.fadl.mamalauncher/.MainActivity`.
@@ -78,7 +81,8 @@ selections** (see below).
    `measure.sh -t 5 -c 500 all` (`-c` records the seeded size on every row).
    `SETTLE` (default 3s) is the extra wait after start before heap/worker
    sampling; raise it on slow emulators. Trials that cannot be measured
-   (dead process, unparseable dump, process restart mid-scenario) are
+   (dead process, unparseable dump, process restart mid-scenario, or a grid
+   that never populates) are
    **excluded, never recorded as zero**,
    and the valid-trial count is recorded per row. The **warm** scenario is the
    one exception to the per-trial reset: by design it keeps the process alive
