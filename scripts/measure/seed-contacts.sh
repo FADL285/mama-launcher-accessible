@@ -16,10 +16,10 @@ export LC_ALL=C   # stable numeric/sort behaviour regardless of host locale
 # One seeding run per host. flock where it exists (Linux); macOS fallback.
 LOCKD=""
 if command -v flock > /dev/null 2>&1; then
-  exec 9> /tmp/mama-seed.lock
+  exec 9> /tmp/mama-baseline.lock
   flock 9
 else
-  LOCKD=/tmp/mama-seed.lock.d
+  LOCKD=/tmp/mama-baseline.lock.d
   mkdir "$LOCKD" 2> /dev/null || { echo "another seeding run is active ($LOCKD)" >&2; exit 1; }
 fi
 # Register cleanup immediately after acquiring the lock (an early usage exit

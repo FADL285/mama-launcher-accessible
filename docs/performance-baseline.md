@@ -19,8 +19,6 @@ that is still an open decision - nothing here assumes it.
   (`app/src/profileable/AndroidManifest.xml`) so timed starts can reach the
   contacts grid directly. Production build types keep it unexported; there is
   no release behavior change.
-- The `env` row records the installed APK's versionName/versionCode and the
-  repo commit, so every number is tied to an exact binary, not a flavor name.
 
 ## Synthetic data
 
@@ -147,6 +145,12 @@ regression" target would pass or fail on noise. Rules for T-06/T-07:
   owner authorization.
 - A host without KVM runs the emulator slowly; absolute values shift, so
   comparisons must stay within one environment block.
+- The `env` row records the installed APK's versionName/versionCode and
+  lastUpdateTime, plus the repo **checkout** revision (`checkout=`). The
+  checkout and the installed APK are not the same thing: reinstall after
+  any checkout change before measuring.
+- Seeding and measuring share one host lock (`/tmp/mama-baseline.lock`), so
+  a seed run cannot swap contacts mid-measurement.
 - `grid_ready_ms` is a coarse readiness gate (see protocol step 6), not a
   precise fully-drawn timestamp.
 - A run that ends with any scenario having zero valid samples exits
@@ -163,9 +167,9 @@ store. Use an emulator or the spare non-production A10s (T-04b, pending
 owner authorization).
 
 ```bash
-./gradlew :app:installNoNotifProfileable
+./gradlew :app:installNoNotifProfileable || exit 1
 for N in 50 500 2000; do
-  scripts/measure/seed-contacts.sh "$N" && scripts/measure/measure.sh -c "$N" all
+  scripts/measure/seed-contacts.sh "$N" && scripts/measure/measure.sh -c "$N" all || exit 1
 done
 ```
 

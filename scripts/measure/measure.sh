@@ -19,10 +19,10 @@ export LC_ALL=C   # stable decimal point/sort for EPOCHREALTIME, sort -n, awk
 # One measurement run per host. flock where it exists (Linux); macOS has no
 # flock(1), so fall back to a mkdir lock there.
 if command -v flock > /dev/null 2>&1; then
-  exec 8> /tmp/mama-measure.lock
+  exec 8> /tmp/mama-baseline.lock
   flock 8
 else
-  LOCKD=/tmp/mama-measure.lock.d
+  LOCKD=/tmp/mama-baseline.lock.d
   mkdir "$LOCKD" 2> /dev/null || { echo "another measurement run is active ($LOCKD)" >&2; exit 1; }
   trap 'rmdir "$LOCKD"' EXIT
 fi
@@ -166,8 +166,9 @@ env_row() {
   PKG=$("${ADB[@]}" shell dumpsys package "$APP" 2> /dev/null | tr -d '\r' || true)
   VER=$(awk -F= '/versionName=/{print $2; exit}' <<< "$PKG")
   VC=$(awk '{for(i=1;i<=NF;i++) if($i ~ /^versionCode=/) {print $i; exit}}' <<< "$PKG")
-  echo "env: model=$MODEL api=$API fingerprint=$FP display=$DISP region(sim=$SIM net=$NET locale=$LOC) cache_drop=$CACHE_DROP apk=\"$VER $VC\" commit=$COMMIT launch=$LAUNCH host=$(uname -srm)"
-  row "env,\"$MODEL\",$API,\"$FP\",\"$DISP\",\"sim=$SIM net=$NET locale=$LOC\",cache_drop=$CACHE_DROP,\"$VER $VC\",commit=$COMMIT,$LAUNCH,\"$(uname -srm)\""
+  UPD=$(awk -F= '/lastUpdateTime=/{print $2; exit}' <<< "$PKG")
+  echo "env: model=$MODEL api=$API fingerprint=$FP display=$DISP region(sim=$SIM net=$NET locale=$LOC) cache_drop=$CACHE_DROP apk=\"$VER $VC\" apk_updated=\"$UPD\" checkout=$COMMIT launch=$LAUNCH host=$(uname -srm)"
+  row "env,\"$MODEL\",$API,\"$FP\",\"$DISP\",\"sim=$SIM net=$NET locale=$LOC\",cache_drop=$CACHE_DROP,\"$VER $VC\",apk_updated=\"$UPD\",checkout=$COMMIT,$LAUNCH,\"$(uname -srm)\""
 }
 
 cold() {
@@ -362,7 +363,7 @@ verify_seed_count() {
   fi
 }
 
-echo "# mama-launcher T-04a baseline, app=$APP, commit=$COMMIT, launch=$LAUNCH, trials=$TRIALS, contacts=$CONTACTS, nav=$NAV, cache_drop_probe_at_env" >> "$OUT"
+echo "# mama-launcher T-04a baseline, app=$APP, checkout=$COMMIT (installed APK identity is on the env row), launch=$LAUNCH, trials=$TRIALS, contacts=$CONTACTS, nav=$NAV, cache_drop_probe_at_env" >> "$OUT"
 ZERO_VALID=0
 prep
 for S in "${SCENARIOS[@]}"; do
