@@ -125,6 +125,7 @@ final class CallHistoryController implements AutoCloseable {
         });
     guard.accept(a.findViewById(R.id.btn_history_not_now), () -> a.selectHistory(false));
     guard.accept(a.findViewById(R.id.btn_history_retry), this::refresh);
+    guard.accept(a.findViewById(R.id.btn_history_labels_retry), this::refresh);
     guard.accept(
         a.findViewById(R.id.btn_history_settings),
         () -> {
@@ -229,9 +230,14 @@ final class CallHistoryController implements AutoCloseable {
           Set<String> pending = MissedCallState.read(activity, signal).pending;
           CallLogRepository.Result page =
               CallLogRepository.load(activity.getContentResolver(), filter, pageLimit, signal);
-          HistorySnapshot.ContactIndex contacts = HistorySnapshot.contacts(activity, signal);
           signal.throwIfCanceled();
-          return new HistorySnapshot(page, pending, contacts);
+          // The page is the required data; labels load separately so a labels
+          // failure can never take the call list down with it.
+          return new HistorySnapshot(
+              page,
+              pending,
+              new HistorySnapshot.ContactIndex(java.util.Collections.emptyList(), NumberRegion.current(activity)),
+              HistorySnapshot.LABELS_LOADING);
         },
         snapshot -> {
           if (!valid(current)) {
@@ -242,6 +248,7 @@ final class CallHistoryController implements AutoCloseable {
             return;
           }
           bind(snapshot, current);
+          if (!snapshot.page.entries.isEmpty()) loadLabels(snapshot, current);
         },
         () -> {
           if (active && selected) {
@@ -250,6 +257,24 @@ final class CallHistoryController implements AutoCloseable {
           }
         });
     selectFilter();
+  }
+
+  /**
+   * Optional contact labels, read after the page is already on screen. Success
+   * re-binds the same rows with names; failure keeps the numbers and shows a
+   * retry affordance - the call list never depends on the labels read.
+   */
+  private void loadLabels(HistorySnapshot base, int generation) {
+    worker.read(
+        signal -> HistorySnapshot.contacts(activity, signal),
+        contacts -> {
+          if (valid(generation))
+            bind(base.withLabels(contacts, HistorySnapshot.LABELS_LOADED), generation);
+        },
+        () -> {
+          if (valid(generation))
+            bind(base.withLabels(base.contacts, HistorySnapshot.LABELS_FAILED), generation);
+        });
   }
 
   private boolean valid(int generation) {
@@ -272,6 +297,13 @@ final class CallHistoryController implements AutoCloseable {
   private void bind(HistorySnapshot snapshot, int generation) {
     ListView list = activity.findViewById(R.id.history_list);
     activity.findViewById(R.id.history_filters).setVisibility(View.VISIBLE);
+    activity
+        .findViewById(R.id.history_labels_state)
+        .setVisibility(
+            snapshot.labelsState == HistorySnapshot.LABELS_FAILED
+                    && !snapshot.page.entries.isEmpty()
+                ? View.VISIBLE
+                : View.GONE);
     activity
         .findViewById(R.id.history_state)
         .setVisibility(snapshot.page.entries.isEmpty() ? View.VISIBLE : View.GONE);
@@ -336,6 +368,7 @@ final class CallHistoryController implements AutoCloseable {
     ((ListView) activity.findViewById(R.id.history_list)).setAdapter(null);
     boundPage = null;
     activity.findViewById(R.id.history_filters).setVisibility(View.GONE);
+    activity.findViewById(R.id.history_labels_state).setVisibility(View.GONE);
     activity.findViewById(R.id.history_list).setVisibility(View.GONE);
     activity.findViewById(R.id.history_state).setVisibility(View.VISIBLE);
     ((TextView) activity.findViewById(R.id.history_message)).setText(message);
@@ -422,19 +455,25 @@ final class CallHistoryController implements AutoCloseable {
                       == PackageManager.PERMISSION_GRANTED
                   ? contacts.find(row.number)
                   : null;
-          String label = title(row, contact);
-          ContactEntry exact =
-              new ContactEntry(
-                  contact == null ? -1 : contact.id,
-                  label,
-                  row.number,
-                  contact == null ? null : contact.photoUri,
-                  contact != null && contact.starred);
-          activity.startActivity(ConfirmCallActivity.intentFor(activity, exact));
+          activity.startActivity(
+              ConfirmCallActivity.intentFor(activity, callableTarget(row, contact)));
         },
         () -> {
-          if (active && selected) show(R.string.history_failed, false, true);
+          // Labels are optional: a failed or blocked label read must not stop
+          // a callable row from opening confirmation with the raw number.
+          if (valid(current))
+            activity.startActivity(
+                ConfirmCallActivity.intentFor(activity, callableTarget(row, null)));
         });
+  }
+
+  private ContactEntry callableTarget(CallLogEntry row, ContactEntry contact) {
+    return new ContactEntry(
+        contact == null ? -1 : contact.id,
+        title(row, contact),
+        row.number,
+        contact == null ? null : contact.photoUri,
+        contact != null && contact.starred);
   }
 
   @Override
