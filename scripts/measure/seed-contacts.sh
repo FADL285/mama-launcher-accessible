@@ -13,13 +13,13 @@
 set -euo pipefail
 
 # One seeding run per host. flock where it exists (Linux); macOS fallback.
+LOCKD=""
 if command -v flock > /dev/null 2>&1; then
   exec 9> /tmp/mama-seed.lock
   flock 9
 else
   LOCKD=/tmp/mama-seed.lock.d
   mkdir "$LOCKD" 2> /dev/null || { echo "another seeding run is active ($LOCKD)" >&2; exit 1; }
-  trap 'rmdir "$LOCKD"' EXIT
 fi
 
 ADB=(adb); COUNT=""
@@ -33,7 +33,11 @@ case "${COUNT:-}" in ''|*[!0-9]*) echo "usage: seed-contacts.sh [-s SERIAL] COUN
 [ "$COUNT" -gt 0 ] || { echo "COUNT must be positive" >&2; exit 1; }
 
 ACCT="measure.local"
-SCRATCH="$(mktemp -d)"; trap 'rm -rf "$SCRATCH"' EXIT
+SCRATCH="$(mktemp -d)"
+# One cleanup trap for both temp dir and lock dir (a second trap would
+# overwrite the lock cleanup on the macOS fallback path).
+cleanup() { rm -rf "$SCRATCH"; [ -z "$LOCKD" ] || rmdir "$LOCKD" 2> /dev/null || true; }
+trap cleanup EXIT
 
 echo "== cleaning previous synthetic set ($ACCT)"
 # caller_is_syncadapter=true makes the delete REAL, not a deleted=1 tombstone.

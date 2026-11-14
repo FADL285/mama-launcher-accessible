@@ -37,6 +37,11 @@ while [ $# -gt 0 ]; do
 done
 [ ${#SCENARIOS[@]} -gt 0 ] || SCENARIOS=(all)
 [ "${SCENARIOS[*]}" = "all" ] && SCENARIOS=(env cold warm frames heap workers)
+case "$TRIALS" in '' | *[!0-9]* | 0) echo "-t must be a positive integer" >&2; exit 2 ;; esac
+if [ "${SCENARIOS[*]}" != "env" ] && [ "$CONTACTS" = unknown ]; then
+  echo "-c CONTACTS is required for measurement scenarios (rows must carry the seeded size)" >&2
+  exit 2
+fi
 
 APP="${APP:-info.fadl.mamalauncher}"
 OUT="${OUT:-baseline-results.csv}"
@@ -78,12 +83,12 @@ median() {  # average the two middle values on even counts; numeric args only
   printf '%s\n' "$@" | sort -n | awk '{a[NR]=$1} END{if(NR%2) print a[(NR+1)/2]; else printf "%.1f\n", (a[NR/2]+a[NR/2+1])/2}'
 }
 
-iqr() {  # interquartile range (median-of-halves); empty below 4 values
+iqr() {  # interquartile range (median-of-halves, median excluded on odd n); empty below 4 values
   [ $# -ge 4 ] || return 0
   printf '%s\n' "$@" | sort -n | awk '{a[NR]=$1} END{
-    n=NR; lo=int(n/2); hi=n-lo
+    n=NR; lo=int(n/2); hi=lo; off=n-hi
     if(lo%2) q1=a[(lo+1)/2]; else q1=(a[lo/2]+a[lo/2+1])/2
-    if(hi%2) q3=a[lo+(hi+1)/2]; else q3=(a[lo+hi/2]+a[lo+hi/2+1])/2
+    if(hi%2) q3=a[off+(hi+1)/2]; else q3=(a[off+hi/2]+a[off+hi/2+1])/2
     printf "%.1f\n", q3-q1}'
 }
 
@@ -106,16 +111,20 @@ emit() {  # emit METRIC VALUES... -> row metric,median,iqr,valid_n,"values"
 
 start_ms() {  # sets MS + LAUNCH_STATE; fails loudly when TotalTime is missing
   local OUT_START
-  OUT_START=$("${ADB[@]}" shell am start -W -n "$LAUNCH")
+  OUT_START=$("${ADB[@]}" shell am start -W -n "$LAUNCH" | tr -d '\r')
   MS=$(printf '%s' "$OUT_START" | awk '/^TotalTime:/{print $2; exit}')
   LAUNCH_STATE=$(printf '%s' "$OUT_START" | awk -F'[ :]+' '/^LaunchState:/{print $2; exit}')
   [ -n "$MS" ] || { echo "am start failed: $OUT_START" >&2; exit 1; }
   echo "$MS"
 }
 
-grid_ready_s() {  # coarse (~1s) populated-grid signal without production changes
-  local start=$SECONDS
+grid_ready_s() {  # coarse (~1s) populated-grid signal without production changes.
+  # $1 = optional epoch ($SECONDS) to measure from; pass the pre-launch value
+  # so the number covers launch-to-populated-grid, not just post-first-frame.
+  local start=${1:-$SECONDS}
   while :; do
+    # Remove any stale dump first: a failed dump must not match an earlier UI.
+    "${ADB[@]}" shell rm -f /sdcard/mama-ui.xml > /dev/null 2>&1 || true
     "${ADB[@]}" shell uiautomator dump /sdcard/mama-ui.xml > /dev/null 2>&1 || true
     # A contact tile name view exists only once the async load has installed
     # and filled the grid adapter (item_contact.xml @id/name).
@@ -145,9 +154,10 @@ env_row() {
 
 cold() {
   local vals=() states=() ready=()
-  local t GR
+  local t GR T0
   for t in $(seq 1 "$TRIALS"); do
     reset
+    T0=$SECONDS
     start_ms > /dev/null
     # A "cold" trial that the platform reports as WARM/HOT is not a cold
     # start (e.g. Mama relaunched as the default home). Fail loudly.
@@ -156,7 +166,7 @@ cold() {
       row "cold_start_ms,NA,,0,\"invalid: LaunchState=${LAUNCH_STATE:-unknown}\""
       return 1
     fi
-    GR=$(grid_ready_s || true)
+    GR=$(grid_ready_s "$T0" || true)
     vals+=( "$MS" ); states+=( "$LAUNCH_STATE" ); ready+=( "$GR" )
     echo "  cold trial $t: ${MS}ms state=$LAUNCH_STATE grid_ready=${GR}s"
   done
@@ -217,7 +227,7 @@ heap() {
   local t PID MEM T N J
   for t in $(seq 1 "$TRIALS"); do
     reset; start_ms > /dev/null; sleep "$SETTLE"
-    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' ' || true)
+    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' \r' || true)
     # A dead/missing process or an unsupported dump layout must fail the trial,
     # never record a successful zero sample (which fakes a memory improvement).
     if [ -z "$PID" ]; then
@@ -251,15 +261,16 @@ workers() {
   # waits for bounded work to quiesce and samples again. A fresh-process
   # sample (force-stop per measurement) cannot detect per-visit leaks.
   local before=() after=() jobs_=() invalid=0
-  local t c PID TH0 TH1 JB
+  local t c PID PID0 TH0 TH1 JB
   for t in $(seq 1 "$TRIALS"); do
     reset; start_ms > /dev/null; sleep "$SETTLE"
-    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' ' || true)
+    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' \r' || true)
     if [ -z "$PID" ]; then
       echo "  workers trial $t: app not running - trial invalid, excluded" >&2
       invalid=$((invalid+1)); continue
     fi
-    TH0=$("${ADB[@]}" shell "cat /proc/$PID/status" | awk '/^Threads:/{print $2}' || true)
+    PID0=$PID
+    TH0=$("${ADB[@]}" shell "cat /proc/$PID/status" | tr -d '\r' | awk '/^Threads:/{print $2}' || true)
     for c in $(seq 1 "$NAV"); do
       "${ADB[@]}" shell am start -n "$LAUNCH" > /dev/null
       sleep 1
@@ -268,12 +279,18 @@ workers() {
       sleep 1
     done
     sleep "$SETTLE"   # let bounded async work quiesce before sampling
-    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' ' || true)
+    PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' \r' || true)
     if [ -z "$PID" ]; then
       echo "  workers trial $t: process died during navigation - trial invalid, excluded" >&2
       invalid=$((invalid+1)); continue
     fi
-    TH1=$("${ADB[@]}" shell "cat /proc/$PID/status" | awk '/^Threads:/{print $2}' || true)
+    if [ "$PID" != "$PID0" ]; then
+      # A crash/kill + relaunch gives a fresh process: before/after thread
+      # counts from two processes say nothing about retained workers.
+      echo "  workers trial $t: process restarted during navigation (pid $PID0 -> $PID) - trial invalid, excluded" >&2
+      invalid=$((invalid+1)); continue
+    fi
+    TH1=$("${ADB[@]}" shell "cat /proc/$PID/status" | tr -d '\r' | awk '/^Threads:/{print $2}' || true)
     # Registered jobs only (JOB # lines), not every history/stats line that
     # happens to mention the package.
     JB=$("${ADB[@]}" shell dumpsys jobscheduler | grep -E '^ *JOB #' | grep -c "$APP" || true)

@@ -64,7 +64,8 @@ selections** (see below).
 6. Start latency is `TotalTime` (first frame), which does **not** include the
    background contacts load (`PhoneActivity.refresh()` runs on a worker
    thread). The script therefore also records `grid_ready_s`: a coarse (~1s)
-   `uiautomator` poll until a contact tile exists in the window. Precise
+   `uiautomator` poll from launch until a contact tile exists in the window
+   (i.e. launch-to-populated-grid, including TotalTime). Precise
    fully-drawn timing would need a one-line `reportFullyDrawn()` in
    `PhoneActivity` - a production change and therefore an **owner decision**,
    not part of this kit.
@@ -77,9 +78,13 @@ selections** (see below).
    `measure.sh -t 5 -c 500 all` (`-c` records the seeded size on every row).
    `SETTLE` (default 3s) is the extra wait after start before heap/worker
    sampling; raise it on slow emulators. Trials that cannot be measured
-   (dead process, unparseable dump) are **excluded, never recorded as zero**,
-   and the valid-trial count is recorded per row.
-8. CSV columns: `metric,median,iqr,valid_trials,"all valid values"[,extra]`.
+   (dead process, unparseable dump, process restart mid-scenario) are
+   **excluded, never recorded as zero**,
+   and the valid-trial count is recorded per row. The **warm** scenario is the
+   one exception to the per-trial reset: by design it keeps the process alive
+   and only moves focus away and back.
+8. CSV columns: `timestamp,contacts,metric,median,iqr,valid_trials,"all valid
+   values"[,extra]`.
 
 | # | Scenario | Metric | Command |
 |---|----------|--------|---------|
