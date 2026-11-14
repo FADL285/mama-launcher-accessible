@@ -29,9 +29,9 @@ fi
 ADB=(adb); TRIALS=5; CONTACTS="${CONTACTS:-unknown}"; SCENARIOS=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    -s) ADB+=( -s "$2" ); shift 2 ;;
-    -t) TRIALS="$2"; shift 2 ;;
-    -c) CONTACTS="$2"; shift 2 ;;
+    -s) [ $# -ge 2 ] || { echo "-s needs a value" >&2; exit 2; }; ADB+=( -s "$2" ); shift 2 ;;
+    -t) [ $# -ge 2 ] || { echo "-t needs a value" >&2; exit 2; }; TRIALS="$2"; shift 2 ;;
+    -c) [ $# -ge 2 ] || { echo "-c needs a value" >&2; exit 2; }; CONTACTS="$2"; shift 2 ;;
     *) SCENARIOS+=( "$1" ); shift ;;
   esac
 done
@@ -106,6 +106,7 @@ emit() {  # emit METRIC VALUES... -> row metric,median,iqr,valid_n,"values"
     row "$m,$(median $valid),$(iqr $valid),$(printf '%s\n' "$valid" | wc -l | tr -d ' '),\"$(printf '%s ' $valid | sed 's/ $//')\""
   else
     row "$m,NA,,0,\"no valid samples\""
+    ZERO_VALID=1   # the run as a whole must fail when a scenario produced nothing
   fi
 }
 
@@ -118,10 +119,21 @@ start_ms() {  # sets MS + LAUNCH_STATE; fails loudly when TotalTime is missing
   echo "$MS"
 }
 
-grid_ready_s() {  # coarse (~1s) populated-grid signal without production changes.
-  # $1 = optional epoch ($SECONDS) to measure from; pass the pre-launch value
+now_ms() {  # wall clock in ms; EPOCHREALTIME (bash 5) or whole seconds (macOS bash 3.2)
+  if [ -n "${EPOCHREALTIME:-}" ]; then
+    local s=${EPOCHREALTIME%.*} us=${EPOCHREALTIME#*.}
+    echo $(( s * 1000 + 10#${us:0:3} ))
+  else
+    echo $(( SECONDS * 1000 ))
+  fi
+}
+
+grid_ready_ms() {  # coarse populated-grid GATE without production changes.
+  # Honest precision: the uiautomator dump itself costs hundreds of ms, so
+  # this is a pass/fail readiness gate, NOT a sub-second T-06 timer (see doc).
+  # $1 = optional epoch (now_ms) to measure from; pass the pre-launch value
   # so the number covers launch-to-populated-grid, not just post-first-frame.
-  local start=${1:-$SECONDS}
+  local start=${1:-$(now_ms)} UI
   while :; do
     # Remove any stale dump first: a failed dump must not match an earlier UI.
     "${ADB[@]}" shell rm -f /sdcard/mama-ui.xml > /dev/null 2>&1 || true
@@ -131,10 +143,10 @@ grid_ready_s() {  # coarse (~1s) populated-grid signal without production change
     UI=$("${ADB[@]}" shell cat /sdcard/mama-ui.xml 2> /dev/null || true)
     case "$UI" in
       *":id/name"*)
-        echo $(( SECONDS - start )); return 0 ;;
+        echo $(( $(now_ms) - start )); return 0 ;;
     esac
-    [ $(( SECONDS - start )) -ge "$GRID_TIMEOUT" ] && { echo NA; return 1; }
-    sleep 1
+    [ $(( $(now_ms) - start )) -ge $(( GRID_TIMEOUT * 1000 )) ] && { echo NA; return 1; }
+    sleep 0.5
   done
 }
 
@@ -162,7 +174,7 @@ cold() {
   local t GR T0
   for t in $(seq 1 "$TRIALS"); do
     reset
-    T0=$SECONDS
+    T0=$(now_ms)
     start_ms > /dev/null
     # A "cold" trial that the platform reports as WARM/HOT is not a cold
     # start (e.g. Mama relaunched as the default home). Fail loudly.
@@ -171,7 +183,7 @@ cold() {
       row "cold_start_ms,NA,,0,\"invalid: LaunchState=${LAUNCH_STATE:-unknown}\""
       return 1
     fi
-    GR=$(grid_ready_s "$T0" || true)
+    GR=$(grid_ready_ms "$T0" || true)
     if [ "$GR" = NA ]; then
       # The grid never populated (permission, provider or load failure): this
       # trial is not a valid sample of the contacts workload at any count.
@@ -179,11 +191,11 @@ cold() {
       invalid=$((invalid+1)); continue
     fi
     vals+=( "$MS" ); states+=( "$LAUNCH_STATE" ); ready+=( "$GR" )
-    echo "  cold trial $t: ${MS}ms state=$LAUNCH_STATE grid_ready=${GR}s"
+    echo "  cold trial $t: ${MS}ms state=$LAUNCH_STATE grid_ready=${GR}ms"
   done
   [ "$invalid" -eq 0 ] || echo "  cold: $invalid invalid trial(s) excluded from statistics" >&2
   emit cold_start_ms ${vals[@]+"${vals[@]}"}
-  emit grid_ready_s ${ready[@]+"${ready[@]}"}
+  emit grid_ready_ms ${ready[@]+"${ready[@]}"}
   row "cold_launch_states,NA,,${#states[@]},\"${states[*]:-}\""
 }
 
@@ -212,7 +224,7 @@ frames() {
   local t s GFX J P9 P99
   for t in $(seq 1 "$TRIALS"); do
     reset; start_ms > /dev/null
-    grid_ready_s > /dev/null || {
+    grid_ready_ms > /dev/null || {
       # Scrolling an unpopulated grid is not the S3 workload; exclude it.
       echo "  frames trial $t: grid not ready within ${GRID_TIMEOUT}s - trial invalid, excluded" >&2
       invalid=$((invalid+1)); continue; }
@@ -242,7 +254,12 @@ heap() {
   local tots=() nats=() javas=() invalid=0
   local t PID MEM T N J
   for t in $(seq 1 "$TRIALS"); do
-    reset; start_ms > /dev/null; sleep "$SETTLE"
+    reset; start_ms > /dev/null
+    grid_ready_ms > /dev/null || {
+      # Heap of an app stuck before the grid is not the S4 workload.
+      echo "  heap trial $t: grid not ready within ${GRID_TIMEOUT}s - trial invalid, excluded" >&2
+      invalid=$((invalid+1)); continue; }
+    sleep "$SETTLE"
     PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' \r' || true)
     # A dead/missing process or an unsupported dump layout must fail the trial,
     # never record a successful zero sample (which fakes a memory improvement).
@@ -252,9 +269,12 @@ heap() {
     fi
     MEM="$(mktemp)"
     "${ADB[@]}" shell dumpsys meminfo "$APP" > "$MEM"
-    T=$(awk '/TOTAL PSS/{print $3; exit}' "$MEM" || true)
-    N=$(awk '/Native Heap/{print $3; exit}' "$MEM" || true)
-    J=$(awk '/Java Heap/{print $3; exit}' "$MEM" || true)
+    # App Summary values are plain digits, but some API 30+ layouts use
+    # comma group separators; strip them. Absent fields stay empty and the
+    # trial is invalidated below (NA, never zero).
+    T=$(awk '/TOTAL PSS/{gsub(/,/,"",$3); print $3; exit}' "$MEM" || true)
+    N=$(awk '/Native Heap/{gsub(/,/,"",$3); print $3; exit}' "$MEM" || true)
+    J=$(awk '/Java Heap/{gsub(/,/,"",$3); print $3; exit}' "$MEM" || true)
     rm -f "$MEM"
     case "${T:-x}.${N:-x}.${J:-x}" in
       *[!0-9.]*)
@@ -279,7 +299,12 @@ workers() {
   local before=() after=() jobs_=() invalid=0
   local t c PID PID0 TH0 TH1 JB
   for t in $(seq 1 "$TRIALS"); do
-    reset; start_ms > /dev/null; sleep "$SETTLE"
+    reset; start_ms > /dev/null
+    grid_ready_ms > /dev/null || {
+      # Worker retention is only meaningful for the real contacts workload.
+      echo "  workers trial $t: grid not ready within ${GRID_TIMEOUT}s - trial invalid, excluded" >&2
+      invalid=$((invalid+1)); continue; }
+    sleep "$SETTLE"
     PID=$("${ADB[@]}" shell pidof "$APP" | tr -d ' \r' || true)
     if [ -z "$PID" ]; then
       echo "  workers trial $t: app not running - trial invalid, excluded" >&2
@@ -337,6 +362,7 @@ verify_seed_count() {
 }
 
 echo "# mama-launcher T-04a baseline, app=$APP, commit=$COMMIT, launch=$LAUNCH, trials=$TRIALS, contacts=$CONTACTS, nav=$NAV, cache_drop_probe_at_env" >> "$OUT"
+ZERO_VALID=0
 prep
 for S in "${SCENARIOS[@]}"; do
   echo "== $S"
@@ -348,3 +374,7 @@ for S in "${SCENARIOS[@]}"; do
   esac
 done
 echo "rows appended to $OUT"
+if [ "$ZERO_VALID" != 0 ]; then
+  echo "FAILED: at least one scenario produced no valid samples - see NA rows in $OUT" >&2
+  exit 1
+fi

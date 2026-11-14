@@ -30,7 +30,7 @@ trap cleanup EXIT
 ADB=(adb); COUNT=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    -s) ADB+=( -s "$2" ); shift 2 ;;
+    -s) [ $# -ge 2 ] || { echo "-s needs a value" >&2; exit 2; }; ADB+=( -s "$2" ); shift 2 ;;
     *) COUNT="$1"; shift ;;
   esac
 done

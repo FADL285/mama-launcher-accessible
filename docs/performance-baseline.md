@@ -66,10 +66,13 @@ selections** (see below).
    entry reports HOT, not WARM).
 6. Start latency is `TotalTime` (first frame), which does **not** include the
    background contacts load (`PhoneActivity.refresh()` runs on a worker
-   thread). The script therefore also records `grid_ready_s`: a coarse (~1s)
-   `uiautomator` poll from launch until a contact tile exists in the window
-   (i.e. launch-to-populated-grid, including TotalTime). Precise
-   fully-drawn timing would need a one-line `reportFullyDrawn()` in
+   thread). The script therefore also records `grid_ready_ms`: a
+   `uiautomator` poll from launch until a contact tile exists in the window.
+   Honest precision: this is a **pass/fail readiness gate, not a timer**.
+   The dump itself costs hundreds of ms and the poll interval is 0.5s, so it
+   cannot prove sub-second T-06 gains; a trial where the gate never passes is
+   invalid and excluded. Precise fully-drawn timing would need a one-line
+   `reportFullyDrawn()` in
    `PhoneActivity` - a production change and therefore an **owner decision**,
    not part of this kit.
 7. For every scenario run **at least 5 trials** after the documented reset
@@ -129,7 +132,7 @@ regression" target would pass or fail on noise. Rules for T-06/T-07:
 | Scenario | 50 contacts | 500 contacts | 2000 contacts | Target to beat |
 |----------|-------------|--------------|---------------|----------------|
 | S1 cold start (ms) | _pending_ | _pending_ | _pending_ | no regression beyond noise band |
-| S1 grid ready (s) | _pending_ | _pending_ | _pending_ | strictly lower at 500/2000 (T-06's core win) |
+| S1 grid ready gate (ms, coarse) | _pending_ | _pending_ | _pending_ | gate passes at every size |
 | S2 warm start (ms) | _pending_ | _pending_ | _pending_ | no regression beyond noise band |
 | S3 janky frames (%) | _pending_ | _pending_ | _pending_ | strictly lower at 500/2000 |
 | S4 settled total PSS (KB) | _pending_ | _pending_ | _pending_ | no growth > 10% at 2000 |
@@ -144,8 +147,39 @@ regression" target would pass or fail on noise. Rules for T-06/T-07:
   owner authorization.
 - A host without KVM runs the emulator slowly; absolute values shift, so
   comparisons must stay within one environment block.
-- `grid_ready_s` is a coarse poll (~1s resolution), not a fully-drawn
-  timestamp; see protocol step 6 for the precise option.
+- `grid_ready_ms` is a coarse readiness gate (see protocol step 6), not a
+  precise fully-drawn timestamp.
+- A run that ends with any scenario having zero valid samples exits
+  non-zero: a partial baseline is a failed baseline.
+
+## Run the baseline yourself (one command)
+
+On any machine with adb and an emulator or USB test device (API 29+):
+
+```bash
+./gradlew :app:installNoNotifProfileable
+for N in 50 500 2000; do
+  scripts/measure/seed-contacts.sh "$N" && scripts/measure/measure.sh -c "$N" all
+done
+```
+
+(Seeding 2000 contacts takes ~30+ minutes.) The run appends all rows to
+`baseline-results.csv`; a failed seed check, an unready grid or a zero-valid
+scenario fails the run loudly. To report back, paste the CSV rows - or fill
+this table from the medians:
+
+| Metric (median, IQR) | 50 | 500 | 2000 |
+|----------------------|----|-----|------|
+| cold_start_ms | | | |
+| grid_ready_ms | | | |
+| warm_start_ms | | | |
+| frames_janky_pct / p90 / p99 | | | |
+| heap_total_kb | | | |
+| workers_threads before -> after | | | |
+| workers_registered_jobs | | | |
+
+Include the `env` row (model, API, fingerprint, region, cache_drop, APK
+version, commit) so the numbers stay tied to one exact binary.
 
 ## Pending selections (not in this PR, per the plan)
 
