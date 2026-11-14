@@ -75,6 +75,7 @@ prep() {
 
 reset() {
   adbq shell am force-stop "$APP"
+  adbq shell logcat -c 2> /dev/null || true   # old "Fully drawn" lines must not leak into this trial
   # Move focus to a neutral screen instead of HOME: if Mama is the default
   # launcher, a HOME keyevent would relaunch it before the timed (cold) start.
   adbq shell am start -a android.settings.SETTINGS > /dev/null
@@ -156,6 +157,19 @@ grid_ready_ms() {  # coarse populated-grid GATE without production changes.
   done
 }
 
+fully_drawn_ms() {  # precise fully-drawn from logcat; NA when the installed
+  # build predates the reportFullyDrawn() call (or the frame never completed)
+  local line t
+  line=$(adbq shell "logcat -d" 2> /dev/null | tr -d '\r' | grep 'Fully drawn' | grep '\.PhoneActivity' | tail -n1 || true)
+  [ -n "$line" ] || { echo NA; return 1; }
+  t=$(printf '%s' "$line" | grep -o '+[0-9sm]*' | tail -n1 | tr -d '+')
+  case "$t" in
+    *s*ms) local s=${t%%s*} r=${t#*s}; echo $(( s * 1000 + ${r%ms} )) ;;
+    *ms) echo "${t%ms}" ;;
+    *) echo NA; return 1 ;;
+  esac
+}
+
 env_row() {
   FP=$(adbq shell getprop ro.build.fingerprint | tr -d '\r')
   API=$(adbq shell getprop ro.build.version.sdk | tr -d '\r')
@@ -177,7 +191,7 @@ env_row() {
 }
 
 cold() {
-  local vals=() states=() ready=() invalid=0
+  local vals=() states=() ready=() fds=() invalid=0
   local t GR T0
   for t in $(seq 1 "$TRIALS"); do
     reset
@@ -197,12 +211,20 @@ cold() {
       echo "  cold trial $t: grid never populated within ${GRID_TIMEOUT}s - trial invalid, excluded" >&2
       invalid=$((invalid+1)); continue
     fi
-    vals+=( "$MS" ); states+=( "$LAUNCH_STATE" ); ready+=( "$GR" )
-    echo "  cold trial $t: ${MS}ms state=$LAUNCH_STATE grid_ready=${GR}ms"
+    # Fully drawn is logged at frame completion; give logcat up to 3s.
+    local FD=NA a
+    for a in 1 2 3; do
+      FD=$(fully_drawn_ms || true)
+      [ "$FD" != NA ] && break
+      sleep 1
+    done
+    vals+=( "$MS" ); states+=( "$LAUNCH_STATE" ); ready+=( "$GR" ); fds+=( "$FD" )
+    echo "  cold trial $t: ${MS}ms state=$LAUNCH_STATE grid_ready=${GR}ms fully_drawn=${FD}ms"
   done
   [ "$invalid" -eq 0 ] || echo "  cold: $invalid invalid trial(s) excluded from statistics" >&2
   emit cold_start_ms ${vals[@]+"${vals[@]}"}
   emit grid_ready_ms ${ready[@]+"${ready[@]}"}
+  emit fully_drawn_ms ${fds[@]+"${fds[@]}"}
   row "cold_launch_states,NA,,${#states[@]},\"${states[*]:-}\""
 }
 

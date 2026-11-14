@@ -64,15 +64,15 @@ selections** (see below).
    entry reports HOT, not WARM).
 6. Start latency is `TotalTime` (first frame), which does **not** include the
    background contacts load (`PhoneActivity.refresh()` runs on a worker
-   thread). The script therefore also records `grid_ready_ms`: a
-   `uiautomator` poll from launch until a contact tile exists in the window.
-   Honest precision: this is a **pass/fail readiness gate, not a timer**.
-   The dump itself costs hundreds of ms and the poll interval is 0.5s, so it
-   cannot prove sub-second T-06 gains; a trial where the gate never passes is
-   invalid and excluded. Precise fully-drawn timing would need a one-line
-   `reportFullyDrawn()` in
-   `PhoneActivity` - a production change and therefore an **owner decision**,
-   not part of this kit.
+   thread). Two complementary signals cover the gap:
+   - `grid_ready_ms`: a `uiautomator` poll from launch until a contact tile
+     exists. Honest precision: a **pass/fail readiness gate, not a timer** -
+     the dump itself costs hundreds of ms. A trial where the gate never
+     passes is invalid and excluded.
+   - `fully_drawn_ms`: the platform's own timestamp, enabled by a one-line
+     `reportFullyDrawn()` in `PhoneActivity` (shipped in this PR; Android
+     records it only until the activity is fully drawn once, so it is a
+     no-op afterwards). This is the precise T-06 target metric.
 7. For every scenario run **at least 5 trials** after the documented reset
    (force-stop, move focus to Settings - never HOME, which would relaunch
    Mama when it is the default launcher - and drop page caches when root is
@@ -130,6 +130,7 @@ regression" target would pass or fail on noise. Rules for T-06/T-07:
 | Scenario | 50 contacts | 500 contacts | 2000 contacts | Target to beat |
 |----------|-------------|--------------|---------------|----------------|
 | S1 cold start (ms) | _pending_ | _pending_ | _pending_ | no regression beyond noise band |
+| S1 fully drawn (ms) | _pending_ | _pending_ | _pending_ | strictly lower at 500/2000 (T-06's core win) |
 | S1 grid ready gate (ms, coarse) | _pending_ | _pending_ | _pending_ | gate passes at every size |
 | S2 warm start (ms) | _pending_ | _pending_ | _pending_ | no regression beyond noise band |
 | S3 janky frames (%) | _pending_ | _pending_ | _pending_ | strictly lower at 500/2000 |
@@ -181,6 +182,7 @@ this table from the medians:
 | Metric (median, IQR) | 50 | 500 | 2000 |
 |----------------------|----|-----|------|
 | cold_start_ms | | | |
+| fully_drawn_ms | | | |
 | grid_ready_ms | | | |
 | warm_start_ms | | | |
 | frames_janky_pct / p90 / p99 | | | |
@@ -198,7 +200,5 @@ version, commit) so the numbers stay tied to one exact binary.
   prerequisite PR. This is an **owner decision that blocks the T-07 photo
   baseline row above**; without it the photo and degraded-provider scenarios
   stay `_pending_`.
-- **`reportFullyDrawn()` one-liner** in `PhoneActivity` for precise
-  fully-drawn start timing: production change, owner decision.
 - **T-04b** non-production A10s run: separate owner authorization, still an
   open decision.

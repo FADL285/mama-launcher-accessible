@@ -136,6 +136,11 @@ public class PhoneActivity extends BaseActivity {
                     }
                 });
                 emptyView.setVisibility(sorted.isEmpty() ? View.VISIBLE : View.GONE);
+                // T-04a: precise fully-drawn timing for the measurement kit
+                // (`am start -W` TotalTime stops at the first frame, before
+                // this async load delivers the grid). No behavior change:
+                // Android records it only until the activity is fully drawn.
+                grid.post(this::reportFullyDrawn);
                 // T-13: keep the user's place. Back from confirmation restores the
                 // same first-visible contact at its (possibly re-sorted) position;
                 // otherwise the top. The opened contact is never scrolled to.
