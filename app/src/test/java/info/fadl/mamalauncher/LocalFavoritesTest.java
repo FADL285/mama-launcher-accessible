@@ -18,6 +18,13 @@ public class LocalFavoritesTest {
   List<ContactEntry> sorted=ContactSorter.sort(LocalFavorites.apply(app,all));assertEquals(3,sorted.size());assertEquals(2,sorted.get(0).id);
   assertFalse(LocalFavorites.contains(app,1,true));assertTrue(all.get(0).starred);
  }
+ @Test public void applyKeepsTheProviderPhotoVersion(){
+  // The star rebuild must carry PHOTO_ID over: losing it would pin every
+  // grid photo key to a null version and defeat same-URI photo eviction.
+  ContactEntry c=new ContactEntry(7,"فادل",Collections.singletonList(new ContactEntry.PhoneNumber("01000000007","")),"content://photos/7",false,"42");
+  List<ContactEntry> out=LocalFavorites.apply(app,Collections.singletonList(c));
+  assertEquals("42",out.get(0).photoVersion);
+ }
  @Test public void multiNumberFavoriteNeverSelectsCallTarget(){
   ContactEntry c=new ContactEntry(9,"اختبار",Arrays.asList(new ContactEntry.PhoneNumber("01000000001","A"),new ContactEntry.PhoneNumber("01000000002","B")),null,false);
   LocalFavorites.set(app,9,true);

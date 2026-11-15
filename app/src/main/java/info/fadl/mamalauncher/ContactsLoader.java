@@ -33,10 +33,17 @@ public final class ContactsLoader {
         public final String typeLabel;
         public final String photoUri;
         public final boolean starred;
+        /** Provider photo version (PHOTO_ID), null when absent. */
+        public final String photoVersion;
 
         public RawRow(long id, String name, String number, String typeLabel, String photoUri, boolean starred) {
+            this(id, name, number, typeLabel, photoUri, starred, null);
+        }
+
+        public RawRow(long id, String name, String number, String typeLabel, String photoUri, boolean starred, String photoVersion) {
             this.id = id; this.name = name; this.number = number;
             this.typeLabel = typeLabel; this.photoUri = photoUri; this.starred = starred;
+            this.photoVersion = photoVersion;
         }
     }
 
@@ -77,7 +84,7 @@ public final class ContactsLoader {
             if (r.number == null || r.number.trim().isEmpty()) continue;
             if (!byId.containsKey(r.id)) {
                 byId.put(r.id, new ContactEntry(r.id, r.name,
-                        new ArrayList<>(), r.photoUri, r.starred));
+                        new ArrayList<>(), r.photoUri, r.starred, r.photoVersion));
                 numbers.put(r.id, new ArrayList<>());
             }
             numbers.get(r.id).add(r);
@@ -87,7 +94,7 @@ public final class ContactsLoader {
             ContactEntry base = e.getValue();
             out.add(new ContactEntry(base.id, base.name,
                     dedupEquivalentForms(numbers.get(e.getKey()), country),
-                    base.photoUri, base.starred));
+                    base.photoUri, base.starred, base.photoVersion));
         }
         return out;
     }
@@ -190,7 +197,8 @@ public final class ContactsLoader {
                 Phone.TYPE,
                 Phone.LABEL,
                 Phone.PHOTO_URI,
-                Phone.STARRED
+                Phone.STARRED,
+                Phone.PHOTO_ID
         };
         List<RawRow> rows = new ArrayList<>();
         try (Cursor c = resolver.query(Phone.CONTENT_URI, projection, null, null, null, signal)) {
@@ -201,7 +209,8 @@ public final class ContactsLoader {
                 rows.add(new RawRow(
                         c.getLong(0), c.getString(1), c.getString(2),
                         label == null ? "" : label.toString(),
-                        c.getString(5), c.getInt(6) == 1));
+                        c.getString(5), c.getInt(6) == 1,
+                        c.isNull(7) ? null : String.valueOf(c.getLong(7))));
             }
         }
         checkBudget(started, signal);

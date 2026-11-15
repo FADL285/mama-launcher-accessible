@@ -56,7 +56,7 @@ public class HandsetUxTest {
  void provider(String name) {
   org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){
    @Override public Cursor query(Uri uri,String[] projection,String s,String[] args,String sort) {
-    MatrixCursor c=new MatrixCursor(projection);if(name!=null)c.addRow(new Object[]{7,name,"01000000001",2,null,null,0});return c;
+    MatrixCursor c=new MatrixCursor(projection);if(name!=null)c.addRow(new Object[]{7,name,"01000000001",2,null,null,0,null});return c;
    }
   });
  }
@@ -198,7 +198,7 @@ public class HandsetUxTest {
  }
  @Test public void savedPreviewDisplaysTheExactNumberNotOtherNumber()throws Exception {
   Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.READ_CONTACTS);
-  org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){@Override public Cursor query(Uri uri,String[] p,String selection,String[] args,String sort){MatrixCursor c=new MatrixCursor(p);c.addRow(new Object[]{8,"اقتراح","030123459",2,null,null,0});c.addRow(new Object[]{7,"متعدد","030123456",2,null,null,0});c.addRow(new Object[]{7,"متعدد","03012345",2,null,null,0});return c;}});
+  org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){@Override public Cursor query(Uri uri,String[] p,String selection,String[] args,String sort){MatrixCursor c=new MatrixCursor(p);c.addRow(new Object[]{8,"اقتراح","030123459",2,null,null,0,null});c.addRow(new Object[]{7,"متعدد","030123456",2,null,null,0,null});c.addRow(new Object[]{7,"متعدد","03012345",2,null,null,0,null});return c;}});
   DialpadActivity a=Robolectric.buildActivity(DialpadActivity.class).setup().get();type(a,"03012345");settle(a);
   String preview=((TextView)((LinearLayout)a.findViewById(R.id.dial_matches)).getChildAt(0)).getText().toString();
   assertEquals(a.getString(R.string.dial_saved)+" · متعدد\n"+info.fadl.mamalauncher.ui.DialMatchUi.isolatedNumber("03012345"),preview);
@@ -207,7 +207,7 @@ public class HandsetUxTest {
   Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.READ_CONTACTS);provider(null);
   org.robolectric.android.controller.ActivityController<DialpadActivity> controller=Robolectric.buildActivity(DialpadActivity.class).setup();DialpadActivity a=controller.get();type(a,"01000000001");settle(a);
   java.util.concurrent.CountDownLatch entered=new java.util.concurrent.CountDownLatch(1),release=new java.util.concurrent.CountDownLatch(1);
-  org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){@Override public Cursor query(Uri uri,String[] p,String selection,String[] args,String sort){entered.countDown();try{if(!release.await(4,java.util.concurrent.TimeUnit.SECONDS))throw new IllegalStateException();}catch(InterruptedException e){throw new RuntimeException(e);}MatrixCursor c=new MatrixCursor(p);for(int i=0;i<names.length;i++)c.addRow(new Object[]{i+1,names[i],"01000000001",2,null,null,0});return c;}});
+  org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){@Override public Cursor query(Uri uri,String[] p,String selection,String[] args,String sort){entered.countDown();try{if(!release.await(4,java.util.concurrent.TimeUnit.SECONDS))throw new IllegalStateException();}catch(InterruptedException e){throw new RuntimeException(e);}MatrixCursor c=new MatrixCursor(p);for(int i=0;i<names.length;i++)c.addRow(new Object[]{i+1,names[i],"01000000001",2,null,null,0,null});return c;}});
   android.app.AlertDialog previous=org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();a.findViewById(R.id.btn_save_number).performClick();assertTrue(entered.await(2,java.util.concurrent.TimeUnit.SECONDS));controller.pause();release.countDown();settle(a);
   assertNull(Shadows.shadowOf(a).getNextStartedActivity());assertSame(previous,org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog());
   controller.resume();settle(a);assertNull(Shadows.shadowOf(a).getNextStartedActivity());

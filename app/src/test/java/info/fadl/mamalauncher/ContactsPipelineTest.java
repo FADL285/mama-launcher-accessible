@@ -45,7 +45,8 @@ public class ContactsPipelineTest {
         ContactsContract.CommonDataKinds.Phone.TYPE,
         ContactsContract.CommonDataKinds.Phone.LABEL,
         ContactsContract.CommonDataKinds.Phone.PHOTO_URI,
-        ContactsContract.CommonDataKinds.Phone.STARRED
+        ContactsContract.CommonDataKinds.Phone.STARRED,
+        ContactsContract.CommonDataKinds.Phone.PHOTO_ID
     };
 
     private void provider(FixtureContactsProvider p) {
@@ -62,7 +63,7 @@ public class ContactsPipelineTest {
 
     private static MatrixCursor oneRow() {
         MatrixCursor c = new MatrixCursor(COLUMNS);
-        c.addRow(new Object[] {1L, "Mama", "01000000000", 1, null, null, 0});
+        c.addRow(new Object[] {1L, "Mama", "01000000000", 1, null, null, 0, null});
         return c;
     }
 
@@ -83,7 +84,7 @@ public class ContactsPipelineTest {
                 return true;
             }
         };
-        slow.addRow(new Object[] {1L, "Mama", "01000000000", 1, null, null, 0});
+        slow.addRow(new Object[] {1L, "Mama", "01000000000", 1, null, null, 0, null});
         provider(cursorProvider(slow));
         IllegalStateException e = assertThrows(IllegalStateException.class, () ->
             ContactsLoader.loadVerified(app.getContentResolver(), app.getResources(), "EG",
@@ -100,7 +101,7 @@ public class ContactsPipelineTest {
                 return true;
             }
         };
-        cancelling.addRow(new Object[] {1L, "Mama", "01000000000", 1, null, null, 0});
+        cancelling.addRow(new Object[] {1L, "Mama", "01000000000", 1, null, null, 0, null});
         provider(cursorProvider(cancelling));
         assertThrows(OperationCanceledException.class, () ->
             ContactsLoader.loadVerified(app.getContentResolver(), app.getResources(), "EG", signal));
@@ -120,7 +121,7 @@ public class ContactsPipelineTest {
                 // Each read returns a DISTINCT contact, so a stale read
                 // winning the race is visible in the installed adapter.
                 MatrixCursor c = new MatrixCursor(COLUMNS);
-                c.addRow(new Object[] {(long) n, "Contact" + n, "0100000000" + n, 1, null, null, 0});
+                c.addRow(new Object[] {(long) n, "Contact" + n, "0100000000" + n, 1, null, null, 0, null});
                 return c;
             }
         });

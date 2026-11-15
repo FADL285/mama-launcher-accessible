@@ -17,7 +17,7 @@ public class NavigationDebounceTest {
   Prefs.get(RuntimeEnvironment.getApplication()).edit().clear().apply();SessionGate.unlock();
   org.robolectric.shadows.ShadowContentResolver.registerProviderInternal(android.provider.ContactsContract.AUTHORITY,new FixtureContactsProvider(){
    @Override public Cursor query(Uri uri,String[] projection,String s,String[] args,String sort) {
-    MatrixCursor c=new MatrixCursor(projection);c.addRow(new Object[]{7,"اختبار","01000000001",2,null,null,0});return c;
+    MatrixCursor c=new MatrixCursor(projection);c.addRow(new Object[]{7,"اختبار","01000000001",2,null,null,0,null});return c;
    }
   });
   Shadows.shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.READ_CONTACTS);

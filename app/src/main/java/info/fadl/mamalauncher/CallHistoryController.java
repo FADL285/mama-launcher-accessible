@@ -545,9 +545,10 @@ final class CallHistoryController implements AutoCloseable {
     return new ContactEntry(
         contact == null ? -1 : contact.id,
         title(row, contact),
-        row.number,
+        java.util.Collections.singletonList(new ContactEntry.PhoneNumber(row.number, "")),
         contact == null ? null : contact.photoUri,
-        contact != null && contact.starred);
+        contact != null && contact.starred,
+        contact == null ? null : contact.photoVersion);
   }
 
   @Override

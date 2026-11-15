@@ -54,7 +54,8 @@ public class HistoryLabelsTest {
     ContactsContract.CommonDataKinds.Phone.TYPE,
     ContactsContract.CommonDataKinds.Phone.LABEL,
     ContactsContract.CommonDataKinds.Phone.PHOTO_URI,
-    ContactsContract.CommonDataKinds.Phone.STARRED
+    ContactsContract.CommonDataKinds.Phone.STARRED,
+    ContactsContract.CommonDataKinds.Phone.PHOTO_ID
   };
 
   private void contactsProvider(FixtureContactsProvider p) {
@@ -93,7 +94,7 @@ public class HistoryLabelsTest {
           @Override
           public Cursor query(Uri u, String[] p, String s, String[] a, String o) {
             MatrixCursor mc = new MatrixCursor(COLUMNS);
-            mc.addRow(new Object[] {1L, "Mama", "01000000000", 1, null, null, 0});
+            mc.addRow(new Object[] {1L, "Mama", "01000000000", 1, null, null, 0, null});
             return mc;
           }
         });
@@ -139,7 +140,7 @@ public class HistoryLabelsTest {
           @Override
           public Cursor query(Uri u, String[] p, String s, String[] a, String o) {
             MatrixCursor mc = new MatrixCursor(COLUMNS);
-            mc.addRow(new Object[] {1L, "Mama", "01000000000", 1, null, null, 0});
+            mc.addRow(new Object[] {1L, "Mama", "01000000000", 1, null, null, 0, null});
             return mc;
           }
         });
