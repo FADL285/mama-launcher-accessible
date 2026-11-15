@@ -234,6 +234,57 @@ public class CallLogConcurrencyTest {
   }
 
   @Test
+  public void aQueuedReadAtTheCapCannotHideTheStuckRunnerFromLaterRetries() throws Exception {
+    // A, B, C are abandoned; D blocks the current executor at the cap. E is
+    // then submitted and queues behind D. When A returns and frees a slot, a
+    // retry must still see D - not E's never-started queued task - as the
+    // running task, swap the wedged executor out, and succeed.
+    CallLogWorker w = new CallLogWorker();
+    java.util.List<CountDownLatch> releases = new java.util.ArrayList<>();
+    try {
+      for (int i = 0; i < 4; i++) {
+        CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+        releases.add(release);
+        w.read(
+            signal -> {
+              entered.countDown();
+              blockUninterruptibly(release);
+              return 1;
+            },
+            value -> {},
+            () -> {});
+        assertTrue("read " + i + " must start", entered.await(1, TimeUnit.SECONDS));
+        w.cancel();
+      }
+      assertEquals("abandonment is capped", 3, w.abandonedForTest());
+
+      // Submit E: it queues behind the stuck D on the capped executor.
+      AtomicInteger failures = new AtomicInteger(), successes = new AtomicInteger();
+      w.read(signal -> 5, value -> successes.incrementAndGet(), failures::incrementAndGet);
+
+      releases.get(0).countDown(); // A returns and frees a slot
+      for (int i = 0; i < 100 && w.abandonedForTest() != 2; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("A's return frees its slot", 2, w.abandonedForTest());
+
+      // The retry must swap D's wedged executor out and run to success.
+      w.read(signal -> 7, value -> successes.incrementAndGet(), failures::incrementAndGet);
+      for (int i = 0; i < 100 && successes.get() == 0; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("a retry after a freed slot must not starve behind the stuck runner",
+          1, successes.get());
+      assertEquals("D was abandoned by the swap", 3, w.abandonedForTest());
+    } finally {
+      for (CountDownLatch r : releases) r.countDown();
+      w.close();
+    }
+  }
+
+  @Test
   public void errorSurfacesAsFailureAndWorkerRecovers() throws Exception {
     // An Error (not just RuntimeException) must reach the failure callback -
     // an uncaught one would remove the watchdog and hang the view forever.
