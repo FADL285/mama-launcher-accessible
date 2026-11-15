@@ -89,6 +89,228 @@ public class CallLogConcurrencyTest {
   }
 
   @Test
+  public void readsAfterAnAbandonedOneStillRun() throws Exception {
+    // A blocked read ignores interruption and keeps its thread; cancel() must
+    // abandon that executor so the next read is not queued behind it. The
+    // block here swallows interrupts the way a binder call would.
+    CallLogWorker w = new CallLogWorker();
+    CountDownLatch entered = new CountDownLatch(1), never = new CountDownLatch(1);
+    w.read(
+        signal -> {
+          entered.countDown();
+          blockUninterruptibly(never);
+          return 1;
+        },
+        value -> {},
+        () -> {});
+    assertTrue(entered.await(1, TimeUnit.SECONDS));
+    w.cancel();
+    AtomicInteger successes = new AtomicInteger();
+    try {
+      w.read(signal -> 2, value -> successes.incrementAndGet(), () -> {});
+      for (int i = 0; i < 50 && successes.get() == 0; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("the next read must not queue behind the abandoned one", 1, successes.get());
+    } finally {
+      never.countDown();
+      w.close();
+    }
+  }
+
+  private static void blockUninterruptibly(CountDownLatch latch) {
+    boolean released = false;
+    while (!released) {
+      try {
+        latch.await(30, TimeUnit.SECONDS);
+        released = true;
+      } catch (InterruptedException ignored) {
+        // Like a blocked binder call: interruption does not free us.
+      }
+    }
+  }
+
+  @Test
+  public void abandonedTaskFinishingLateCannotClobberTheCurrentReadsState() throws Exception {
+    // A blocks and is abandoned; B runs on the replacement executor and also
+    // blocks; A then finishes late. A's cleanup must not clear B's running
+    // state, or the next cancel() would skip the swap and C would starve.
+    CallLogWorker w = new CallLogWorker();
+    CountDownLatch aEntered = new CountDownLatch(1), aRelease = new CountDownLatch(1);
+    w.read(
+        signal -> {
+          aEntered.countDown();
+          blockUninterruptibly(aRelease);
+          return 1;
+        },
+        value -> {},
+        () -> {});
+    assertTrue(aEntered.await(1, TimeUnit.SECONDS));
+    w.cancel();
+    CountDownLatch bEntered = new CountDownLatch(1), bRelease = new CountDownLatch(1);
+    w.read(
+        signal -> {
+          bEntered.countDown();
+          blockUninterruptibly(bRelease);
+          return 2;
+        },
+        value -> {},
+        () -> {});
+    assertTrue("the replacement read must run on a fresh executor", bEntered.await(1, TimeUnit.SECONDS));
+    aRelease.countDown(); // A unblocks late; its finally clears only A's flag
+    Thread.sleep(100);
+    w.cancel(); // B is still stuck: the swap must still happen
+    AtomicInteger success = new AtomicInteger();
+    try {
+      w.read(signal -> 3, value -> success.incrementAndGet(), () -> {});
+      for (int i = 0; i < 100 && success.get() == 0; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("a read after two abandoned ones must still run", 1, success.get());
+    } finally {
+      bRelease.countDown();
+      w.close();
+    }
+  }
+
+  @Test
+  public void abandonedExecutorsAreCappedAndRecoverWhenStuckThreadsReturn() throws Exception {
+    // Each abandoned read leaks its stuck thread; the leak must be bounded,
+    // and a stuck thread that finally returns must free its slot.
+    CallLogWorker w = new CallLogWorker();
+    java.util.List<CountDownLatch> releases = new java.util.ArrayList<>();
+    try {
+      for (int i = 0; i < 4; i++) {
+        CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+        releases.add(release);
+        w.read(
+            signal -> {
+              entered.countDown();
+              blockUninterruptibly(release);
+              return 1;
+            },
+            value -> {},
+            () -> {});
+        assertTrue("read " + i + " must start", entered.await(1, TimeUnit.SECONDS));
+        w.cancel();
+      }
+      assertEquals("abandonment is capped", 3, w.abandonedForTest());
+
+      // At the cap the stuck executor is left running: a new read queues
+      // behind it and fails through its own watchdog - it must never throw
+      // RejectedExecutionException at the caller.
+      AtomicInteger failures = new AtomicInteger(), successes = new AtomicInteger();
+      w.read(signal -> 5, value -> successes.incrementAndGet(), failures::incrementAndGet);
+      Shadows.shadowOf(Looper.getMainLooper()).idleFor(7, TimeUnit.SECONDS);
+      assertEquals("a read past the cap fails through its watchdog, not a crash", 1, failures.get());
+
+      releases.get(3).countDown(); // the capped (never marked) thread returns
+      for (int i = 0; i < 100 && w.abandonedForTest() != 3; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("an unmarked return frees no slot", 3, w.abandonedForTest());
+
+      releases.get(0).countDown(); // the first stuck thread returns
+      for (int i = 0; i < 100 && w.abandonedForTest() != 2; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("a returned thread frees its slot", 2, w.abandonedForTest());
+
+      // With a slot free again, a fresh read runs and succeeds.
+      w.read(signal -> 5, value -> successes.incrementAndGet(), failures::incrementAndGet);
+      for (int i = 0; i < 100 && successes.get() == 0; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("the worker recovers once a slot frees", 1, successes.get());
+    } finally {
+      for (CountDownLatch r : releases) r.countDown();
+      w.close();
+    }
+  }
+
+  @Test
+  public void aQueuedReadAtTheCapCannotHideTheStuckRunnerFromLaterRetries() throws Exception {
+    // A, B, C are abandoned; D blocks the current executor at the cap. E is
+    // then submitted and queues behind D. When A returns and frees a slot, a
+    // retry must still see D - not E's never-started queued task - as the
+    // running task, swap the wedged executor out, and succeed.
+    CallLogWorker w = new CallLogWorker();
+    java.util.List<CountDownLatch> releases = new java.util.ArrayList<>();
+    try {
+      for (int i = 0; i < 4; i++) {
+        CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+        releases.add(release);
+        w.read(
+            signal -> {
+              entered.countDown();
+              blockUninterruptibly(release);
+              return 1;
+            },
+            value -> {},
+            () -> {});
+        assertTrue("read " + i + " must start", entered.await(1, TimeUnit.SECONDS));
+        w.cancel();
+      }
+      assertEquals("abandonment is capped", 3, w.abandonedForTest());
+
+      // Submit E: it queues behind the stuck D on the capped executor.
+      AtomicInteger failures = new AtomicInteger(), successes = new AtomicInteger();
+      w.read(signal -> 5, value -> successes.incrementAndGet(), failures::incrementAndGet);
+
+      releases.get(0).countDown(); // A returns and frees a slot
+      for (int i = 0; i < 100 && w.abandonedForTest() != 2; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("A's return frees its slot", 2, w.abandonedForTest());
+
+      // The retry must swap D's wedged executor out and run to success.
+      w.read(signal -> 7, value -> successes.incrementAndGet(), failures::incrementAndGet);
+      for (int i = 0; i < 100 && successes.get() == 0; i++) {
+        Thread.sleep(20);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+      }
+      assertEquals("a retry after a freed slot must not starve behind the stuck runner",
+          1, successes.get());
+      assertEquals("D was abandoned by the swap", 3, w.abandonedForTest());
+    } finally {
+      for (CountDownLatch r : releases) r.countDown();
+      w.close();
+    }
+  }
+
+  @Test
+  public void errorSurfacesAsFailureAndWorkerRecovers() throws Exception {
+    // An Error (not just RuntimeException) must reach the failure callback -
+    // an uncaught one would remove the watchdog and hang the view forever.
+    CallLogWorker w = new CallLogWorker();
+    AtomicInteger successes = new AtomicInteger(), failures = new AtomicInteger();
+    w.read(
+        signal -> {
+          throw new OutOfMemoryError("synthetic");
+        },
+        value -> successes.incrementAndGet(),
+        failures::incrementAndGet);
+    for (int i = 0; i < 100 && failures.get() == 0; i++) {
+      Thread.sleep(20);
+      Shadows.shadowOf(Looper.getMainLooper()).idle();
+    }
+    assertEquals("an Error must surface as failure, not a silent hang", 1, failures.get());
+    w.read(signal -> 7, value -> successes.incrementAndGet(), failures::incrementAndGet);
+    for (int i = 0; i < 100 && successes.get() == 0; i++) {
+      Thread.sleep(20);
+      Shadows.shadowOf(Looper.getMainLooper()).idle();
+    }
+    assertEquals(1, successes.get());
+    w.close();
+  }
+
+  @Test
   public void explicitCancelDropsStaleCallback() throws Exception {
     CallLogWorker w = new CallLogWorker();
     AtomicInteger calls = new AtomicInteger();

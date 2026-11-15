@@ -28,6 +28,10 @@ final class CallHistoryController implements AutoCloseable {
   private int displayGeneration;
   private HistorySnapshot displayed;
   private int displayedGeneration;
+  /** The bound page's missed calls were acknowledged on focus. Tracked apart
+   *  from the snapshot itself: displayed stays bound for retryLabels() and
+   *  open() even after acknowledgement. */
+  private boolean missedAcked;
   private CallLogRepository.Result boundPage;
   private String anchor;
   private int anchorOffset, anchorPosition;
@@ -125,6 +129,7 @@ final class CallHistoryController implements AutoCloseable {
         });
     guard.accept(a.findViewById(R.id.btn_history_not_now), () -> a.selectHistory(false));
     guard.accept(a.findViewById(R.id.btn_history_retry), this::refresh);
+    guard.accept(a.findViewById(R.id.btn_history_labels_retry), this::retryLabels);
     guard.accept(
         a.findViewById(R.id.btn_history_settings),
         () -> {
@@ -197,13 +202,15 @@ final class CallHistoryController implements AutoCloseable {
   }
 
   void focused() {
-    if (rendered && displayed != null && valid(displayedGeneration) && activity.hasWindowFocus()) {
+    // Acknowledge the bound page's missed calls once per page. The snapshot
+    // stays bound afterwards: retryLabels() and open() rely on it.
+    if (rendered && !missedAcked && displayed != null && valid(displayedGeneration) && activity.hasWindowFocus()) {
       try {
         MissedCallState.acknowledge(activity, displayed.pending);
+        missedAcked = true;
       } catch (SecurityException revoked) {
         refresh();
       }
-      displayed = null;
     }
   }
 
@@ -229,9 +236,14 @@ final class CallHistoryController implements AutoCloseable {
           Set<String> pending = MissedCallState.read(activity, signal).pending;
           CallLogRepository.Result page =
               CallLogRepository.load(activity.getContentResolver(), filter, pageLimit, signal);
-          HistorySnapshot.ContactIndex contacts = HistorySnapshot.contacts(activity, signal);
           signal.throwIfCanceled();
-          return new HistorySnapshot(page, pending, contacts);
+          // The page is the required data; labels load separately so a labels
+          // failure can never take the call list down with it.
+          return new HistorySnapshot(
+              page,
+              pending,
+              new HistorySnapshot.ContactIndex(java.util.Collections.emptyList(), NumberRegion.current(activity)),
+              HistorySnapshot.LABELS_LOADING);
         },
         snapshot -> {
           if (!valid(current)) {
@@ -242,6 +254,7 @@ final class CallHistoryController implements AutoCloseable {
             return;
           }
           bind(snapshot, current);
+          if (!snapshot.page.entries.isEmpty()) loadLabels(snapshot, current);
         },
         () -> {
           if (active && selected) {
@@ -250,6 +263,66 @@ final class CallHistoryController implements AutoCloseable {
           }
         });
     selectFilter();
+  }
+
+  /**
+   * Optional contact labels, read after the page is already on screen. Success
+   * re-binds the same rows with names; failure keeps the numbers and shows a
+   * retry affordance - the call list never depends on the labels read.
+   */
+  private void loadLabels(HistorySnapshot base, int generation) {
+    worker.read(
+        signal -> HistorySnapshot.contacts(activity, signal),
+        contacts -> {
+          if (!valid(generation)) return;
+          HistorySnapshot resolved = base.withLabels(contacts, HistorySnapshot.LABELS_LOADED);
+          if (contacts.size() > 0) {
+            rebindLabels(resolved, generation);
+          } else {
+            // An empty resolution (permission declined, no contacts) changes
+            // no row: skip the rebind so the list never moves for nothing -
+            // but remember the state (fast taps) and clear any failure banner.
+            activity.findViewById(R.id.history_labels_state).setVisibility(View.GONE);
+            displayed = resolved;
+            displayedGeneration = generation;
+          }
+        },
+        () -> {
+          if (valid(generation)) rebindLabels(base.withLabels(base.contacts, HistorySnapshot.LABELS_FAILED), generation);
+        });
+  }
+
+  /** Retry ONLY the labels read against the page already on screen: the
+   *  required call log is not reloaded, and a labels failure can never take
+   *  the visible rows down. */
+  private void retryLabels() {
+    HistorySnapshot shown = displayed;
+    if (shown != null && valid(displayedGeneration)) loadLabels(shown, displayedGeneration);
+    else refresh();
+  }
+
+  /** The labels re-bind must never move the list: the same rows refresh in
+   *  place through the existing adapter (stable ids keep the exact scroll
+   *  position), and only the labels banner can appear or disappear. */
+  private void rebindLabels(HistorySnapshot snapshot, int generation) {
+    ListView list = activity.findViewById(R.id.history_list);
+    android.widget.ListAdapter current = list.getAdapter();
+    if (!(current instanceof RowsAdapter)) {
+      bind(snapshot, generation);
+      return;
+    }
+    RowsAdapter rows = (RowsAdapter) current;
+    rows.snapshot = snapshot;
+    rows.notifyDataSetChanged();
+    activity
+        .findViewById(R.id.history_labels_state)
+        .setVisibility(
+            snapshot.labelsState == HistorySnapshot.LABELS_FAILED
+                    && !snapshot.page.entries.isEmpty()
+                ? View.VISIBLE
+                : View.GONE);
+    displayed = snapshot;
+    displayedGeneration = generation;
   }
 
   private boolean valid(int generation) {
@@ -273,6 +346,13 @@ final class CallHistoryController implements AutoCloseable {
     ListView list = activity.findViewById(R.id.history_list);
     activity.findViewById(R.id.history_filters).setVisibility(View.VISIBLE);
     activity
+        .findViewById(R.id.history_labels_state)
+        .setVisibility(
+            snapshot.labelsState == HistorySnapshot.LABELS_FAILED
+                    && !snapshot.page.entries.isEmpty()
+                ? View.VISIBLE
+                : View.GONE);
+    activity
         .findViewById(R.id.history_state)
         .setVisibility(snapshot.page.entries.isEmpty() ? View.VISIBLE : View.GONE);
     ((TextView) activity.findViewById(R.id.history_message)).setText(R.string.history_empty);
@@ -285,57 +365,67 @@ final class CallHistoryController implements AutoCloseable {
     activity
         .findViewById(R.id.btn_history_more)
         .setVisibility(snapshot.page.more ? View.VISIBLE : View.GONE);
-    list.setAdapter(
-        new BaseAdapter() {
-          public int getCount() {
-            return snapshot.page.entries.size();
-          }
-
-          public Object getItem(int p) {
-            return snapshot.page.entries.get(p);
-          }
-
-          public boolean hasStableIds() {
-            return true;
-          }
-
-          public long getItemId(int p) {
-            return snapshot.page.entries.get(p).id;
-          }
-
-          public View getView(int p, View old, ViewGroup parent) {
-            CallLogEntry row = snapshot.page.entries.get(p);
-            ContactEntry contact =
-                activity.checkSelfPermission(Manifest.permission.READ_CONTACTS)
-                        == PackageManager.PERMISSION_GRANTED
-                    ? snapshot.contact(row)
-                    : null;
-            CallLogRow view =
-                old instanceof CallLogRow ? (CallLogRow) old : new CallLogRow(activity);
-            view.bind(
-                title(row, contact),
-                row.callable() && contact != null ? row.number : "",
-                detail(row),
-                row.callable() && (contact == null || contact.name.isEmpty()),
-                typeDirection(row.type));
-            guard.accept(view, () -> open(row));
-            return view;
-          }
-        });
+    list.setAdapter(new RowsAdapter(snapshot));
     restorePosition(list, snapshot.page);
     boundPage = snapshot.page;
     // Wait for a real window draw, then validate again after the frame.
     displayed = snapshot;
     displayedGeneration = generation;
+    missedAcked = false; // a newly bound page is acknowledged once, on focus
     rendered = false;
     drawObserver = activity.findViewById(android.R.id.content).getViewTreeObserver();
     drawObserver.addOnDrawListener(drawn);
+  }
+
+  /** The rows of one page; labels can refresh in place (stable ids keep the
+   *  user's scroll position - no re-attach, no restore cycle). */
+  private final class RowsAdapter extends BaseAdapter {
+    HistorySnapshot snapshot;
+
+    RowsAdapter(HistorySnapshot snapshot) {
+      this.snapshot = snapshot;
+    }
+
+    public int getCount() {
+      return snapshot.page.entries.size();
+    }
+
+    public Object getItem(int p) {
+      return snapshot.page.entries.get(p);
+    }
+
+    public boolean hasStableIds() {
+      return true;
+    }
+
+    public long getItemId(int p) {
+      return snapshot.page.entries.get(p).id;
+    }
+
+    public View getView(int p, View old, ViewGroup parent) {
+      CallLogEntry row = snapshot.page.entries.get(p);
+      ContactEntry contact =
+          activity.checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                  == PackageManager.PERMISSION_GRANTED
+              ? snapshot.contact(row)
+              : null;
+      CallLogRow view = old instanceof CallLogRow ? (CallLogRow) old : new CallLogRow(activity);
+      view.bind(
+          title(row, contact),
+          row.callable() && contact != null ? row.number : "",
+          detail(row),
+          row.callable() && (contact == null || contact.name.isEmpty()),
+          typeDirection(row.type));
+      guard.accept(view, () -> open(row));
+      return view;
+    }
   }
 
   private void show(int message, boolean permission, boolean retry) {
     ((ListView) activity.findViewById(R.id.history_list)).setAdapter(null);
     boundPage = null;
     activity.findViewById(R.id.history_filters).setVisibility(View.GONE);
+    activity.findViewById(R.id.history_labels_state).setVisibility(View.GONE);
     activity.findViewById(R.id.history_list).setVisibility(View.GONE);
     activity.findViewById(R.id.history_state).setVisibility(View.VISIBLE);
     ((TextView) activity.findViewById(R.id.history_message)).setText(message);
@@ -412,6 +502,23 @@ final class CallHistoryController implements AutoCloseable {
           .show();
       return;
     }
+    // A tap opens immediately from what is already known: the bound labels
+    // when they loaded, the raw number when they failed. Only a still-running
+    // first labels read makes the tap wait for it.
+    HistorySnapshot shown = displayed;
+    if (shown != null && shown.labelsState == HistorySnapshot.LABELS_LOADED) {
+      ContactEntry contact =
+          activity.checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                  == PackageManager.PERMISSION_GRANTED
+              ? shown.contacts.find(row.number)
+              : null;
+      activity.startActivity(ConfirmCallActivity.intentFor(activity, callableTarget(row, contact)));
+      return;
+    }
+    if (shown != null && shown.labelsState == HistorySnapshot.LABELS_FAILED) {
+      activity.startActivity(ConfirmCallActivity.intentFor(activity, callableTarget(row, null)));
+      return;
+    }
     final int current = ++displayGeneration;
     worker.read(
         signal -> HistorySnapshot.contacts(activity, signal),
@@ -422,19 +529,25 @@ final class CallHistoryController implements AutoCloseable {
                       == PackageManager.PERMISSION_GRANTED
                   ? contacts.find(row.number)
                   : null;
-          String label = title(row, contact);
-          ContactEntry exact =
-              new ContactEntry(
-                  contact == null ? -1 : contact.id,
-                  label,
-                  row.number,
-                  contact == null ? null : contact.photoUri,
-                  contact != null && contact.starred);
-          activity.startActivity(ConfirmCallActivity.intentFor(activity, exact));
+          activity.startActivity(
+              ConfirmCallActivity.intentFor(activity, callableTarget(row, contact)));
         },
         () -> {
-          if (active && selected) show(R.string.history_failed, false, true);
+          // Labels are optional: a failed or blocked label read must not stop
+          // a callable row from opening confirmation with the raw number.
+          if (valid(current))
+            activity.startActivity(
+                ConfirmCallActivity.intentFor(activity, callableTarget(row, null)));
         });
+  }
+
+  private ContactEntry callableTarget(CallLogEntry row, ContactEntry contact) {
+    return new ContactEntry(
+        contact == null ? -1 : contact.id,
+        title(row, contact),
+        row.number,
+        contact == null ? null : contact.photoUri,
+        contact != null && contact.starred);
   }
 
   @Override

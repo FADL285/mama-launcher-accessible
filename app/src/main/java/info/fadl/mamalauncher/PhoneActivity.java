@@ -33,6 +33,12 @@ public class PhoneActivity extends BaseActivity {
     private View setupView;
     private View emptyView;
     private int refreshGeneration;
+    /** T-06: the grid's contacts read owns one CallLogWorker: a new refresh
+     *  cancels the in-flight read, a provider blocked inside query() or
+     *  moveToNext() is cut off by the worker's watchdog and fails loudly,
+     *  and only this screen's read is touched - the dialpad, Save and
+     *  history consumers keep their own workers/signals. */
+    private final CallLogWorker contactsWorker = new CallLogWorker();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +87,7 @@ public class PhoneActivity extends BaseActivity {
 
     private void refresh() {
         final int generation = ++refreshGeneration;
+        contactsWorker.cancel();
         findViewById(R.id.contacts_read_error).setVisibility(View.GONE);
         if (checkSelfPermission(Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -98,21 +105,19 @@ public class PhoneActivity extends BaseActivity {
         Prefs.get(this).edit().remove(PREF_CONTACTS_DENIED).apply();
         setupView.setVisibility(View.GONE);
         grid.setVisibility(View.VISIBLE);
-        new Thread(() -> {
-            List<ContactEntry> original;
-            try { original=ContactsLoader.loadVerified(getContentResolver(),getResources(),NumberRegion.current(this)); }
-            catch(RuntimeException readFailure) {
-                runOnUiThread(() -> {
-                    if(generation!=refreshGeneration || isDestroyed() || isFinishing())return;
-                    if(checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED){refresh();return;}
-                    grid.setVisibility(View.GONE);emptyView.setVisibility(View.GONE);
-                    findViewById(R.id.contacts_read_error).setVisibility(View.VISIBLE);
-                });return;
-            }
-            final java.util.Set<Long> systemStars=new java.util.HashSet<>();
-            for(ContactEntry c:original)if(c.starred)systemStars.add(c.id);
-            List<ContactEntry> sorted=ContactSorter.sort(LocalFavorites.apply(this,original));
-            runOnUiThread(() -> {
+        contactsWorker.read(
+            signal -> {
+                List<ContactEntry> original = ContactsLoader.loadVerified(
+                        getContentResolver(), getResources(), NumberRegion.current(this), signal);
+                signal.throwIfCanceled();
+                final java.util.Set<Long> systemStars = new java.util.HashSet<>();
+                for (ContactEntry c : original) if (c.starred) systemStars.add(c.id);
+                List<ContactEntry> sorted = ContactSorter.sort(LocalFavorites.apply(this, original));
+                return new android.util.Pair<>(systemStars, sorted);
+            },
+            result -> {
+                final java.util.Set<Long> systemStars = result.first;
+                final List<ContactEntry> sorted = result.second;
                 if (generation != refreshGeneration) return; // stale results
                 if (isDestroyed() || isFinishing()) return;
                 if(checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED){refresh();return;}
@@ -149,8 +154,13 @@ public class PhoneActivity extends BaseActivity {
                     if (place > 0) grid.setSelection(place);
                     savedFirstVisible = -1;
                 } });
+            },
+            () -> { // read failed or the watchdog cut a blocked provider off
+                if(generation!=refreshGeneration || isDestroyed() || isFinishing())return;
+                if(checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED){refresh();return;}
+                grid.setVisibility(View.GONE);emptyView.setVisibility(View.GONE);
+                findViewById(R.id.contacts_read_error).setVisibility(View.VISIBLE);
             });
-        }).start();
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
@@ -188,10 +198,12 @@ public class PhoneActivity extends BaseActivity {
     @Override protected void onPause() {
         if (history != null) history.pause();
         refreshGeneration++;
+        contactsWorker.cancel();
         super.onPause();
     }
     @Override protected void onDestroy() {
         if (history != null) history.close();
+        contactsWorker.close();
         super.onDestroy();
     }
 

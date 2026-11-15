@@ -5,6 +5,8 @@ import info.fadl.mamalauncher.ui.UiBinder;
 import android.content.ContentResolver;
 import android.content.res.Resources;
 import android.database.Cursor;
+import android.os.CancellationSignal;
+import android.os.SystemClock;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
 
 import java.util.ArrayList;
@@ -14,6 +16,13 @@ import java.util.Map;
 
 /** Reads contacts WITH phone numbers from the device. Local only, no network. */
 public final class ContactsLoader {
+    /** T-06: hard deadline for one contacts read, configured here next to the
+     *  query it bounds (same budget as CallLogRepository). Expiry FAILS the
+     *  read (throws IllegalStateException); it never returns a partial or
+     *  empty list, so a slow provider can never masquerade as "no contacts".
+     *  Cancellation throws OperationCanceledException instead. */
+    static final long MAX_READ_MS = 5000;
+
     private ContactsLoader() {}
 
     /** Raw row, separated from Android types so grouping is unit-testable. */
@@ -151,17 +160,29 @@ public final class ContactsLoader {
     }
 
     public static List<ContactEntry> load(ContentResolver resolver, Resources res) {
-        return load(resolver,res,"",false);
+        return load(resolver,res,"",false,new CancellationSignal());
     }
     /** Saving requires a completed read, not a null cursor mistaken for zero matches. */
     static List<ContactEntry> loadVerified(ContentResolver resolver,Resources res) {
-        return load(resolver,res,"",true);
+        return load(resolver,res,"",true,new CancellationSignal());
     }
     /** Verified load with the device region for national/international dedup (T-17). */
     static List<ContactEntry> loadVerified(ContentResolver resolver,Resources res,String country) {
-        return load(resolver,res,country,true);
+        return load(resolver,res,country,true,new CancellationSignal());
     }
-    private static List<ContactEntry> load(ContentResolver resolver, Resources res, String country, boolean requireResult) {
+    /** T-06: verified load that aborts early when the caller's signal fires.
+     *  Each consumer (grid, dialpad lookup, dialpad Save, history) owns its
+     *  own signal, so one consumer cancelling never touches another's read. */
+    static List<ContactEntry> loadVerified(ContentResolver resolver,Resources res,String country,CancellationSignal signal) {
+        return load(resolver,res,country,true,signal);
+    }
+    private static void checkBudget(long started, CancellationSignal signal) {
+        signal.throwIfCanceled();
+        if (SystemClock.elapsedRealtime() - started > MAX_READ_MS)
+            throw new IllegalStateException("Contacts read timed out");
+    }
+    private static List<ContactEntry> load(ContentResolver resolver, Resources res, String country, boolean requireResult, CancellationSignal signal) {
+        long started = SystemClock.elapsedRealtime();
         String[] projection = new String[]{
                 Phone.CONTACT_ID,
                 Phone.DISPLAY_NAME,
@@ -172,9 +193,10 @@ public final class ContactsLoader {
                 Phone.STARRED
         };
         List<RawRow> rows = new ArrayList<>();
-        try (Cursor c = resolver.query(Phone.CONTENT_URI, projection, null, null, null)) {
+        try (Cursor c = resolver.query(Phone.CONTENT_URI, projection, null, null, null, signal)) {
             if(c==null) {if(requireResult)throw new IllegalStateException("Contacts provider unavailable");return new ArrayList<>();}
             while (c.moveToNext()) {
+                checkBudget(started, signal);
                 CharSequence label = Phone.getTypeLabel(res, c.getInt(3), c.getString(4));
                 rows.add(new RawRow(
                         c.getLong(0), c.getString(1), c.getString(2),
@@ -182,6 +204,11 @@ public final class ContactsLoader {
                         c.getString(5), c.getInt(6) == 1));
             }
         }
-        return group(rows, country);
+        checkBudget(started, signal);
+        // Grouping (and its per-contact dedup) is real work too: the budget
+        // and the signal are honored once more before the result can leave.
+        List<ContactEntry> grouped = group(rows, country);
+        checkBudget(started, signal);
+        return grouped;
     }
 }

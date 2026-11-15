@@ -9,14 +9,28 @@ import java.util.*;
 
 /** Optional contact resolution is separate from required call-log success. */
 final class HistorySnapshot {
+  /** Contact labels are still being read. */
+  static final int LABELS_LOADING = 0;
+  /** Contact labels read successfully (possibly legitimately empty). */
+  static final int LABELS_LOADED = 1;
+  /** The label read failed or was abandoned; numbers still render, retry offered. */
+  static final int LABELS_FAILED = 2;
+
   final CallLogRepository.Result page;
   final Set<String> pending;
   final ContactIndex contacts;
+  final int labelsState;
 
-  HistorySnapshot(CallLogRepository.Result page, Set<String> pending, ContactIndex contacts) {
+  HistorySnapshot(
+      CallLogRepository.Result page, Set<String> pending, ContactIndex contacts, int labelsState) {
     this.page = page;
     this.pending = pending;
     this.contacts = contacts;
+    this.labelsState = labelsState;
+  }
+
+  HistorySnapshot withLabels(ContactIndex labels, int state) {
+    return new HistorySnapshot(page, pending, labels, state);
   }
 
   static final class ContactIndex {
@@ -46,23 +60,32 @@ final class HistorySnapshot {
       return e164 == null ? raw : e164;
     }
 
+    int size() {
+      return entries.size();
+    }
+
     ContactEntry find(String number) {
       return entries.get(key(number));
     }
   }
 
+  /**
+   * Optional labels are either resolved or loudly unavailable - never silently
+   * empty. Missing permission is the one quiet empty: the user declined labels.
+   * Every read failure (deadline, blocked provider, cancellation) propagates so
+   * the caller can surface it and offer a retry.
+   */
   static ContactIndex contacts(Context c, CancellationSignal signal) {
     String region = NumberRegion.current(c);
     ContactIndex empty = new ContactIndex(Collections.emptyList(), region);
     if (c.checkSelfPermission(Manifest.permission.READ_CONTACTS)
         != PackageManager.PERMISSION_GRANTED) return empty;
-    List<ContactEntry> current;
-    try {
-      current = ContactsLoader.loadVerified(c.getContentResolver(), c.getResources(), NumberRegion.current(c));
-      signal.throwIfCanceled();
-    } catch (RuntimeException unavailable) {
-      return empty;
-    }
+    // T-06: the signal aborts the read mid-loop, not only after it. A failure
+    // here is thrown, not folded into an empty index.
+    List<ContactEntry> current =
+        ContactsLoader.loadVerified(
+            c.getContentResolver(), c.getResources(), NumberRegion.current(c), signal);
+    signal.throwIfCanceled();
     if (c.checkSelfPermission(Manifest.permission.READ_CONTACTS)
         != PackageManager.PERMISSION_GRANTED) return empty;
     return new ContactIndex(current, region);
