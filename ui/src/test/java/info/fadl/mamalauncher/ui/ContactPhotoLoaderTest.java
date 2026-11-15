@@ -368,6 +368,89 @@ public class ContactPhotoLoaderTest {
     }
 
     @Test
+    public void refreshDuringAnInFlightDecodeDoesNotLoseTheReboundPhoto() throws Exception {
+        // A request is decoding when a refresh retires it. The new adapter
+        // rebinds the same contact with an identical key: without a
+        // generation-aware in-flight key the rebind would dedupe against the
+        // retired request, whose completion then fails the generation check -
+        // the tile would stay on its placeholder until another bind.
+        java.util.concurrent.ExecutorService real = java.util.concurrent.Executors.newSingleThreadExecutor();
+        ContactPhotoLoader live = new ContactPhotoLoader(app.getContentResolver(), real, main);
+        Uri u = uri("refreshrace");
+        java.util.concurrent.CountDownLatch decodeOpened = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch decodeRelease = new java.util.concurrent.CountDownLatch(1);
+        Shadows.shadowOf(app.getContentResolver()).registerInputStreamSupplier(u, () -> {
+            decodeOpened.countDown();
+            try { decodeRelease.await(5, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+            return new ByteArrayInputStream(png);
+        });
+        try {
+            String key = ContactPhotoLoader.photoKey(u.toString(), null);
+            live.retainUris(new java.util.HashSet<>(java.util.Collections.singletonList(key)));
+            ImageView oldRow = new ImageView(app);
+            live.loadAsync(oldRow, 7, u.toString(), null, 360, bmp -> {});
+            assertTrue("first decode started", decodeOpened.await(5, java.util.concurrent.TimeUnit.SECONDS));
+
+            // Refresh retires the in-flight request; the new adapter binds
+            // the same contact again while the old decode is still blocked.
+            live.retireRequests();
+            live.retainUris(new java.util.HashSet<>(java.util.Collections.singletonList(key)));
+            ImageView newRow = new ImageView(app);
+            boolean[] delivered = {false};
+            live.loadAsync(newRow, 7, u.toString(), null, 360, bmp -> delivered[0] = true);
+
+            decodeRelease.countDown();
+            live.awaitIdleForTest();
+            idle();
+            assertTrue("the rebound tile receives its photo after the refresh", delivered[0]);
+        } finally {
+            decodeRelease.countDown();
+            live.close();
+            real.shutdownNow();
+        }
+    }
+
+    @Test
+    public void abandonedWorkerHandsItsQueuedRequestsToTheReplacement() throws Exception {
+        // Owned worker: a stuck decode replaces it. A still-current queued
+        // request must move to the replacement worker and deliver to its
+        // visible row, not be dropped with the old worker.
+        ContactPhotoLoader live = new ContactPhotoLoader(app.getContentResolver());
+        Uri stuck = uri("stuck-resubmit"), queued = uri("queued-resubmit");
+        java.util.concurrent.CountDownLatch opened = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch queuedDecoded = new java.util.concurrent.CountDownLatch(1);
+        Shadows.shadowOf(app.getContentResolver()).registerInputStreamSupplier(stuck, () -> {
+            opened.countDown();
+            try { release.await(30, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+            return new ByteArrayInputStream(png);
+        });
+        Shadows.shadowOf(app.getContentResolver()).registerInputStreamSupplier(queued, () -> {
+            queuedDecoded.countDown();
+            return new ByteArrayInputStream(png);
+        });
+        try {
+            ImageView stuckView = new ImageView(app);
+            live.loadAsync(stuckView, 1, stuck.toString(), null, 360, bmp -> {});
+            assertTrue("decode started", opened.await(5, java.util.concurrent.TimeUnit.SECONDS));
+            ImageView queuedView = new ImageView(app);
+            boolean[] queuedDelivered = {false};
+            live.loadAsync(queuedView, 2, queued.toString(), null, 360, bmp -> queuedDelivered[0] = true);
+
+            Shadows.shadowOf(Looper.getMainLooper()).idleFor(11, java.util.concurrent.TimeUnit.SECONDS);
+            assertEquals("stuck decode abandoned its worker", 1, live.abandonedForTest());
+            assertTrue("the queued request decodes on the replacement worker",
+                    queuedDecoded.await(5, java.util.concurrent.TimeUnit.SECONDS));
+            live.awaitIdleForTest();
+            idle();
+            assertTrue("the queued request still delivers to its visible row", queuedDelivered[0]);
+        } finally {
+            release.countDown();
+            live.close();
+        }
+    }
+
+    @Test
     public void closedLoaderIgnoresNewRequestsQuietly() {
         Uri u = uri("closed");
         registerPhoto(u);

@@ -50,7 +50,7 @@ final class DialContactMatcher {
    List<ContactEntry.PhoneNumber> nums=new ArrayList<>();
    for(ContactEntry.PhoneNumber n:c.numbers)if(exact(typed,n.number,country) || (!exactOnly && prefix(n.number,typed,country)))nums.add(n);
    nums.sort((a,b)->Boolean.compare(!exact(typed,a.number,country),!exact(typed,b.number,country)));
-   if(!nums.isEmpty())result.add(new ContactEntry(c.id,c.name,nums,c.photoUri,c.starred));
+   if(!nums.isEmpty())result.add(new ContactEntry(c.id,c.name,nums,c.photoUri,c.starred,c.photoVersion));
   }
   result.sort((a,b)->Boolean.compare(!hasExact(a,typed,country),!hasExact(b,typed,country)));
   return result;

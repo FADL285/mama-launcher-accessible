@@ -76,7 +76,7 @@ final class LocalFavorites {
  static List<ContactEntry> apply(Context c,List<ContactEntry> contacts){
   migrateIfNeeded(c);
   List<ContactEntry> result=new ArrayList<>();
-  for(ContactEntry e:contacts)result.add(new ContactEntry(e.id,e.name,e.numbers,e.photoUri,contains(c,e.id,e.starred)));
+  for(ContactEntry e:contacts)result.add(new ContactEntry(e.id,e.name,e.numbers,e.photoUri,contains(c,e.id,e.starred),e.photoVersion));
   return result;
  }
 }

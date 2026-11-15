@@ -48,7 +48,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  *  placeholder and re-requests on the next bind), one request per target is
  *  in flight at a time (rebinds dedupe), and a decode stuck past
  *  DECODE_TIMEOUT_MS - a provider binder call that ignores interrupts - is
- *  abandoned: its worker is replaced so fresh requests keep flowing.
+ *  abandoned: its worker is replaced and its queued requests move to the
+ *  replacement, so fresh requests keep flowing.
  *  Abandonment is capped; a stuck thread that finally returns frees a slot. */
 public class ContactPhotoLoader implements AutoCloseable {
     private static final int CACHE_BYTES = 6 * 1024 * 1024;
@@ -79,11 +80,11 @@ public class ContactPhotoLoader implements AutoCloseable {
     /** Serializes generation bumps with cache writes (see loadAsync). */
     private final Object lock = new Object();
     private volatile boolean closed;
-    /** Request keys currently queued or decoding (bounded by MAX_PENDING). */
+    /** Request keys currently queued or decoding (bounded by MAX_PENDING).
+     *  Keys are generation-prefixed: a refresh must not let a retired request
+     *  keep deduping the replacement bind - the old task would fail its
+     *  generation check and the new tile would never load. */
     private final Set<String> inFlight = new HashSet<>();
-    /** Running/queued task -> request key, so an abandoned worker's discarded
-     *  (never-started) tasks still release their in-flight keys. */
-    private final Map<Runnable, String> taskKeys = new java.util.HashMap<>();
     private int abandoned;
     /** Photo keys the latest contact list still carries; a decode for anything
      *  else must never reach the cache. Null until the first retainUris call
@@ -148,6 +149,7 @@ public class ContactPhotoLoader implements AutoCloseable {
         if (photoUri == null) return;
         if (closed) return;
         final int gen = generation.get();
+        final String flightKey = gen + "|" + requestKey;
         final String photoKey = photoKey(photoUri, photoVersion);
         final String key = photoKey + "@" + maxDim;
         Bitmap cached = cache.get(key);
@@ -166,7 +168,7 @@ public class ContactPhotoLoader implements AutoCloseable {
             // row keeps its placeholder and re-requests on its next bind.
             if (inFlight.size() >= MAX_PENDING) return;
             // One request per target: a rebind of the same row dedupes here.
-            if (!inFlight.add(requestKey)) return;
+            if (!inFlight.add(flightKey)) return;
         }
         try {
             self[0] = () -> {
@@ -186,12 +188,15 @@ public class ContactPhotoLoader implements AutoCloseable {
                         ExecutorService fresh = Executors.newSingleThreadExecutor();
                         ownedWorker = fresh;
                         worker = fresh;
-                        // Queued-but-never-started tasks on the stuck worker are
-                        // discarded by shutdownNow and never run their cleanup:
-                        // release their in-flight keys here instead.
-                        for (Runnable dropped : stuck.shutdownNow()) {
-                            String droppedKey = taskKeys.remove(dropped);
-                            if (droppedKey != null) inFlight.remove(droppedKey);
+                        // Queued-but-never-started tasks move to the fresh
+                        // worker instead of being dropped with the stuck one:
+                        // rows that stayed visible keep loading rather than
+                        // holding their placeholders until a rebind. Each
+                        // task re-checks the generation and its target tag
+                        // before decoding and arms its own watchdog when it
+                        // starts.
+                        for (Runnable queued : stuck.shutdownNow()) {
+                            fresh.execute(queued);
                         }
                     }
                 };
@@ -227,7 +232,7 @@ public class ContactPhotoLoader implements AutoCloseable {
             } finally {
                 running.set(false);
                 if (watchdog[0] != null) main.removeCallbacks(watchdog[0]);
-                synchronized (lock) { taskKeys.remove(self[0]); inFlight.remove(requestKey); }
+                synchronized (lock) { inFlight.remove(flightKey); }
                 if (wasAbandoned.get()) {
                     // A stuck thread that returned frees its slot.
                     main.post(() -> {
@@ -236,11 +241,10 @@ public class ContactPhotoLoader implements AutoCloseable {
                 }
             }
         };
-            synchronized (lock) { taskKeys.put(self[0], requestKey); }
             worker.execute(self[0]);
         } catch (java.util.concurrent.RejectedExecutionException shutDown) {
             // close() or abandonment raced the enqueue: nothing to deliver.
-            synchronized (lock) { taskKeys.remove(self[0]); inFlight.remove(requestKey); }
+            synchronized (lock) { inFlight.remove(flightKey); }
         }
     }
 
@@ -289,7 +293,6 @@ public class ContactPhotoLoader implements AutoCloseable {
             closed = true;
             generation.incrementAndGet();
             inFlight.clear();
-            taskKeys.clear();
         }
         ExecutorService owned = ownedWorker;
         if (owned != null) owned.shutdownNow();
